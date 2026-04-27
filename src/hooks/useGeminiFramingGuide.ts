@@ -23,12 +23,15 @@ import {
 import { CONFIG } from '@/config';
 import { GEMINI_FRAMING_SYSTEM_PROMPT } from '@/constants/geminiFramingPrompt';
 import {
+  geminiInjectionAllViewsComplete,
   geminiInjectionArmView,
+  geminiInjectionCapturePremature,
   geminiInjectionCaptureRejected,
   geminiInjectionPhoneNotLevel,
   geminiInjectionPhoneStablePortrait,
+  geminiInjectionReadyToCountdown,
   geminiInjectionSessionConnected,
-  geminiInjectionUserDistancePerfect,
+  geminiInjectionUserNotVisible,
   geminiInjectionUserTooClose,
   geminiInjectionUserTooFar,
 } from '@/constants/geminiFramingLiveInjections';
@@ -41,6 +44,40 @@ import type { PoseLiveMetricsRef, PoseUserScaleZone } from '@/hooks/usePoseDetec
 
 const OUTPUT_PCM_SAMPLE_RATE_HZ = 24000;
 const CAPTURE_FN_NAME = 'capture_now';
+/**
+ * Required continuous time in zone='perfect' before `capture_now` is honored.
+ * "Balanced" gating per product call: tight enough that captures are repeatable
+ * (no drive-by perfects), loose enough that the user doesn't feel re-coached.
+ */
+const PERFECT_STABILITY_MS = 300;
+/**
+ * Minimum time after CAPTURE_VIEW_ARMED before READY_TO_COUNTDOWN can be sent.
+ * Without this, if the user is already in the perfect band when we arm
+ * (e.g. they didn't turn between views), READY would fire ~300ms after arm
+ * and Aoede would interrupt her own instruction with the countdown. This buys
+ * her time to finish narrating the turn cue before the count starts.
+ */
+const ARM_INSTRUCTION_GRACE_MS = 2500;
+/**
+ * How long the client must be physically still (no zone change, no meaningful
+ * userScale delta) before we let Aoede coach distance again. This is what
+ * stops her talking over the client while they're actively walking into
+ * position — she only opens her mouth when they've stopped and they're still
+ * not in the right spot.
+ */
+const STILLNESS_MS = 800;
+/**
+ * Threshold for "the body actually moved": userScale = avgAnkleY − noseY in
+ * normalized 0–1 frame coords, so 0.015 ≈ 1.5% of frame height. Tight enough
+ * to detect a deliberate step, loose enough to ignore breathing / micro-sway.
+ */
+const SCALE_MOTION_EPSILON = 0.015;
+/**
+ * If the client is stuck still in the same wrong zone (didn't move enough to
+ * fix it), re-coach them after this long. Without this, a user who freezes
+ * after one nudge would get no further help.
+ */
+const STILL_NUDGE_REPEAT_MS = 4000;
 
 const CAPTURE_TOOL: FunctionDeclarationsTool = {
   functionDeclarations: [
@@ -203,6 +240,39 @@ export function useGeminiFramingGuide({
   type UserScaleInjectCursor = PoseUserScaleZone | 'uninitialized';
   const lastUserScaleInjectedZoneRef = useRef<UserScaleInjectCursor>('uninitialized');
   const lastUserScaleInjectAtRef = useRef(0);
+  /**
+   * Last time the live pose pipeline observed a NON-perfect zone. Used by the
+   * deterministic capture gate: we require the zone to have been 'perfect'
+   * continuously for at least PERFECT_STABILITY_MS before honoring `capture_now`.
+   * This stops the model from triggering capture during a brief drift through
+   * the perfect band, which is the main source of "she still captured even
+   * though I was further back" repeatability bugs.
+   */
+  const lastNonPerfectAtMsRef = useRef(Date.now());
+  /**
+   * Whether we've already injected READY_TO_COUNTDOWN for the current armed view.
+   * Reset on every arm/reject and on capture fire. The READY event is the only
+   * signal authorising the model to count down, so emitting it more than once
+   * per arm cycle would let Aoede restart the count mid-capture.
+   */
+  const readyToCountdownSentForArmRef = useRef(false);
+  /** Last time we injected USER_NOT_VISIBLE while armed (rate-limit it like other zone events). */
+  const lastNotVisibleInjectAtRef = useRef(0);
+  /**
+   * Last observed pose zone — used to detect zone-change as a motion signal.
+   * `null` means "no observation yet this arm cycle"; we deliberately treat
+   * the first frame after arming as motion so the stillness clock only starts
+   * once the client has actually settled, not the moment we arm.
+   */
+  const lastObservedZoneRef = useRef<PoseUserScaleZone | null>(null);
+  /**
+   * Last `userScale` value pinned as the stillness anchor. Updated only on
+   * detected motion so small drifts within `SCALE_MOTION_EPSILON` don't
+   * accumulate frame-by-frame and silently shift the baseline.
+   */
+  const lastObservedScaleRef = useRef<number | null>(null);
+  /** Last frame timestamp where motion was detected (zone change OR scale delta > epsilon). */
+  const lastMotionAtMsRef = useRef(Date.now());
   const poseLiveMetricsRefHolder = useRef(poseLiveMetricsRef);
   useEffect(() => {
     poseLiveMetricsRefHolder.current = poseLiveMetricsRef;
@@ -252,6 +322,28 @@ export function useGeminiFramingGuide({
       waitingPoseNudgeSentRef.current = false;
     }
   }, [flowState]);
+
+  /**
+   * On transition into the 'complete' flow state (all 4 views captured),
+   * inject ALL_VIEWS_COMPLETE so Aoede delivers her closing handoff narration
+   * before the session winds down. Without this, the model just stops talking
+   * and the user is left wondering whether anything saved.
+   */
+  const allViewsCompleteSentRef = useRef(false);
+  useEffect(() => {
+    if (flowState !== 'complete') {
+      allViewsCompleteSentRef.current = false;
+      return;
+    }
+    if (allViewsCompleteSentRef.current) return;
+    if (connectionStatus !== 'open') return;
+    const session = sessionRef.current;
+    if (!session || session.isClosed) return;
+    allViewsCompleteSentRef.current = true;
+    void session.sendTextRealtime(geminiInjectionAllViewsComplete()).catch((err) => {
+      logger.warn('[GEMINI_LIVE] ALL_VIEWS_COMPLETE injection failed', 'GEMINI_LIVE', err);
+    });
+  }, [flowState, connectionStatus]);
 
   /**
    * After the phone is vertical: opening line was usually already given in waiting_level.
@@ -315,6 +407,11 @@ export function useGeminiFramingGuide({
     if (idx === null) return;
     armedViewRef.current = null;
     armedAtMsRef.current = 0;
+    readyToCountdownSentForArmRef.current = false;
+    lastNotVisibleInjectAtRef.current = 0;
+    lastObservedZoneRef.current = null;
+    lastObservedScaleRef.current = null;
+    lastMotionAtMsRef.current = Date.now();
     transcriptionBufferRef.current = '';
     framesPausedRef.current = true;
     void Promise.resolve(onShotTriggerRef.current(idx)).catch((e) => {
@@ -350,13 +447,70 @@ export function useGeminiFramingGuide({
             const calls = (raw as { functionCalls?: Array<{ id?: string; name: string; args: object }> }).functionCalls;
             if (calls) {
               const responses: FunctionResponse[] = [];
+              let rejectionReason: 'too_close' | 'too_far' | 'absent' | 'unstable' | null = null;
               for (const fc of calls) {
                 if (fc.name === CAPTURE_FN_NAME) {
+                  /* Deterministic capture gate: only honor `capture_now` when the
+                   * client is plausibly ready. This prevents drive-by perfects
+                   * (e.g. brief drift through the perfect band) from triggering
+                   * captures, which is the main source of "she fired even though
+                   * I was further back" repeatability bugs. */
+                  const liveRef = poseLiveMetricsRefHolder.current;
+                  const zone = liveRef?.current.zone ?? null;
+                  const fs = flowStateRef.current;
+                  const armedIdx = armedViewRef.current;
+                  const stableMs = Date.now() - lastNonPerfectAtMsRef.current;
+                  const phoneLevel = fs !== 'waiting_level' && fs !== 'permissions';
+
+                  let gateOk = true;
+                  if (armedIdx === null) {
+                    gateOk = false;
+                    rejectionReason = 'unstable';
+                  } else if (!phoneLevel) {
+                    gateOk = false;
+                    rejectionReason = 'unstable';
+                  } else if (zone === 'absent') {
+                    gateOk = false;
+                    rejectionReason = 'absent';
+                  } else if (zone === 'too_close') {
+                    gateOk = false;
+                    rejectionReason = 'too_close';
+                  } else if (zone === 'too_far') {
+                    gateOk = false;
+                    rejectionReason = 'too_far';
+                  } else if (zone !== 'perfect' || stableMs < PERFECT_STABILITY_MS) {
+                    gateOk = false;
+                    rejectionReason = 'unstable';
+                  }
+
                   logger.warn('[GEMINI_LIVE] capture_now tool call received', 'GEMINI_LIVE', {
-                    armedView: armedViewRef.current,
+                    armedView: armedIdx,
+                    zone,
+                    flowState: fs,
+                    stableMs,
+                    gateOk,
+                    rejectionReason,
                   });
-                  fireCaptureTrigger();
-                  responses.push({ id: fc.id, name: CAPTURE_FN_NAME, response: { captured: true } });
+
+                  if (gateOk) {
+                    fireCaptureTrigger();
+                    responses.push({ id: fc.id, name: CAPTURE_FN_NAME, response: { captured: true } });
+                  } else {
+                    /* Allow a fresh READY_TO_COUNTDOWN after the next stability
+                     * window. Without this, the model is told to "wait for the
+                     * next READY" but we'd never send one because the per-arm
+                     * latch was stuck true from the previous attempt. */
+                    readyToCountdownSentForArmRef.current = false;
+                    lastNonPerfectAtMsRef.current = Date.now();
+                    lastObservedZoneRef.current = null;
+                    lastObservedScaleRef.current = null;
+                    lastMotionAtMsRef.current = Date.now();
+                    responses.push({
+                      id: fc.id,
+                      name: CAPTURE_FN_NAME,
+                      response: { captured: false, reason: rejectionReason ?? 'unstable' },
+                    });
+                  }
                 }
               }
               if (responses.length > 0) {
@@ -365,6 +519,23 @@ export function useGeminiFramingGuide({
                   await session.sendFunctionResponses(responses);
                 } catch (e) {
                   logger.warn('[GEMINI_LIVE] sendFunctionResponses failed', 'GEMINI_LIVE', e);
+                }
+                /* Coach the model on what to say next when we rejected. The
+                 * function-response itself doesn't tell the model how to recover;
+                 * an explicit SYSTEM_EVENT injection gives it a concrete next move
+                 * (one calm correction → re-arm → countdown → retry). */
+                if (rejectionReason) {
+                  try {
+                    await session.sendTextRealtime(
+                      geminiInjectionCapturePremature(rejectionReason)
+                    );
+                  } catch (e) {
+                    logger.warn(
+                      '[GEMINI_LIVE] CAPTURE_PREMATURE injection failed',
+                      'GEMINI_LIVE',
+                      e
+                    );
+                  }
                 }
               }
             }
@@ -485,24 +656,130 @@ export function useGeminiFramingGuide({
         const liveRef = poseLiveMetricsRefHolder.current;
         const allowDistance =
           allowDistanceInjectionsHolderRef.current?.current !== false;
-        if (liveRef && allowDistance) {
-          const { zone } = liveRef.current;
-          if (zone === 'absent') {
-            lastUserScaleInjectedZoneRef.current = 'absent';
+        if (liveRef) {
+          const { zone, userScale } = liveRef.current;
+          const now = Date.now();
+          // Track perfect-zone stability for the deterministic capture gate
+          // regardless of `allowDistance` so the gate keeps working even when
+          // distance voice nudges are temporarily suppressed (e.g. mid-arm).
+          if (zone !== 'perfect') {
+            lastNonPerfectAtMsRef.current = now;
+          }
+
+          /* ── Motion detection ───────────────────────────────────────────
+           * The user explicitly asked for natural pacing: Aoede should stay
+           * silent while the client is actively moving into position, and
+           * only re-coach if they stop and they're still not in the right
+           * spot. We treat ANY of the following as motion:
+           *   - first frame after an arm (so the stillness clock starts
+           *     once the client has actually settled, not the moment we arm)
+           *   - the pose zone changed since last frame
+           *   - userScale (avgAnkleY − noseY in normalized 0–1 coords)
+           *     moved by more than SCALE_MOTION_EPSILON
+           * `lastObservedScaleRef` is only updated on detected motion so
+           * micro-drift within tolerance can't slowly walk the baseline. */
+          const prevZone = lastObservedZoneRef.current;
+          const prevScale = lastObservedScaleRef.current;
+          let movedThisFrame = false;
+          if (prevZone === null) {
+            // First observation this arm cycle — count it as motion so the
+            // stillness clock begins from now.
+            movedThisFrame = true;
           } else {
-            const lastZ = lastUserScaleInjectedZoneRef.current;
-            const now = Date.now();
-            if (zone !== lastZ && now - lastUserScaleInjectAtRef.current >= 1200) {
-              lastUserScaleInjectedZoneRef.current = zone;
-              lastUserScaleInjectAtRef.current = now;
-              const payload =
-                zone === 'too_close'
-                  ? geminiInjectionUserTooClose()
-                  : zone === 'too_far'
-                    ? geminiInjectionUserTooFar()
-                    : geminiInjectionUserDistancePerfect();
-              void session.sendTextRealtime(payload).catch((err) => {
-                logger.warn('[GEMINI_LIVE] user scale injection failed', 'GEMINI_LIVE', err);
+            if (zone !== prevZone) movedThisFrame = true;
+            if (
+              !movedThisFrame &&
+              userScale !== null &&
+              prevScale !== null &&
+              Math.abs(userScale - prevScale) > SCALE_MOTION_EPSILON
+            ) {
+              movedThisFrame = true;
+            }
+          }
+          if (movedThisFrame) {
+            lastMotionAtMsRef.current = now;
+            lastObservedScaleRef.current = userScale;
+          }
+          lastObservedZoneRef.current = zone;
+          const stillnessMs = now - lastMotionAtMsRef.current;
+          const isStill = stillnessMs >= STILLNESS_MS;
+
+          if (allowDistance) {
+            const armedIdx = armedViewRef.current;
+            const fs = flowStateRef.current;
+            const phoneLevel = fs !== 'waiting_level' && fs !== 'permissions';
+
+            /* Distance coaching only when the user has stopped. While they're
+             * walking into position (motion detected within the last
+             * STILLNESS_MS), Aoede stays quiet. */
+            if (armedIdx !== null && phoneLevel && isStill && zone !== 'perfect') {
+              const lastZ = lastUserScaleInjectedZoneRef.current;
+              const sinceLastInject = now - lastUserScaleInjectAtRef.current;
+              const isNewSituation = zone !== lastZ;
+              const isStuckTooLong = sinceLastInject >= STILL_NUDGE_REPEAT_MS;
+              if (isNewSituation || isStuckTooLong) {
+                lastUserScaleInjectedZoneRef.current = zone;
+                lastUserScaleInjectAtRef.current = now;
+                const payload =
+                  zone === 'absent'
+                    ? geminiInjectionUserNotVisible()
+                    : zone === 'too_close'
+                      ? geminiInjectionUserTooClose()
+                      : geminiInjectionUserTooFar();
+                if (zone === 'absent') {
+                  lastNotVisibleInjectAtRef.current = now;
+                }
+                logger.warn('[GEMINI_LIVE] Distance coach', 'GEMINI_LIVE', {
+                  zone,
+                  stillnessMs,
+                  reason: isNewSituation ? 'new-zone-after-stop' : 'stuck-still',
+                });
+                void session.sendTextRealtime(payload).catch((err) => {
+                  logger.warn('[GEMINI_LIVE] distance injection failed', 'GEMINI_LIVE', err);
+                });
+              }
+            } else if (zone === 'perfect' && lastUserScaleInjectedZoneRef.current !== 'perfect') {
+              // Track that we observed perfect, but DON'T inject
+              // USER_DISTANCE_PERFECT — READY_TO_COUNTDOWN below is the
+              // single signal that "you're framed; here comes the count."
+              // Sending both made Aoede say "perfect" then immediately
+              // count, which read as rushing.
+              lastUserScaleInjectedZoneRef.current = 'perfect';
+            }
+
+            /* The countdown gate. READY_TO_COUNTDOWN is the only event that
+             * authorises Aoede to count down + call capture_now. We send it
+             * exactly once per arm cycle, when ALL of the following are true:
+             *   - a view is armed and the phone is level
+             *   - zone has been 'perfect' continuously for PERFECT_STABILITY_MS
+             *   - the client has been physically still (no motion) for STILLNESS_MS
+             *   - enough time has passed since arm for Aoede's instruction
+             *     to actually be heard (ARM_INSTRUCTION_GRACE_MS)
+             * The stillness gate is what keeps her from counting down while
+             * the client is still mid-step. */
+            const armedAt = armedAtMsRef.current;
+            const sinceArm = armedAt > 0 ? now - armedAt : 0;
+            if (
+              armedIdx !== null &&
+              phoneLevel &&
+              zone === 'perfect' &&
+              isStill &&
+              !readyToCountdownSentForArmRef.current &&
+              now - lastNonPerfectAtMsRef.current >= PERFECT_STABILITY_MS &&
+              sinceArm >= ARM_INSTRUCTION_GRACE_MS
+            ) {
+              readyToCountdownSentForArmRef.current = true;
+              const armedView = viewsRef.current[armedIdx];
+              const label = armedView?.label ?? `view-${armedIdx}`;
+              logger.warn('[GEMINI_LIVE] Sending READY_TO_COUNTDOWN', 'GEMINI_LIVE', {
+                armedView: armedIdx,
+                label,
+                stableMs: now - lastNonPerfectAtMsRef.current,
+                stillnessMs,
+                sinceArmMs: sinceArm,
+              });
+              void session.sendTextRealtime(geminiInjectionReadyToCountdown(label)).catch((err) => {
+                logger.warn('[GEMINI_LIVE] READY_TO_COUNTDOWN injection failed', 'GEMINI_LIVE', err);
               });
             }
           }
@@ -517,6 +794,11 @@ export function useGeminiFramingGuide({
     armedAtMsRef.current = 0;
     armedViewRef.current = null;
     lastUserScaleInjectedZoneRef.current = 'uninitialized';
+    readyToCountdownSentForArmRef.current = false;
+    lastNotVisibleInjectAtRef.current = 0;
+    lastObservedZoneRef.current = null;
+    lastObservedScaleRef.current = null;
+    lastMotionAtMsRef.current = Date.now();
     clearFrameInterval();
     const s = sessionRef.current;
     sessionRef.current = null;
@@ -626,10 +908,18 @@ export function useGeminiFramingGuide({
         startJpegInterval(session);
         const fs = flowStateRef.current;
         if (fs === 'waiting_level' || fs === 'permissions') {
+          // The OPENING_BRIEFING already ends with "hold the phone upright at about waist
+          // height" and the first armed view tells them to stand in the guide box, so the
+          // separate PHONE_STABLE_PORTRAIT nudge is redundant — and worse, it interrupts
+          // the briefing the moment the user tilts their phone vertical mid-monologue
+          // (which is the most common timing). Suppress it for the rest of this session.
+          waitingPoseNudgeSentRef.current = true;
           void session.sendTextRealtime(geminiInjectionSessionConnected()).catch((err) => {
             logger.warn('[GEMINI_LIVE] opening prompt failed', 'GEMINI_LIVE', err);
           });
         } else if (fs === 'waiting_pose') {
+          // Already past the briefing window (e.g. reconnect after backgrounding). Send the
+          // shorter framing nudge so the client still gets a cue.
           waitingPoseNudgeSentRef.current = true;
           void session.sendTextRealtime(geminiInjectionPhoneStablePortrait()).catch((err) => {
             logger.warn('[GEMINI_LIVE] waiting_pose opening prompt failed', 'GEMINI_LIVE', err);
@@ -779,6 +1069,17 @@ export function useGeminiFramingGuide({
     armedAtMsRef.current = Date.now();
     framesPausedRef.current = false;
     lastUserScaleInjectedZoneRef.current = 'uninitialized';
+    readyToCountdownSentForArmRef.current = false;
+    lastNotVisibleInjectAtRef.current = 0;
+    // Reset stability cursor so READY_TO_COUNTDOWN can't fire on a stale
+    // 'perfect' streak from before arming (e.g. user was perfect during the
+    // previous view, then walked over to look at the screen).
+    lastNonPerfectAtMsRef.current = Date.now();
+    // Reset motion observers — first frame after arming starts a fresh
+    // stillness clock so we don't immediately blurt out a coaching line.
+    lastObservedZoneRef.current = null;
+    lastObservedScaleRef.current = null;
+    lastMotionAtMsRef.current = Date.now();
     try {
       await session.sendTextRealtime(geminiInjectionArmView(v.label, v.instr));
       return true;
@@ -809,6 +1110,12 @@ export function useGeminiFramingGuide({
     armedAtMsRef.current = Date.now();
     framesPausedRef.current = false;
     lastUserScaleInjectedZoneRef.current = 'uninitialized';
+    readyToCountdownSentForArmRef.current = false;
+    lastNotVisibleInjectAtRef.current = 0;
+    lastNonPerfectAtMsRef.current = Date.now();
+    lastObservedZoneRef.current = null;
+    lastObservedScaleRef.current = null;
+    lastMotionAtMsRef.current = Date.now();
     try {
       await session.sendTextRealtime(geminiInjectionCaptureRejected(v.label, failingRegions));
       return true;

@@ -77,14 +77,18 @@ export function drawLandmarkPoint(
   /** Landmark visible but below clinical capture confidence — amber fill vs posture severity colors. */
   lowVisibilityConfidence?: boolean
 ): void {
-  // Outline
-  ctx.strokeStyle = '#000000';
-  ctx.lineWidth = 2;
+  /**
+   * Outline weight scales with radius so the dot reads as a clean disc at any size
+   * (small overlay = ~1px outline; big print export = ~2px outline). Hard 2px on a
+   * 5px dot is what made the live overlay look chunky and cartoonish.
+   */
+  const outlineWidth = Math.max(0.75, Math.round(radius * 0.3 * 2) / 2);
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.lineWidth = outlineWidth;
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.stroke();
 
-  // Fill
   const fill =
     lowVisibilityConfidence === true
       ? CHART_HEX.scoreAmber
@@ -93,6 +97,6 @@ export function drawLandmarkPoint(
         : ALIGNMENT_COLORS.POINT_NEUTRAL;
   ctx.fillStyle = fill;
   ctx.beginPath();
-  ctx.arc(x, y, radius - 1, 0, Math.PI * 2);
+  ctx.arc(x, y, Math.max(0, radius - outlineWidth / 2), 0, Math.PI * 2);
   ctx.fill();
 }

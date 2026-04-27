@@ -209,11 +209,15 @@ export async function processPostureImage(
       try {
         logger.debug(`Generating wireframe on original image for ${view}...`, ctx);
         wireframeOnOriginal = await drawLandmarkWireframe(imageData, landmarks.raw, view, {
-          pointColor: '#00ff00',
-          lineColor: 'rgba(0, 255, 0, 0.8)',
-          pointRadius: 8,
-          lineWidth: 3,
-          opacity: 0.95,
+          // Curated palette (Tailwind green-500) instead of full-saturation #00ff00 — that
+          // pure-green felt loud against skin tones and was the main "cheap, untrustworthy"
+          // signal the user flagged. Keep the dot/segment weights modest so the photo reads
+          // first and the overlay sits on top calmly.
+          pointColor: '#22c55e',
+          lineColor: 'rgba(34, 197, 94, 0.7)',
+          pointRadius: 5,
+          lineWidth: 2,
+          opacity: 0.92,
         });
         logger.debug(`Wireframe generated for ${view}`, ctx);
       } catch (wireframeError) {

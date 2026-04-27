@@ -143,34 +143,46 @@ export const CONFIG = {
   },
 
   // --- POSTURE VIEWS ---
-  // Enforced sequence: Front → quarter turn right → left profile → quarter turn right → back → quarter turn right → right profile
+  // Enforced sequence: Front → quarter turn LEFT → left profile (left side faces camera) →
+  // quarter turn LEFT → back → quarter turn LEFT → right profile (right side faces camera).
+  //
+  // Direction matters because the posture analysis pipeline (postureAlignmentSide.ts) treats
+  // `side-left` as the SUBJECT'S anatomical left side (uses MediaPipe left-side landmark
+  // indices 7/11/23/25/27). The photo we store under `side-left` MUST show the user's left
+  // side facing the camera. Starting from FRONT, the only one-turn way to get left-side-to-
+  // camera is to rotate to the user's LEFT (counter-clockwise from above) — turning right
+  // would put the right side to camera and silently invert all left-vs-right deviation math.
+  //
+  // Each `instr` is read aloud by Aoede. We lead with the dominant turn cue ("quarter turn
+  // to your left") and confirm the side ("left shoulder closest to the camera") AFTER, so
+  // the two cues reinforce instead of contradicting each other.
   POSTURE_VIEWS: [
     {
       id: 'front',
       label: 'FRONT',
       instr:
-        'Face the camera. Position yourself so your body fills the guide box from head to toe — not tiny in the distance, not cropped.',
+        'Face the camera straight on. Stand so your body fills the guide box head to toe — not tiny, not cropped.',
       captureOrder: 0,
     },
     {
       id: 'side-left',
       label: 'LEFT SIDE',
       instr:
-        'Slowly turn a quarter turn to your right from the front until your left side faces the camera. Stay in profile; your body should fill the guide box.',
+        'Quarter turn to your left. Now your left shoulder is the one closest to the camera — stay in profile, full body in the guide box.',
       captureOrder: 1,
     },
     {
       id: 'back',
       label: 'BACK',
       instr:
-        'Turn another quarter turn to your right so your back faces the camera. Full body fills the guide box.',
+        'Another quarter turn to your left. Your back is now to the camera — full body in the guide box.',
       captureOrder: 2,
     },
     {
       id: 'side-right',
       label: 'RIGHT SIDE',
       instr:
-        'One more quarter turn to your right so your right side faces the camera. Profile view; body fills the guide box.',
+        'One more quarter turn to your left. Now your right shoulder is the one closest to the camera — profile, full body in the guide box.',
       captureOrder: 3,
     },
   ] as const,
@@ -225,8 +237,14 @@ export const CONFIG = {
       /** Shown above “Enable camera” on posture flows (short line). */
       PERMISSION_WAIST_HEIGHT_HINT:
         'Set the phone at about waist height and vertical before you continue — it makes framing much easier.',
-      /** Legacy TTS between views when Gemini Live is off. */
-      POSTURE_QUARTER_TURN_RIGHT: 'Nice one. Slowly turn a quarter turn to your right.',
+      /**
+       * Legacy TTS between views when Gemini Live is off. Direction MUST stay
+       * "left" to match POSTURE_VIEWS, which rotates the user counter-clockwise
+       * (front → left side → back → right side). Turning right would silently
+       * misalign the captured side with the analysis pipeline's left/right
+       * landmark indices.
+       */
+      POSTURE_QUARTER_TURN_NEXT: 'Nice one. Quarter turn to your left for the next view.',
     },
     CAPTURE: {
       COUNTDOWN_SEC: 5,

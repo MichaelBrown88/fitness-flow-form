@@ -385,7 +385,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
               allowGeminiDistanceInjectionsRef.current = false;
             }
             if (viewIdx < VIEWS.length - 1) {
-              throttledSpeak(CONFIG.COMPANION.VOICE_GUIDE.POSTURE_QUARTER_TURN_RIGHT, true);
+              throttledSpeak(CONFIG.COMPANION.VOICE_GUIDE.POSTURE_QUARTER_TURN_NEXT, true);
               turnDelayTimeoutRef.current = setTimeout(() => {
                 if (isSequenceCancelledRef.current) return;
                 beginViewCaptureRef.current(viewIdx + 1);
