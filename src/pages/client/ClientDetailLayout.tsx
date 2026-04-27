@@ -204,78 +204,36 @@ export default function ClientDetailLayout() {
   return (
     <>
       <Seo pathname={seoPath} title={clientSeoMeta.title} description={clientSeoMeta.description} noindex={clientSeoMeta.noindex} />
-    <div className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+    <div className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
       <WorkspaceBreadcrumb
         current={displayClientName}
         trail={[UI_COMMAND_MENU.CLIENTS]}
       />
 
+      {/* In-progress notice — slimmed to a pill so it's present without
+          dominating the page above the report content. */}
       {incompleteDraft && (
-        <div className="flex items-center justify-between gap-3 rounded-[20px] border border-score-amber-fg/30 bg-score-amber-muted/60 px-5 py-4">
-          <p className="text-sm font-medium text-score-amber-fg">
-            This client has an assessment in progress. Resume it to complete their report.
+        <div className="flex items-center justify-between gap-3 rounded-full border border-score-amber-fg/20 bg-score-amber-muted/40 py-1.5 pl-4 pr-1.5">
+          <p className="text-[13px] font-medium text-score-amber-fg">
+            Assessment in progress — resume to complete the report.
           </p>
           <Button
             size="sm"
             onClick={handleFinishAssessment}
-            className="h-9 shrink-0 gap-2 rounded-full px-4 text-[13px] font-semibold"
+            className="h-7 shrink-0 rounded-full px-3 text-[12px] font-semibold"
           >
-            Finish assessment
+            Finish
           </Button>
         </div>
       )}
 
-      <div className="flex items-start justify-between gap-3">
-        <h1 className="truncate text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          {displayClientName}
-        </h1>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="h-9 shrink-0 gap-2 rounded-full px-3"
-              aria-label={UI_CLIENT_DETAIL.HEADER_ACTIONS_MENU_ARIA}
-            >
-              <MoreVertical className="h-4 w-4" />
-              More
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52 rounded-lg">
-            <DropdownMenuItem onClick={() => handleNewAssessment()} className="py-3 text-sm font-medium">
-              <UserPlus className="mr-2 h-4 w-4" />
-              New assessment
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to={buildClientPath(clientName, 'settings')} className="py-3 text-sm font-medium">
-                <SettingsIcon className="mr-2 h-4 w-4" />
-                Edit Profile
-              </Link>
-            </DropdownMenuItem>
-            {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
-              <DropdownMenuItem onClick={() => setTransferOpen(true)} className="py-3 text-sm font-medium">
-                Transfer Client
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setPauseDialogOpen(true)} className="py-3 text-sm font-medium">
-              {isPaused ? 'Unpause account' : 'Pause account'}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)} className="py-3 text-sm font-medium">
-              {isArchived ? 'Reactivate client' : 'Archive client'}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => { setDeleteConfirmName(''); setDeleteClientOpen(true); }}
-              className="py-3 text-sm font-medium text-destructive focus:text-destructive focus:bg-destructive/10"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete permanently
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <nav className="mb-6 flex w-fit items-center gap-1 rounded-lg bg-muted p-1">
+      {/* Tabs + Manage menu on a single row. The duplicate page-title h1
+          ("Michael Brown") is gone — the breadcrumb above and the
+          report hero card below are the only two name surfaces.
+          The Manage button replaces the previous "More" label so it
+          doesn't clash with the "More" tab dropdown. */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <nav className="flex w-fit items-center gap-1 rounded-lg bg-muted p-1">
         <NavLink
           to={buildClientPath(clientName)}
           end
@@ -334,7 +292,55 @@ export default function ClientDetailLayout() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </nav>
+        </nav>
+
+        {/* Client management menu — distinct from the "More" tab above
+            (which holds nav to ARC™ / Milestones / Settings sub-pages). */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="h-9 shrink-0 gap-1.5 rounded-full px-3.5"
+              aria-label={UI_CLIENT_DETAIL.HEADER_ACTIONS_MENU_ARIA}
+            >
+              <MoreVertical className="h-4 w-4" />
+              Manage
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52 rounded-lg">
+            <DropdownMenuItem onClick={() => handleNewAssessment()} className="py-3 text-sm font-medium">
+              <UserPlus className="mr-2 h-4 w-4" />
+              New assessment
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={buildClientPath(clientName, 'settings')} className="py-3 text-sm font-medium">
+                <SettingsIcon className="mr-2 h-4 w-4" />
+                Edit Profile
+              </Link>
+            </DropdownMenuItem>
+            {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
+              <DropdownMenuItem onClick={() => setTransferOpen(true)} className="py-3 text-sm font-medium">
+                Transfer Client
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setPauseDialogOpen(true)} className="py-3 text-sm font-medium">
+              {isPaused ? 'Unpause account' : 'Pause account'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)} className="py-3 text-sm font-medium">
+              {isArchived ? 'Reactivate client' : 'Archive client'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => { setDeleteConfirmName(''); setDeleteClientOpen(true); }}
+              className="py-3 text-sm font-medium text-destructive focus:text-destructive focus:bg-destructive/10"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete permanently
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       <Outlet context={{ ...clientData, roadmapStatus, isRoadmapStale, roadmapItems } satisfies ClientDetailOutletContext} />
 
