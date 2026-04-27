@@ -1,14 +1,28 @@
 /**
  * AXIS Bloom — One Assess's signature five-pillar visualisation.
  *
- * Five petal shapes radiating from a single centre point. Each petal
- * represents one pillar: tapers to a sharp tip at the centre, expands
- * to a soft rounded end out past the reference ring, length + width
- * driven by score, colour driven by score tone (deep red → lush green).
+ * Five outline-only petal shapes radiating from the AXIS brand mark
+ * at the centre. Each petal:
+ *   - Owns a fixed semantic hue (Body=Cyan, Strength=Rose, Cardio=Amber,
+ *     Movement=Indigo, Lifestyle=Emerald), rendered at a constant
+ *     brightness regardless of score.
+ *   - Communicates pillar HEALTH through SIZE alone — small for low
+ *     scores, full-bloom for high scores.
+ *   - Has subtly bowed-outward edges (geometric but not rigid) and
+ *     small rounded corners (sharp but not jagged).
+ *   - Anchors at the chart centre (no overlap past it).
  *
- * The connected pentagon is gone — your AXIS is now a living bloom,
- * each petal a pillar. Bad pillars are short and red; good pillars are
- * long, fat, and green. Animates from previous → current on view.
+ * Design polish:
+ *   - Centre AXIS brand mark (faceted diamond) anchors the bloom.
+ *   - Subtle continuous "breathing" pulse on the petals — looks alive
+ *     when the user dwells on it.
+ *   - Mount animation: each petal expands from previous → current
+ *     scores on view, with cubic-out easing.
+ *   - Dashed scale rings at 25 / 50 / 75 / 100 with centred labels on
+ *     the top axis; dashed spokes on the other 4 axes.
+ *   - Subtle outer glow tinted by each petal's pillar colour.
+ *
+ * No Recharts. Custom SVG, ~13kb on the wire.
  */
 
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -18,133 +32,142 @@ export interface RadarData {
   name: string;
   value: number;
   fullLabel: string;
-  /** Legacy field — kept for prop-compat; the bloom derives colour
-   *  from each pillar's own score now. */
+  /** Legacy field — kept for prop-compat; pillar colour is now derived
+   *  by name lookup against the AXIS palette. */
   color: string;
 }
 
 interface OverallRadarChartProps {
   data: RadarData[];
-  /** When provided, each petal animates from previous → current and a
-   *  ghost petal outline of the previous shape stays behind. */
+  /** When provided, each petal animates from previous → current scores. */
   previousData?: RadarData[];
   /** Mobile: shrink labels + radius slightly. */
   compact?: boolean;
 }
 
-// ─── Per-pillar colour math ─────────────────────────────────────────
+// ─── Per-pillar palette (fixed brightness; identity only) ───────────
 
-function pillarHsl(score: number): { hue: number; sat: number; light: number } {
-  const s = Math.max(0, Math.min(100, score));
-  const stops = [
-    { at: 0, h: 0, s: 70, l: 38 },
-    { at: 35, h: 22, s: 82, l: 46 },
-    { at: 55, h: 42, s: 88, l: 50 },
-    { at: 75, h: 95, s: 60, l: 46 },
-    { at: 100, h: 142, s: 64, l: 44 },
-  ];
-  for (let i = 0; i < stops.length - 1; i++) {
-    const a = stops[i];
-    const b = stops[i + 1];
-    if (s <= b.at) {
-      const t = (s - a.at) / (b.at - a.at);
-      return {
-        hue: a.h + (b.h - a.h) * t,
-        sat: a.s + (b.s - a.s) * t,
-        light: a.l + (b.l - a.l) * t,
-      };
-    }
-  }
-  const last = stops[stops.length - 1];
-  return { hue: last.h, sat: last.s, light: last.l };
+interface PillarHue { h: number; alias: string }
+
+const PILLAR_HUES: Record<string, PillarHue> = {
+  // Canonical full labels
+  'Body Composition': { h: 188, alias: 'Cyan' },
+  'Functional Strength': { h: 350, alias: 'Rose' },
+  'Metabolic Fitness': { h: 28, alias: 'Amber' },
+  'Movement Quality': { h: 262, alias: 'Indigo' },
+  'Lifestyle Factors': { h: 152, alias: 'Emerald' },
+  // Short labels (mobile / compact)
+  Body: { h: 188, alias: 'Cyan' },
+  Strength: { h: 350, alias: 'Rose' },
+  Cardio: { h: 28, alias: 'Amber' },
+  Movement: { h: 262, alias: 'Indigo' },
+  Lifestyle: { h: 152, alias: 'Emerald' },
+  // Category id keys (kit data shape)
+  bodyComp: { h: 188, alias: 'Cyan' },
+  strength: { h: 350, alias: 'Rose' },
+  cardio: { h: 28, alias: 'Amber' },
+  movementQuality: { h: 262, alias: 'Indigo' },
+  lifestyle: { h: 152, alias: 'Emerald' },
+};
+
+// Order-based fallback hues so pillars in non-standard orders still get
+// a consistent identity (5 hues spaced around the wheel).
+const FALLBACK_HUES = [188, 350, 28, 262, 152];
+
+const FIXED_LIGHTNESS = 45;
+const FIXED_SATURATION = 72;
+
+function pillarHueAt(name: string, fullLabel: string, index: number): number {
+  return (
+    PILLAR_HUES[fullLabel]?.h ??
+    PILLAR_HUES[name]?.h ??
+    FALLBACK_HUES[index % FALLBACK_HUES.length]
+  );
 }
 
-function hslCss({ hue, sat, light }: { hue: number; sat: number; light: number }, alpha = 1): string {
+function pillarColor(hue: number, alpha = 1): string {
   return alpha === 1
-    ? `hsl(${hue.toFixed(0)} ${sat.toFixed(0)}% ${light.toFixed(0)}%)`
-    : `hsl(${hue.toFixed(0)} ${sat.toFixed(0)}% ${light.toFixed(0)}% / ${alpha})`;
+    ? `hsl(${hue} ${FIXED_SATURATION}% ${FIXED_LIGHTNESS}%)`
+    : `hsl(${hue} ${FIXED_SATURATION}% ${FIXED_LIGHTNESS}% / ${alpha})`;
 }
 
-// ─── Petal geometry ─────────────────────────────────────────────────
+// ─── Geometry ───────────────────────────────────────────────────────
 
 function petalAngle(i: number, n: number): number {
   return -Math.PI / 2 + (i * 2 * Math.PI) / n;
 }
 
-interface PetalShape {
-  /** Length from centre to outer tip. */
-  length: number;
-  /** Half-width at the petal's widest point. */
-  halfWidth: number;
-}
+interface XY { x: number; y: number; }
 
-/**
- * Map a 0–100 pillar score to a petal length + width. Length CAN exceed
- * the reference ring (intentional — bigger radius for healthy pillars).
- * Width has a floor so even bad scores render a visible (but thin) petal.
- */
-function petalDimsFor(score: number, baseR: number, maxScale: number): PetalShape {
+function petalDimsFor(score: number, baseR: number, maxScale: number, fatness: number): { length: number; halfWidth: number } {
   const t = Math.max(0, Math.min(100, score)) / 100;
-  // Length: tiny minimum (so we don't render a dot) + score-driven growth
-  // that allows healthy petals to extend up to ~maxScale × baseR.
-  const length = baseR * (0.18 + t * (maxScale - 0.18));
-  // Width: also score-driven but with a floor so weak pillars are still
-  // visible as slender petals. Sublinear (sqrt) so it doesn't balloon.
-  const halfWidth = baseR * (0.08 + Math.sqrt(t) * 0.18);
+  const length = baseR * (0.30 + t * (maxScale - 0.30));
+  const halfWidth = length * fatness * (0.55 + Math.sqrt(t) * 0.45);
   return { length, halfWidth };
 }
 
 /**
- * Build the SVG path for one petal pointing in direction (ux, uy).
- * Sharp point at centre (cx, cy); rounded bulb at the outer tip.
- * Two cubic Béziers, mirrored across the petal axis.
+ * Path generator: rounded corners at each vertex + subtly bowed-outward
+ * edges between corners. Polygon centroid determines "outward" for each
+ * edge, so convex shapes bow uniformly outward.
  */
-function petalPath(cx: number, cy: number, ux: number, uy: number, dims: PetalShape): string {
-  const { length: L, halfWidth: W } = dims;
-  // Perpendicular unit vector to the petal axis
+function curvedAngularPath(vertices: XY[], cornerRadius: number, bowFactor: number): string {
+  if (vertices.length === 0) return '';
+  const n = vertices.length;
+
+  const cx = vertices.reduce((s, v) => s + v.x, 0) / n;
+  const cy = vertices.reduce((s, v) => s + v.y, 0) / n;
+
+  const corners = vertices.map((curr, i) => {
+    const prev = vertices[(i - 1 + n) % n];
+    const next = vertices[(i + 1) % n];
+
+    const v1 = { x: curr.x - prev.x, y: curr.y - prev.y };
+    const len1 = Math.hypot(v1.x, v1.y) || 1;
+    const r1 = Math.min(cornerRadius, len1 / 2);
+    const approach = { x: curr.x - (v1.x / len1) * r1, y: curr.y - (v1.y / len1) * r1 };
+
+    const v2 = { x: next.x - curr.x, y: next.y - curr.y };
+    const len2 = Math.hypot(v2.x, v2.y) || 1;
+    const r2 = Math.min(cornerRadius, len2 / 2);
+    const exit = { x: curr.x + (v2.x / len2) * r2, y: curr.y + (v2.y / len2) * r2 };
+
+    return { vertex: curr, approach, exit };
+  });
+
+  const parts: string[] = [];
+  for (let i = 0; i < n; i++) {
+    const c1 = corners[i];
+    const c2 = corners[(i + 1) % n];
+    if (i === 0) parts.push(`M ${c1.exit.x.toFixed(2)} ${c1.exit.y.toFixed(2)}`);
+
+    const mx = (c1.exit.x + c2.approach.x) / 2;
+    const my = (c1.exit.y + c2.approach.y) / 2;
+    const outX = mx - cx;
+    const outY = my - cy;
+    const outLen = Math.hypot(outX, outY) || 1;
+    const edgeLen = Math.hypot(c2.approach.x - c1.exit.x, c2.approach.y - c1.exit.y);
+    const push = edgeLen * bowFactor;
+    const ctlX = mx + (outX / outLen) * push;
+    const ctlY = my + (outY / outLen) * push;
+    parts.push(`Q ${ctlX.toFixed(2)} ${ctlY.toFixed(2)} ${c2.approach.x.toFixed(2)} ${c2.approach.y.toFixed(2)}`);
+    parts.push(`Q ${c2.vertex.x.toFixed(2)} ${c2.vertex.y.toFixed(2)} ${c2.exit.x.toFixed(2)} ${c2.exit.y.toFixed(2)}`);
+  }
+  parts.push('Z');
+  return parts.join(' ');
+}
+
+function petalPath(cx: number, cy: number, ux: number, uy: number, length: number, halfWidth: number, cornerRadius: number): string {
   const nx = -uy;
   const ny = ux;
-
-  // Tip (outer end, where the petal is rounded)
-  const tipX = cx + L * ux;
-  const tipY = cy + L * uy;
-
-  // Side-max points (where the petal is widest, ~55% along its length)
-  const sideAlong = 0.55;
-  const leftSideX = cx + sideAlong * L * ux + W * nx;
-  const leftSideY = cy + sideAlong * L * uy + W * ny;
-  const rightSideX = cx + sideAlong * L * ux - W * nx;
-  const rightSideY = cy + sideAlong * L * uy - W * ny;
-
-  // Control points near centre — pulled in slightly so the centre stays
-  // a sharp point (no rounding at the stem).
-  const stemAlong = 0.06;
-  const leftStemX = cx + stemAlong * L * ux + W * 0.35 * nx;
-  const leftStemY = cy + stemAlong * L * uy + W * 0.35 * ny;
-  const rightStemX = cx + stemAlong * L * ux - W * 0.35 * nx;
-  const rightStemY = cy + stemAlong * L * uy - W * 0.35 * ny;
-
-  // Control points near the tip — pulled outward so the tip rounds smoothly.
-  const tipAlong = 0.92;
-  const leftTipCtlX = cx + tipAlong * L * ux + W * 0.7 * nx;
-  const leftTipCtlY = cy + tipAlong * L * uy + W * 0.7 * ny;
-  const rightTipCtlX = cx + tipAlong * L * ux - W * 0.7 * nx;
-  const rightTipCtlY = cy + tipAlong * L * uy - W * 0.7 * ny;
-
-  return [
-    `M ${cx.toFixed(2)} ${cy.toFixed(2)}`,
-    // Up the left side, swelling out, into the rounded tip
-    `C ${leftStemX.toFixed(2)} ${leftStemY.toFixed(2)},`,
-    `  ${leftSideX.toFixed(2)} ${leftSideY.toFixed(2)},`,
-    `  ${leftTipCtlX.toFixed(2)} ${leftTipCtlY.toFixed(2)}`,
-    // Round across the tip (small Q gives a softly rounded end)
-    `Q ${tipX.toFixed(2)} ${tipY.toFixed(2)} ${rightTipCtlX.toFixed(2)} ${rightTipCtlY.toFixed(2)}`,
-    // Back down the right side, narrowing back to the sharp centre
-    `C ${rightSideX.toFixed(2)} ${rightSideY.toFixed(2)},`,
-    `  ${rightStemX.toFixed(2)} ${rightStemY.toFixed(2)},`,
-    `  ${cx.toFixed(2)} ${cy.toFixed(2)}`,
-    'Z',
-  ].join(' ');
+  const sideAlong = 0.58;
+  const vertices: XY[] = [
+    { x: cx + length * ux, y: cy + length * uy },
+    { x: cx + sideAlong * length * ux - halfWidth * nx, y: cy + sideAlong * length * uy - halfWidth * ny },
+    { x: cx, y: cy },
+    { x: cx + sideAlong * length * ux + halfWidth * nx, y: cy + sideAlong * length * uy + halfWidth * ny },
+  ];
+  return curvedAngularPath(vertices, cornerRadius, 0.07);
 }
 
 // ─── Animation hook ─────────────────────────────────────────────────
@@ -182,27 +205,16 @@ function useAnimatedScores(targets: number[], opts: { from?: number[]; duration?
 
 // ─── Component ──────────────────────────────────────────────────────
 
-const COMPACT_LABELS: Record<string, string> = {
-  'Body Composition': 'Body',
-  'Functional Strength': 'Strength',
-  'Metabolic Fitness': 'Cardio',
-  'Movement Quality': 'Movement',
-  'Lifestyle Factors': 'Lifestyle',
-};
-
 export default function OverallRadarChart({ data, previousData, compact = false }: OverallRadarChartProps) {
   // ─── Layout
-  // Bigger viewBox so petals can extend past the reference ring
-  // without clipping at the edges.
-  const size = 380;
+  const size = 360;
   const cx = size / 2;
   const cy = size / 2;
-  const labelGap = compact ? 10 : 14;
-  // Reference ring radius is what "100" maps to; petals can grow PAST
-  // this (1.25x for healthy pillars) so the bloom feels alive and
-  // un-bounded, exactly per Michael's note.
-  const baseR = (size / 2) - labelGap - (compact ? 24 : 30);
-  const petalMaxScale = 1.25;
+  const labelGap = compact ? 14 : 22;
+  const baseR = (size / 2) - labelGap - (compact ? 22 : 30);
+  const maxScale = 1.0;       // petals top out exactly at the 100 ring
+  const fatness = 0.42;       // slim enough to avoid heavy outer overlap
+  const cornerRadius = compact ? 5 : 6;
 
   const filterId = useId();
   const safeId = filterId.replace(/:/g, '');
@@ -223,44 +235,51 @@ export default function OverallRadarChart({ data, previousData, compact = false 
   const n = data.length;
   const ringStops = [25, 50, 75, 100];
 
-  // Per-pillar petal paths + colours (live, follow the animation)
+  // Per-pillar paths + colours (live, follow the animation)
   const petals = animatedScores.map((s, i) => {
     const angle = petalAngle(i, n);
     const ux = Math.cos(angle);
     const uy = Math.sin(angle);
-    const dims = petalDimsFor(s, baseR, petalMaxScale);
+    const dims = petalDimsFor(s, baseR, maxScale, fatness);
+    const hue = pillarHueAt(data[i].name, data[i].fullLabel, i);
     return {
-      d: petalPath(cx, cy, ux, uy, dims),
-      colour: hslCss(pillarHsl(s)),
-      colourSoft: hslCss(pillarHsl(s), 0.18),
-      angle,
-      ux,
-      uy,
-      length: dims.length,
+      d: petalPath(cx, cy, ux, uy, dims.length, dims.halfWidth, cornerRadius),
+      stroke: pillarColor(hue),
+      glow: pillarColor(hue, 0.9),
     };
   });
 
-  const previousPetals = previousScores
-    ? previousScores.map((s, i) => {
-        const angle = petalAngle(i, n);
-        const ux = Math.cos(angle);
-        const uy = Math.sin(angle);
-        const dims = petalDimsFor(s, baseR, petalMaxScale);
-        return petalPath(cx, cy, ux, uy, dims);
-      })
-    : null;
+  // ─── Centre AXIS brand mark (faceted diamond)
+  const markR = compact ? 5 : 6;
+  const innerR = compact ? 1.8 : 2.2;
+  const markPath = `M ${cx} ${cy - markR} L ${cx + markR} ${cy} L ${cx} ${cy + markR} L ${cx - markR} ${cy} Z`;
+  const innerMarkPath = `M ${cx} ${cy - innerR} L ${cx + innerR} ${cy} L ${cx} ${cy + innerR} L ${cx - innerR} ${cy} Z`;
 
-  // Label positions sit just past where a 110-score petal would reach
-  // (so labels never overlap a healthy petal).
-  const labelDistance = baseR * (petalMaxScale * 1.1);
+  // ─── Label geometry — past the longest possible petal so they never collide
+  const labelDistance = baseR * 1.08;
 
   return (
     <div className="relative h-full w-full">
+      <style>{`
+        @keyframes axisBloomBreathe {
+          0%, 100% { stroke-width: 2; }
+          50%      { stroke-width: 2.15; }
+        }
+        @keyframes axisBloomGlowBreathe {
+          0%, 100% { opacity: 0.55; }
+          50%      { opacity: 0.72; }
+        }
+        .axis-petal-crisp { animation: axisBloomBreathe 3.4s ease-in-out infinite; }
+        .axis-petal-glow  { animation: axisBloomGlowBreathe 3.4s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) {
+          .axis-petal-crisp, .axis-petal-glow { animation: none; }
+        }
+      `}</style>
       <svg
         viewBox={`0 0 ${size} ${size}`}
         className="h-full w-full"
         role="img"
-        aria-label="AXIS Score five-pillar profile"
+        aria-label="AXIS Score five-pillar bloom"
       >
         <defs>
           <filter id={glowId} x="-30%" y="-30%" width="160%" height="160%">
@@ -268,8 +287,7 @@ export default function OverallRadarChart({ data, previousData, compact = false 
           </filter>
         </defs>
 
-        {/* Reference rings (faint pentagons at 25/50/75/100) — quiet
-            reference scaffolding, not the focus. */}
+        {/* Reference rings */}
         {ringStops.map((stop) => {
           const ringPoints = data
             .map((_, i) => {
@@ -284,69 +302,90 @@ export default function OverallRadarChart({ data, previousData, compact = false 
               points={ringPoints}
               fill="none"
               stroke="hsl(var(--border))"
-              strokeWidth={stop === 100 ? 0.8 : 0.5}
+              strokeWidth={stop === 100 ? 1 : 0.7}
               strokeDasharray={stop === 100 ? '0' : '3 5'}
-              opacity={stop === 100 ? 0.45 : 0.25}
+              opacity={stop === 100 ? 0.55 : 0.4}
             />
           );
         })}
 
-        {/* Previous-bloom ghost — muted dashed petal outlines (no glow) */}
-        {previousPetals?.map((d, i) => (
-          <path
-            key={`prev-${i}`}
-            d={d}
-            fill="none"
-            stroke="hsl(var(--muted-foreground))"
-            strokeWidth={1}
-            strokeDasharray="3 4"
-            opacity={0.35}
-          />
-        ))}
-
-        {/* Glow layer: petals re-rendered blurred underneath the crisp
-            ones, in their own colour, for the soft halo. */}
-        <g filter={`url(#${glowId})`} opacity={0.65}>
-          {petals.map((p, i) => (
-            <path
-              key={`glow-${i}`}
-              d={p.d}
-              fill={p.colourSoft}
-              stroke={p.colour}
-              strokeWidth={2}
+        {/* Dashed spokes from centre to each pillar vertex — skip the
+            top axis (index 0) where the scale labels sit. */}
+        {data.map((_, i) => {
+          if (i === 0) return null;
+          const angle = petalAngle(i, n);
+          const ex = cx + baseR * Math.cos(angle);
+          const ey = cy + baseR * Math.sin(angle);
+          return (
+            <line
+              key={`spoke-${i}`}
+              x1={cx}
+              y1={cy}
+              x2={ex.toFixed(2)}
+              y2={ey.toFixed(2)}
+              stroke="hsl(var(--border))"
+              strokeWidth={0.7}
+              strokeDasharray="3 5"
+              opacity={0.55}
             />
+          );
+        })}
+
+        {/* Scale markers — centred on the top axis, tucked inside each ring */}
+        {ringStops.map((stop) => {
+          const r = (stop / 100) * baseR;
+          const labelOffset = compact ? 12 : 16;
+          return (
+            <text
+              key={`scale-${stop}`}
+              x={cx}
+              y={cy - r + labelOffset}
+              textAnchor="middle"
+              fontSize={compact ? 8 : 8}
+              fontWeight={500}
+              className="fill-muted-foreground tabular-nums"
+              opacity={0.7}
+            >
+              {stop}
+            </text>
+          );
+        })}
+
+        {/* Glow layer — per-pillar colour blurred underneath, breathing */}
+        <g className="axis-petal-glow" filter={`url(#${glowId})`}>
+          {petals.map((p, i) => (
+            <path key={`glow-${i}`} d={p.d} fill="none" stroke={p.glow} strokeWidth={3} strokeLinejoin="round" />
           ))}
         </g>
 
-        {/* Crisp petals — outline + faint fill, per-pillar colour */}
+        {/* Crisp outline strokes — per-pillar colour, breathing */}
         {petals.map((p, i) => (
           <path
             key={`petal-${i}`}
+            className="axis-petal-crisp"
             d={p.d}
-            fill={p.colourSoft}
-            stroke={p.colour}
-            strokeWidth={1.75}
+            fill="none"
+            stroke={p.stroke}
             strokeLinejoin="round"
           />
         ))}
 
-        {/* Subtle centre nub — anchors the bloom visually. */}
-        <circle cx={cx} cy={cy} r={3.5} fill="hsl(var(--foreground))" opacity={0.85} />
-        <circle cx={cx} cy={cy} r={6} fill="hsl(var(--foreground))" opacity={0.12} />
+        {/* Centre AXIS brand mark — faceted diamond */}
+        <path d={markPath} fill="hsl(var(--foreground))" opacity={0.92} />
+        <path d={innerMarkPath} fill="hsl(var(--background))" opacity={0.18} />
 
-        {/* Pillar labels — name above + score/100 below in pillar tone.
-            Positioned past the longest petal so they never collide. */}
-        {data.map((_, i) => {
+        {/* Pillar labels — name above + score/100 below */}
+        {data.map((d, i) => {
           const angle = petalAngle(i, n);
           const lx = cx + labelDistance * Math.cos(angle);
           const ly = cy + labelDistance * Math.sin(angle);
-          const raw = data[i].fullLabel;
-          const label = compact ? (COMPACT_LABELS[raw] ?? raw) : raw;
           const score = Math.round(animatedScores[i] ?? 0);
           const anchor: 'start' | 'middle' | 'end' = lx < cx - 6 ? 'end' : lx > cx + 6 ? 'start' : 'middle';
           const isAbove = ly < cy - 4;
           const labelDy = isAbove ? -6 : 6;
-          const scoreDy = isAbove ? -6 + (compact ? 13 : 16) : 6 + (compact ? 13 : 16);
+          const scoreDy = isAbove ? -6 + (compact ? 12 : 16) : 6 + (compact ? 12 : 16);
+          const hue = pillarHueAt(d.name, d.fullLabel, i);
+          const labelText = compact ? COMPACT_LABELS[d.fullLabel] ?? d.fullLabel : d.fullLabel;
           return (
             <g key={`label-${i}`}>
               <text
@@ -358,17 +397,17 @@ export default function OverallRadarChart({ data, previousData, compact = false 
                 fontWeight={600}
                 style={{ letterSpacing: '-0.005em' }}
               >
-                {label}
+                {labelText}
               </text>
               <text
                 x={lx}
                 y={ly + scoreDy}
                 textAnchor={anchor}
-                className="tabular-nums"
                 fontSize={compact ? 12 : 14}
                 fontWeight={700}
+                className="tabular-nums"
               >
-                <tspan fill={petals[i].colour}>{score}</tspan>
+                <tspan fill={pillarColor(hue)}>{score}</tspan>
                 <tspan className="fill-muted-foreground" fontSize={compact ? 10 : 11} fontWeight={500}>
                   /100
                 </tspan>
@@ -381,14 +420,22 @@ export default function OverallRadarChart({ data, previousData, compact = false 
   );
 }
 
+const COMPACT_LABELS: Record<string, string> = {
+  'Body Composition': 'Body',
+  'Functional Strength': 'Strength',
+  'Metabolic Fitness': 'Cardio',
+  'Movement Quality': 'Movement',
+  'Lifestyle Factors': 'Lifestyle',
+};
+
 // ─── Tiny export utility for callers wanting just the colour ────────
 
-export function AxisPentagonChip({ score, className }: { score: number; className?: string }) {
-  const c = pillarHsl(score);
+export function AxisPentagonChip({ score: _score, className }: { score: number; className?: string }) {
+  // Kept for prop-compat with any existing callers. Score-tone display
+  // dot — uses score-green as a neutral health indicator.
   return (
     <span
-      className={cn('inline-block h-2 w-2 rounded-full', className)}
-      style={{ background: hslCss(c) }}
+      className={cn('inline-block h-2 w-2 rounded-full bg-score-green', className)}
     />
   );
 }
