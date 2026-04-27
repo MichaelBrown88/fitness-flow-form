@@ -207,14 +207,16 @@ function useAnimatedScores(targets: number[], opts: { from?: number[]; duration?
 
 export default function OverallRadarChart({ data, previousData, compact = false }: OverallRadarChartProps) {
   // ─── Layout
-  const size = 360;
+  // Big viewBox (440) gives the bloom presence and leaves room for full
+  // pillar labels without clipping. Petals scale to baseR (still 100=ring).
+  const size = 440;
   const cx = size / 2;
   const cy = size / 2;
-  const labelGap = compact ? 14 : 22;
-  const baseR = (size / 2) - labelGap - (compact ? 22 : 30);
-  const maxScale = 1.0;       // petals top out exactly at the 100 ring
-  const fatness = 0.42;       // slim enough to avoid heavy outer overlap
-  const cornerRadius = compact ? 5 : 6;
+  const labelGap = compact ? 14 : 26;
+  const baseR = (size / 2) - labelGap - (compact ? 24 : 38);
+  const maxScale = 1.0;
+  const fatness = 0.42;
+  const cornerRadius = compact ? 5 : 7;
 
   const filterId = useId();
   const safeId = filterId.replace(/:/g, '');
@@ -262,12 +264,12 @@ export default function OverallRadarChart({ data, previousData, compact = false 
     <div className="relative h-full w-full">
       <style>{`
         @keyframes axisBloomBreathe {
-          0%, 100% { stroke-width: 2; }
-          50%      { stroke-width: 2.15; }
+          0%, 100% { stroke-width: 2.4; }
+          50%      { stroke-width: 2.6; }
         }
         @keyframes axisBloomGlowBreathe {
-          0%, 100% { opacity: 0.55; }
-          50%      { opacity: 0.72; }
+          0%, 100% { opacity: 0.6; }
+          50%      { opacity: 0.85; }
         }
         .axis-petal-crisp { animation: axisBloomBreathe 3.4s ease-in-out infinite; }
         .axis-petal-glow  { animation: axisBloomGlowBreathe 3.4s ease-in-out infinite; }
@@ -282,8 +284,10 @@ export default function OverallRadarChart({ data, previousData, compact = false 
         aria-label="AXIS Score five-pillar bloom"
       >
         <defs>
+          {/* Stronger glow than before — gives the bloom more presence
+              ("pop off the page" per Michael). */}
           <filter id={glowId} x="-30%" y="-30%" width="160%" height="160%">
-            <feGaussianBlur stdDeviation="5" />
+            <feGaussianBlur stdDeviation="7" />
           </filter>
         </defs>
 
@@ -351,14 +355,14 @@ export default function OverallRadarChart({ data, previousData, compact = false 
           );
         })}
 
-        {/* Glow layer — per-pillar colour blurred underneath, breathing */}
+        {/* Glow layer — thicker stroke (4) so the haloes have real presence */}
         <g className="axis-petal-glow" filter={`url(#${glowId})`}>
           {petals.map((p, i) => (
-            <path key={`glow-${i}`} d={p.d} fill="none" stroke={p.glow} strokeWidth={3} strokeLinejoin="round" />
+            <path key={`glow-${i}`} d={p.d} fill="none" stroke={p.glow} strokeWidth={4} strokeLinejoin="round" />
           ))}
         </g>
 
-        {/* Crisp outline strokes — per-pillar colour, breathing */}
+        {/* Crisp outline strokes — slightly thicker (2.4) for more pop */}
         {petals.map((p, i) => (
           <path
             key={`petal-${i}`}
@@ -366,6 +370,7 @@ export default function OverallRadarChart({ data, previousData, compact = false 
             d={p.d}
             fill="none"
             stroke={p.stroke}
+            strokeWidth={2.4}
             strokeLinejoin="round"
           />
         ))}
@@ -385,7 +390,9 @@ export default function OverallRadarChart({ data, previousData, compact = false 
           const labelDy = isAbove ? -6 : 6;
           const scoreDy = isAbove ? -6 + (compact ? 12 : 16) : 6 + (compact ? 12 : 16);
           const hue = pillarHueAt(d.name, d.fullLabel, i);
-          const labelText = compact ? COMPACT_LABELS[d.fullLabel] ?? d.fullLabel : d.fullLabel;
+          // Always use the abbreviated label — full labels overflow the
+          // chart at radar angles and read worse than the short forms.
+          const labelText = COMPACT_LABELS[d.fullLabel] ?? d.fullLabel;
           return (
             <g key={`label-${i}`}>
               <text
