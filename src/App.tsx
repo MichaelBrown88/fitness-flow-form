@@ -2,7 +2,7 @@ import { ROUTES } from "@/constants/routes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import React, { Suspense, lazy, type JSX } from 'react';
 import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -122,6 +122,21 @@ function SettingsRedirect() {
   return <Navigate to={`/dashboard/settings${search}${hash}`} replace />;
 }
 
+/**
+ * Redirect /client/:name/* → /dashboard/clients/:name/* (preserves sub-tab,
+ * query, and hash). Lots of in-app navigation still uses the old literal
+ * path; this catches them transparently while we migrate call sites over.
+ */
+function ClientDetailRedirect() {
+  const { clientName } = useParams();
+  const { pathname, search, hash } = useLocation();
+  const subPath = clientName
+    ? pathname.replace(/^\/client\/[^/]+/, '')
+    : '';
+  const target = `/dashboard/clients/${clientName ?? ''}${subPath}${search}${hash}`;
+  return <Navigate to={target} replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeModeProvider>
@@ -224,6 +239,15 @@ const App = () => (
                     <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
                       <Route index element={<DashboardWork />} />
                       <Route path="clients" element={<DashboardClients />} />
+                      <Route path="clients/:clientName" element={<ClientDetailLayout />}>
+                        <Route index element={<ClientOverview />} />
+                        <Route path="report" element={<ClientReportTab />} />
+                        <Route path="roadmap" element={<ClientRoadmapTab />} />
+                        <Route path="achievements" element={<ClientAchievementsTab />} />
+                        <Route path="coaches-report" element={<Navigate to=".." replace />} />
+                        <Route path="history" element={<ClientHistory />} />
+                        <Route path="settings" element={<ClientSettings />} />
+                      </Route>
                       <Route path="assistant" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
                       <Route path="work" element={<DashboardWork />} />
                       <Route path="artifacts" element={<DashboardArtifacts />} />
@@ -263,15 +287,8 @@ const App = () => (
                         </RequireAuth>
                       }
                     />
-                    <Route path="/client/:clientName" element={<RequireAuth><ClientDetailLayout /></RequireAuth>}>
-                      <Route index element={<ClientOverview />} />
-                      <Route path="report" element={<ClientReportTab />} />
-                      <Route path="roadmap" element={<ClientRoadmapTab />} />
-                      <Route path="achievements" element={<ClientAchievementsTab />} />
-                      <Route path="coaches-report" element={<Navigate to=".." replace />} />
-                      <Route path="history" element={<ClientHistory />} />
-                      <Route path="settings" element={<ClientSettings />} />
-                    </Route>
+                    {/* Legacy /client/:name → /dashboard/clients/:name (preserves sub-path + query). */}
+                    <Route path="/client/:clientName/*" element={<ClientDetailRedirect />} />
                     {/* Legacy /settings → /dashboard/settings (preserves query string + hash). */}
                     <Route path="/settings" element={<SettingsRedirect />} />
                     <Route

@@ -4,9 +4,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate, useSearchParams, Outlet, useLocation } from 'react-router-dom';
-import AppShell from '@/components/layout/AppShell';
 import { Seo } from '@/components/seo/Seo';
-import { Breadcrumb } from '@/components/ui/breadcrumb';
+import { WorkspaceBreadcrumb } from '@/components/dashboard/WorkspaceBreadcrumb';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/constants/routes';
 import { UI_CLIENT_DETAIL } from '@/constants/ui';
@@ -60,7 +59,7 @@ export type ClientDetailOutletContext = UseClientDetailResult & {
 };
 
 function buildClientPath(name: string, sub?: string): string {
-  const base = `/client/${encodeURIComponent(name)}`;
+  const base = `/dashboard/clients/${encodeURIComponent(name)}`;
   return sub ? `${base}/${sub}` : base;
 }
 
@@ -192,12 +191,12 @@ export default function ClientDetailLayout() {
     return (
       <>
         <Seo pathname={seoPath} title={clientSeoMeta.title} description={clientSeoMeta.description} noindex={clientSeoMeta.noindex} />
-        <AppShell title={displayClientName}>
+        <div className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
           <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin shrink-0" />
             Loading client data…
           </div>
-        </AppShell>
+        </div>
       </>
     );
   }
@@ -205,93 +204,75 @@ export default function ClientDetailLayout() {
   return (
     <>
       <Seo pathname={seoPath} title={clientSeoMeta.title} description={clientSeoMeta.description} noindex={clientSeoMeta.noindex} />
-    <AppShell
-      title={displayClientName}
-      hideTitle
-      actions={
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={navigateBack}
-            className="h-9 w-9 p-0"
-            aria-label={UI_CLIENT_DETAIL.HEADER_BACK_ARIA}
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-9 w-9 p-0"
-                aria-label={UI_CLIENT_DETAIL.HEADER_ACTIONS_MENU_ARIA}
-              >
-                <MoreVertical className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 rounded-lg">
-              <DropdownMenuItem onClick={() => handleNewAssessment()} className="py-3 text-sm font-medium">
-                <UserPlus className="mr-2 h-4 w-4" />
-                New assessment
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to={buildClientPath(clientName, 'settings')} className="py-3 text-sm font-medium">
-                  <SettingsIcon className="mr-2 h-4 w-4" />
-                  Edit Profile
-                </Link>
-              </DropdownMenuItem>
-              {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
-                <DropdownMenuItem onClick={() => setTransferOpen(true)} className="py-3 text-sm font-medium">
-                  Transfer Client
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setPauseDialogOpen(true)} className="py-3 text-sm font-medium">
-                {isPaused ? 'Unpause account' : 'Pause account'}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)} className="py-3 text-sm font-medium">
-                {isArchived ? 'Reactivate client' : 'Archive client'}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => { setDeleteConfirmName(''); setDeleteClientOpen(true); }}
-                className="py-3 text-sm font-medium text-destructive focus:text-destructive focus:bg-destructive/10"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete permanently
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      }
-    >
-      <Breadcrumb
-        items={[
-          { label: UI_COMMAND_MENU.CLIENTS, href: ROUTES.DASHBOARD_CLIENTS },
-          { label: displayClientName },
-        ]}
+    <div className="mx-auto flex w-full min-h-0 flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      <WorkspaceBreadcrumb
+        current={displayClientName}
+        trail={[UI_COMMAND_MENU.CLIENTS]}
       />
 
       {incompleteDraft && (
-        <div className="mb-6 flex items-center justify-between gap-3 rounded-lg border border-score-amber-fg/30 bg-score-amber-muted/60 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 rounded-[20px] border border-score-amber-fg/30 bg-score-amber-muted/60 px-5 py-4">
           <p className="text-sm font-medium text-score-amber-fg">
             This client has an assessment in progress. Resume it to complete their report.
           </p>
           <Button
             size="sm"
             onClick={handleFinishAssessment}
-            className="shrink-0 rounded-lg"
+            className="h-9 shrink-0 gap-2 rounded-full px-4 text-[13px] font-semibold"
           >
             Finish assessment
           </Button>
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-3 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground truncate">
+      <div className="flex items-start justify-between gap-3">
+        <h1 className="truncate text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
           {displayClientName}
         </h1>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="outline"
+              className="h-9 shrink-0 gap-2 rounded-full px-3"
+              aria-label={UI_CLIENT_DETAIL.HEADER_ACTIONS_MENU_ARIA}
+            >
+              <MoreVertical className="h-4 w-4" />
+              More
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52 rounded-lg">
+            <DropdownMenuItem onClick={() => handleNewAssessment()} className="py-3 text-sm font-medium">
+              <UserPlus className="mr-2 h-4 w-4" />
+              New assessment
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={buildClientPath(clientName, 'settings')} className="py-3 text-sm font-medium">
+                <SettingsIcon className="mr-2 h-4 w-4" />
+                Edit Profile
+              </Link>
+            </DropdownMenuItem>
+            {(authProfile?.role === 'org_admin' || profile?.assignedCoachUid === user?.uid) && (
+              <DropdownMenuItem onClick={() => setTransferOpen(true)} className="py-3 text-sm font-medium">
+                Transfer Client
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setPauseDialogOpen(true)} className="py-3 text-sm font-medium">
+              {isPaused ? 'Unpause account' : 'Pause account'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setArchiveDialogOpen(true)} className="py-3 text-sm font-medium">
+              {isArchived ? 'Reactivate client' : 'Archive client'}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => { setDeleteConfirmName(''); setDeleteClientOpen(true); }}
+              className="py-3 text-sm font-medium text-destructive focus:text-destructive focus:bg-destructive/10"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete permanently
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <nav className="mb-6 flex w-fit items-center gap-1 rounded-lg bg-muted p-1">
@@ -470,7 +451,7 @@ export default function ClientDetailLayout() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AppShell>
+    </div>
     </>
   );
 }

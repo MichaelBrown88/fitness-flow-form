@@ -26,9 +26,10 @@ export const ROUTES = {
   ORG_DASHBOARD_RETENTION: '/org/dashboard/retention',
   ORG_DASHBOARD_BILLING: '/org/dashboard/billing',
   ORG_DASHBOARD_INTEGRATIONS: '/org/dashboard/integrations',
-  CLIENT_VIEW: '/client/:id',
-  CLIENT_HISTORY: '/client/:id/history',
-  CLIENT_SETTINGS: '/client/:id/settings',
+  /** Client detail nested under dashboard so the workspace sidebar persists. */
+  CLIENT_VIEW: '/dashboard/clients/:id',
+  CLIENT_HISTORY: '/dashboard/clients/:id/history',
+  CLIENT_SETTINGS: '/dashboard/clients/:id/settings',
   PUBLIC_REPORT: '/r/:token',
   PUBLIC_REPORT_ACHIEVEMENTS: '/r/:token/achievements',
   PUBLIC_REPORT_ROADMAP: '/r/:token/roadmap',
