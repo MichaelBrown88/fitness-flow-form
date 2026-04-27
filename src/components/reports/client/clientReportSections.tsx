@@ -20,9 +20,9 @@ export const SECTION_META: Record<
   { title: string; shortTitle: string; summary: string; icon: React.ReactNode }
 > = {
   'starting-point': {
-    title: 'Your AXIS Score™',
-    shortTitle: 'Overview',
-    summary: 'Overall score, archetype, radar, and key strengths',
+    title: 'Strengths & Focus Areas',
+    shortTitle: 'Focus',
+    summary: 'What\'s working well and where to direct effort next',
     icon: <Activity className={iconClass} />,
   },
   'body-comp': {

@@ -1,7 +1,8 @@
 import React from 'react';
-import { ArrowRight, Download, Share2, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowRight, Download, Share2, Trophy, TrendingDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { ScoreSummary, ScoreCategory } from '@/lib/scoring';
+import OverallRadarChart, { type RadarData } from '@/components/reports/OverallRadarChart';
+import type { ScoreSummary } from '@/lib/scoring';
 import { cn } from '@/lib/utils';
 
 interface AxisSummaryCardProps {
@@ -12,6 +13,12 @@ interface AxisSummaryCardProps {
   previousOverallScore?: number | null;
   /** Optional client-friendly narrative — falls back to archetype description. */
   narrative?: string;
+  /** Client archetype (name + description) — rendered as a small badge inside the AXIS block. */
+  archetype?: { name: string; description: string };
+  /** Five-pillar data for the AXIS Bloom on the right side of the hero. */
+  radarData: RadarData[];
+  /** Previous-assessment radar data for the Bloom's ghost outline + delta animation. */
+  previousRadarData?: RadarData[];
   /** Org/studio name shown top-left ("Bristol Strength Studio"). */
   orgName?: string;
   /** Coach display name for the byline. */
@@ -26,13 +33,19 @@ interface AxisSummaryCardProps {
 }
 
 /**
- * Kit Image 2: client-facing "AXIS Score™ Summary" hero card. Sits at the
- * very top of the report and gives the at-a-glance "where am I now"
- * picture before the deeper sections (radar, pillar detail, etc).
+ * The single AXIS hero — combines the headline number, narrative,
+ * archetype, and the AXIS Bloom into one cohesive card.
  *
- * Layout follows the kit's form-card recipe (rounded-[28px], hairline
- * border, kit padding scale) with a 1.5fr/1fr grid: AXIS + narrative on
- * the left, five-pillar bars on the right, action row across the bottom.
+ * Left column: identity + AXIS Score™ block (number + trend +
+ * archetype badge + narrative). Right column: AXIS Bloom (the
+ * five-pillar petal visualisation). Footer: Download / Share /
+ * Send actions when in coach review mode.
+ *
+ * One colour system across the whole card:
+ *   - Aggregate AXIS score → score-tone (green/amber/red by overall)
+ *   - Trend pill → score-tone (positive/negative)
+ *   - Per-pillar info → handled inside the Bloom (per-pillar identity
+ *     hues — cyan/rose/amber/indigo/emerald)
  */
 export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
   clientName,
@@ -40,6 +53,9 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
   scores,
   previousOverallScore,
   narrative,
+  archetype,
+  radarData,
+  previousRadarData,
   orgName,
   coachName,
   assessmentNumber,
@@ -50,45 +66,46 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
 }) => {
   const overall = scores?.overall ?? 0;
   const scoreDiff = previousOverallScore != null ? overall - previousOverallScore : null;
-  const tone: 'green' | 'amber' | 'red' | 'muted' = overall >= 75 ? 'green' : overall >= 50 ? 'amber' : overall > 0 ? 'red' : 'muted';
+  const tone: 'green' | 'amber' | 'red' | 'muted' =
+    overall >= 75 ? 'green' : overall >= 50 ? 'amber' : overall > 0 ? 'red' : 'muted';
 
-  // First-name greeting button (kit shows "Send to Alex" — first name only).
   const firstName = clientName?.trim().split(/\s+/)[0] || 'client';
 
-  // "Coach: Maya Whitfield" — only shown when a name is available.
   const bylineParts: string[] = [];
   if (assessmentNumber) bylineParts.push(`Assessment #${assessmentNumber}`);
   if (coachName) bylineParts.push(`Coach: ${coachName}`);
   const byline = bylineParts.join(' · ');
 
-  // "Bristol Strength Studio · 14 January 2026"
   const metaParts: string[] = [];
   if (orgName) metaParts.push(orgName);
   if (reportDate) metaParts.push(reportDate);
   const meta = metaParts.join(' · ');
 
+  const description = narrative ?? archetype?.description;
+
   return (
     <section className="rounded-[28px] border border-border bg-card p-7 sm:p-8">
-      <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
-        {/* ─── LEFT: identity + AXIS score + narrative ───────── */}
+      <div className="grid items-stretch gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+        {/* ─── LEFT: identity + AXIS score block ───────────────── */}
         <div className="flex flex-col gap-5">
-          {meta ? (
-            <p className="text-[13px] text-muted-foreground">{meta}</p>
-          ) : null}
+          {meta ? <p className="text-[13px] text-muted-foreground">{meta}</p> : null}
 
           <div className="space-y-1">
             <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               {clientName || 'Assessment summary'}
             </h2>
-            {byline ? (
-              <p className="text-[13px] text-muted-foreground">{byline}</p>
-            ) : null}
+            {byline ? <p className="text-[13px] text-muted-foreground">{byline}</p> : null}
           </div>
 
           <div className="rounded-[20px] border border-border bg-card-elevated p-5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              AXIS Score™
+            {/* Eyebrow with the small AXIS diamond mark */}
+            <div className="flex items-center gap-2">
+              <AxisDiamondMark />
+              <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                AXIS Score™
+              </span>
             </div>
+
             <div className="mt-1 flex items-baseline gap-2">
               <span className={cn('text-7xl font-bold leading-none tracking-[-0.02em] tabular-nums', AXIS_NUMBER_TONE[tone])}>
                 {overall || '—'}
@@ -97,6 +114,7 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
                 <span className="text-2xl font-semibold text-muted-foreground">/ 100</span>
               ) : null}
             </div>
+
             {scoreDiff !== null && scoreDiff !== 0 ? (
               <div
                 className={cn(
@@ -108,33 +126,32 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
                 {scoreDiff > 0 ? `+${scoreDiff} since last assessment` : `${scoreDiff} since last assessment`}
               </div>
             ) : null}
-            {narrative ? (
-              <p className="mt-4 text-sm leading-relaxed text-foreground-secondary">{narrative}</p>
+
+            {/* Archetype badge — small pill with trophy icon and name */}
+            {archetype?.name ? (
+              <div className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-semibold tracking-[-0.005em] text-foreground">
+                <Trophy className="h-3 w-3 text-foreground" />
+                {archetype.name}
+              </div>
+            ) : null}
+
+            {description ? (
+              <p className="mt-3 text-sm leading-relaxed text-foreground-secondary">{description}</p>
             ) : null}
           </div>
         </div>
 
-        {/* ─── RIGHT: five-pillar profile bars ────────────────── */}
-        <div className="flex flex-col gap-3">
-          <div className="flex items-baseline justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-              Five-pillar profile
-            </span>
-            {previousOverallScore != null ? (
-              <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                vs. previous
-              </span>
-            ) : null}
-          </div>
-          <ul className="space-y-3">
-            {scores?.categories?.map((cat) => (
-              <PillarBar key={cat.id} category={cat} />
-            )) ?? null}
-          </ul>
+        {/* ─── RIGHT: AXIS Bloom ──────────────────────────────── */}
+        {/* Min-height keeps the SVG from collapsing on first paint;
+            the Bloom expands to fill the column. */}
+        <div className="flex min-h-[340px] items-center justify-center sm:min-h-[380px]">
+          {radarData?.length > 0 ? (
+            <OverallRadarChart data={radarData} previousData={previousRadarData} />
+          ) : null}
         </div>
       </div>
 
-      {/* ─── ACTIONS (coach view only) ─────────────────────── */}
+      {/* ─── ACTIONS (coach view only) ──────────────────────── */}
       {showActions ? (
         <div className="mt-7 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-5">
           {onDownloadPdf ? (
@@ -161,7 +178,33 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
   );
 };
 
-// ─── Pillar bar (one per category) ──────────────────────────────────────
+// ─── AXIS diamond brand mark ────────────────────────────────────────
+
+/**
+ * Small faceted diamond that echoes the centre mark of the AXIS Bloom.
+ * Used as a tiny brand glyph next to the "AXIS Score™" eyebrow so the
+ * hero card reads as part of the same visual system as the Bloom.
+ */
+function AxisDiamondMark({ size = 11 }: { size?: number }) {
+  const c = size / 2;
+  const inner = size * 0.32;
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
+      <path
+        d={`M ${c} 0 L ${size} ${c} L ${c} ${size} L 0 ${c} Z`}
+        className="fill-foreground"
+        opacity={0.92}
+      />
+      <path
+        d={`M ${c} ${c - inner} L ${c + inner} ${c} L ${c} ${c + inner} L ${c - inner} ${c} Z`}
+        className="fill-background"
+        opacity={0.22}
+      />
+    </svg>
+  );
+}
+
+// ─── Tone mapping for the big AXIS number ───────────────────────────
 
 const AXIS_NUMBER_TONE: Record<'green' | 'amber' | 'red' | 'muted', string> = {
   green: 'text-score-green',
@@ -169,56 +212,3 @@ const AXIS_NUMBER_TONE: Record<'green' | 'amber' | 'red' | 'muted', string> = {
   red: 'text-score-red',
   muted: 'text-foreground',
 };
-
-const PILLAR_BAR_TONE: Record<'green' | 'amber' | 'red' | 'muted', { fill: string; score: string }> = {
-  green: { fill: 'bg-score-green', score: 'text-score-green-fg' },
-  amber: { fill: 'bg-score-amber', score: 'text-score-amber-fg' },
-  red: { fill: 'bg-score-red', score: 'text-score-red-fg' },
-  muted: { fill: 'bg-muted-foreground/30', score: 'text-muted-foreground' },
-};
-
-function pillarTone(score: number): 'green' | 'amber' | 'red' | 'muted' {
-  if (!score) return 'muted';
-  if (score >= 75) return 'green';
-  if (score >= 50) return 'amber';
-  return 'red';
-}
-
-function pillarSubLine(cat: ScoreCategory): string | undefined {
-  const first = cat.details?.[0];
-  if (!first) return undefined;
-  if (typeof first.value === 'number' && first.unit) {
-    return `${first.label} · ${first.value}${first.unit}`;
-  }
-  return first.label;
-}
-
-interface PillarBarProps {
-  category: ScoreCategory;
-}
-
-function PillarBar({ category }: PillarBarProps) {
-  const tone = pillarTone(category.score);
-  const toneCls = PILLAR_BAR_TONE[tone];
-  const sub = pillarSubLine(category);
-  const pct = Math.max(0, Math.min(100, category.score));
-
-  return (
-    <li className="space-y-1.5">
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-[14px] font-semibold tracking-[-0.005em] text-foreground">{category.title}</div>
-          {sub ? (
-            <div className="truncate text-[12px] text-muted-foreground">{sub}</div>
-          ) : null}
-        </div>
-        <span className={cn('shrink-0 text-[14px] font-bold tabular-nums', toneCls.score)}>
-          {category.score || '—'}
-        </span>
-      </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-        <div className={cn('h-full rounded-full transition-all duration-500', toneCls.fill)} style={{ width: `${pct}%` }} />
-      </div>
-    </li>
-  );
-}

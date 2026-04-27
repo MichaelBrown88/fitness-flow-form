@@ -161,16 +161,19 @@ export default function ClientReport({
           </>
         )}
 
-        {/* Kit hero: AXIS Score™ summary card sits above the deeper sections.
-            Coach surface (AssessmentReport) passes coachActions — the public
-            client surface (PublicReportViewer) leaves it undefined. */}
+        {/* The single AXIS hero — combines the headline number, narrative,
+            archetype, and the AXIS Bloom into one cohesive card. Renders
+            only in client view; coach surface passes coachActions to
+            enable the action row. */}
         {activeView === 'client' && safeScores.categories?.length > 0 && (
           <AxisSummaryCard
             clientName={clientName}
             reportDate={reportDate}
             scores={safeScores}
             previousOverallScore={previousScores?.overall ?? null}
-            narrative={archetype?.description}
+            archetype={archetype}
+            radarData={overallRadarData}
+            previousRadarData={previousRadarData}
             orgName={reportMeta?.orgName}
             coachName={reportMeta?.coachName}
             assessmentNumber={reportMeta?.assessmentNumber}

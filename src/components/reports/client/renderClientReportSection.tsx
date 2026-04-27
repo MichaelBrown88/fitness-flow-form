@@ -5,7 +5,6 @@ import type { RadarData } from '@/components/reports/OverallRadarChart';
 import type { GapAnalysisData } from '@/components/reports/useGapAnalysisData';
 import { LifestyleFactorsBar } from '@/components/reports/LifestyleFactorsBar';
 import { MovementPostureMobility } from '@/components/reports/MovementPostureMobility';
-import { StartingPointSection } from '@/components/reports/client/sub-components/StartingPointSection';
 import { GapAnalysisSection } from '@/components/reports/client/sub-components/GapAnalysisSection';
 import { StrengthsFocusSection } from '@/components/reports/client/sub-components/StrengthsFocusSection';
 import type { SectionId } from './clientReportSections';
@@ -33,18 +32,11 @@ export interface ClientReportSectionContext {
 export function renderClientReportSection(id: SectionId, ctx: ClientReportSectionContext): React.ReactNode {
   switch (id) {
     case 'starting-point':
+      // The AXIS Score block + Bloom now live inside AxisSummaryCard at
+      // the top of the report (no longer rendered here). This section
+      // hosts only the Strengths / Focus Areas cards.
       return (
-        <div className="space-y-4 sm:space-y-5 md:space-y-6">
-          <StartingPointSection
-            scores={ctx.safeScores}
-            previousOverallScore={ctx.previousScores?.overall ?? null}
-            archetype={ctx.archetype}
-            overallRadarData={ctx.overallRadarData}
-            previousRadarData={ctx.previousRadarData}
-            hideHeader
-          />
-          <StrengthsFocusSection strengths={ctx.strengths} areasForImprovement={ctx.areasForImprovement} />
-        </div>
+        <StrengthsFocusSection strengths={ctx.strengths} areasForImprovement={ctx.areasForImprovement} />
       );
     case 'body-comp':
       return (
