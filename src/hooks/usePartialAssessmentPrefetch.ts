@@ -3,6 +3,7 @@ import type { User } from 'firebase/auth';
 import type { FormData } from '@/contexts/FormContext';
 import { logger } from '@/lib/utils/logger';
 import { isBodyCompositionPhaseFieldId } from '@/lib/utils/partialAssessmentBodyCompFieldKeys';
+import { readPartialAssessmentCategories } from '@/lib/assessment/assessmentSessionStorage';
 
 const PARTIAL_CATEGORY_FIELD_PREFIXES: Record<string, string[]> = {
   posture: ['posture', 'ohs', 'hinge', 'lunge', 'mobility'],
@@ -20,6 +21,18 @@ const PARTIAL_CATEGORY_FIELD_PREFIXES: Record<string, string[]> = {
     'caffeine',
   ],
 };
+
+function buildSkipPrefixes(categories: string[]): string[] {
+  // Union of all per-pillar prefixes. bodycomp has its own dedicated
+  // field-id detector (handled inline below), so we exclude it here.
+  const set = new Set<string>();
+  for (const cat of categories) {
+    if (cat === 'bodycomp') continue;
+    const prefixes = PARTIAL_CATEGORY_FIELD_PREFIXES[cat];
+    if (prefixes) prefixes.forEach((p) => set.add(p));
+  }
+  return Array.from(set);
+}
 
 /**
  * When starting a partial assessment, pre-fill from the client's latest saved assessment
@@ -46,11 +59,20 @@ export function usePartialAssessmentPrefetch(params: {
         const current = await getCurrentAssessment(user.uid, activeClientName, organizationId);
         if (!current?.formData) return;
 
-        let fieldsToSkip: string[] = [];
-        if (partialCategory) {
-          fieldsToSkip =
-            partialCategory === 'bodycomp' ? [] : PARTIAL_CATEGORY_FIELD_PREFIXES[partialCategory] || [];
-        }
+        // Multi-pillar mode: skip pre-fill for fields belonging to ANY
+        // pillar in the active session set, so the coach has to enter
+        // fresh values for each reassessment. Falls back to the
+        // single-category prop for legacy callers.
+        const sessionCategories = readPartialAssessmentCategories();
+        const activeCategories: string[] =
+          sessionCategories.length > 0
+            ? sessionCategories
+            : partialCategory
+              ? [partialCategory]
+              : [];
+
+        const fieldsToSkip = buildSkipPrefixes(activeCategories);
+        const skipBodyComp = activeCategories.includes('bodycomp');
 
         const updates: Partial<FormData> = {};
         Object.keys(current.formData).forEach((key) => {
@@ -58,9 +80,8 @@ export function usePartialAssessmentPrefetch(params: {
           const value = current.formData[formKey];
           if (value !== undefined && value !== null) {
             const shouldSkip =
-              partialCategory === 'bodycomp' && isBodyCompositionPhaseFieldId(key)
-                ? true
-                : fieldsToSkip.some((prefix) => key.toLowerCase().includes(prefix.toLowerCase()));
+              (skipBodyComp && isBodyCompositionPhaseFieldId(key)) ||
+              fieldsToSkip.some((prefix) => key.toLowerCase().includes(prefix.toLowerCase()));
             if (!shouldSkip) {
               (updates as Record<string, unknown>)[formKey] = value;
             }

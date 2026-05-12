@@ -1,6 +1,7 @@
 import { Link, useOutletContext } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { formatSnapshotTypeLabel } from '@/services/assessmentHistory';
+import { computeScores } from '@/lib/scoring';
 import { Pencil, Trash2, ExternalLink } from 'lucide-react';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
 
@@ -10,7 +11,6 @@ export default function ClientHistory() {
     clientName,
     loadingSnapshots,
     snapshots,
-    assessments,
     setDeleteSnapshotDialog,
     handleEditSnapshot,
   } = ctx;
@@ -31,54 +31,64 @@ export default function ClientHistory() {
     );
   }
 
-  const reportId = assessments[0]?.id;
-
   return (
     <ul className="space-y-2">
-      {snapshots.map((snapshot) => (
-        <li
-          key={snapshot.id ?? snapshot.timestamp.toMillis()}
-          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="text-sm font-medium text-foreground">
-              {snapshot.timestamp?.toDate?.()?.toLocaleDateString?.() ?? '—'}
-            </span>
-            <span className="text-xs text-muted-foreground font-medium tracking-wide">
-              {formatSnapshotTypeLabel(snapshot.type)}
-            </span>
-            <span className="text-sm font-semibold text-foreground-secondary">{snapshot.overallScore}/100</span>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            {reportId && (
-              <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-foreground-secondary" asChild>
-                <Link to={`/coach/assessments/${reportId}?clientName=${encodeURIComponent(clientName)}`}>
-                  <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                  View
-                </Link>
+      {snapshots.map((snapshot) => {
+        const stored = snapshot.overallScore;
+        // Old snapshots can have a stale/zero overallScore (saved before scoring
+        // was finalised). Recompute from formData when the stored value looks bogus.
+        const displayScore =
+          stored && stored > 0
+            ? stored
+            : Math.round(computeScores(snapshot.formData).overall);
+        const viewTarget = snapshot.id
+          ? `/coach/assessments/${encodeURIComponent(snapshot.id)}?clientName=${encodeURIComponent(clientName)}`
+          : null;
+        return (
+          <li
+            key={snapshot.id ?? snapshot.timestamp.toMillis()}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/50 px-4 py-3"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-sm font-medium text-foreground">
+                {snapshot.timestamp?.toDate?.()?.toLocaleDateString?.() ?? '—'}
+              </span>
+              <span className="text-xs text-muted-foreground font-medium tracking-wide">
+                {formatSnapshotTypeLabel(snapshot.type)}
+              </span>
+              <span className="text-sm font-semibold text-foreground-secondary">{displayScore}/100</span>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              {viewTarget && (
+                <Button variant="ghost" size="sm" className="h-8 px-2 text-xs text-foreground-secondary" asChild>
+                  <Link to={viewTarget}>
+                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                    View
+                  </Link>
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs text-foreground-secondary"
+                onClick={() => handleEditSnapshot(snapshot)}
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1" />
+                Edit
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-xs text-foreground-secondary"
-              onClick={() => handleEditSnapshot(snapshot)}
-            >
-              <Pencil className="h-3.5 w-3.5 mr-1" />
-              Edit
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
-              onClick={() => setDeleteSnapshotDialog({ snapshotId: snapshot.id ?? '' })}
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-1" />
-              Delete
-            </Button>
-          </div>
-        </li>
-      ))}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={() => setDeleteSnapshotDialog({ snapshotId: snapshot.id ?? '' })}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Delete
+              </Button>
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }

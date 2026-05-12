@@ -247,6 +247,9 @@ export async function saveCoachAssessment(
     // Clean up legacy UUID doc now that slug doc is in place
     if (legacyRefToDelete) await deleteDoc(legacyRefToDelete);
 
+    // Auto-regenerate coach notes from this fresh assessment.
+    void fireCoachNotesRegeneration(validOrgId, slug, formData, scoresSummary);
+
     // Public report sync is handled by Cloud Function trigger on current/state writes.
     // ShareToken is read from the existing slug doc if one was previously shared.
     const shareToken = (existingData as Record<string, unknown>).shareToken as string | null ?? null;
@@ -275,8 +278,32 @@ export async function saveCoachAssessment(
   });
   const docRef = { id: slug };
 
+  // Auto-regenerate coach notes from this fresh full assessment.
+  void fireCoachNotesRegeneration(validOrgId, slug, formData);
+
   // Public report sync handled by Cloud Function trigger on current/state writes.
   return { assessmentId: docRef.id, shareToken: null, publicReportSynced: false };
+}
+
+/**
+ * Fire-and-forget coach-notes regeneration. Errors are logged but
+ * don't block the assessment-save flow — coach can manually
+ * regenerate from the Coach Notes tab if this fails.
+ */
+async function fireCoachNotesRegeneration(
+  orgId: string,
+  clientSlug: string,
+  formData: FormData,
+): Promise<void> {
+  try {
+    const { computeScores } = await import('@/lib/scoring');
+    const { regenerateCoachNotes } = await import('./coachNotes');
+    const scores = computeScores(formData);
+    await regenerateCoachNotes({ orgId, clientSlug, formData, scores });
+  } catch (err) {
+    const { logger } = await import('@/lib/utils/logger');
+    logger.warn('[Coach Notes] Background regeneration failed (non-fatal)', 'COACH_NOTES_REGEN', err);
+  }
 }
 
 export async function listCoachAssessments(
@@ -496,6 +523,7 @@ export async function savePartialAssessment(
   category: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle',
   organizationId?: string,
   profile?: UserProfile | null,
+  sessionContext?: { sessionId: string; sessionCategories: string[] },
 ): Promise<SaveResult> {
   const finalName = (clientName || formData.fullName || 'Unnamed client').trim();
 
@@ -518,7 +546,7 @@ export async function savePartialAssessment(
   const scoresSummary = summarizeScores(mergedFormData);
 
   // 2. ALWAYS update history first (keeps audit trail complete even on dedup)
-  const hasChanges = await updateCurrentAssessment(coachUid, finalName, mergedFormData, overallScore, changeType, category, validOrgId, scoresSummary);
+  const hasChanges = await updateCurrentAssessment(coachUid, finalName, mergedFormData, overallScore, changeType, category, validOrgId, scoresSummary, sessionContext);
   if (!hasChanges) {
     return { assessmentId: '', shareToken: null, publicReportSynced: false };
   }
@@ -604,8 +632,76 @@ export async function savePartialAssessment(
   });
   const docRef = { id: slug };
 
+  // Auto-regenerate coach notes — pillar reassessments update only the
+  // affected pillar's findings; coach overrides on other pillars survive.
+  void fireCoachNotesRegeneration(validOrgId, slug, mergedFormData);
+
   // Public report sync handled by Cloud Function trigger on current/state writes.
   return { assessmentId: docRef.id, shareToken: null, publicReportSynced: false };
+}
+
+/**
+ * Save N pillar assessments in one coaching session. Each pillar gets
+ * its own snapshot (so per-pillar history queries are unchanged), but
+ * all snapshots share a `sessionId` so the session is queryable as a
+ * unit later.
+ *
+ * Implementation note: this is a sequential loop over `savePartialAssessment`
+ * rather than a true Firestore batch. The savePartialAssessment function
+ * already handles current-state merging, profile-date stamping, snapshot
+ * creation, and coach-notes regen — wrapping it preserves all those side
+ * effects without re-implementing them. Trade-off: N×writes for the
+ * current-state doc upsert (last write wins, all but the last are
+ * effectively wasted but functionally idempotent).
+ */
+export async function saveMultiPillarAssessment(
+  coachUid: string,
+  coachEmail: string | null | undefined,
+  formData: FormData,
+  overallScore: number,
+  clientName: string,
+  categories: Array<'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle'>,
+  organizationId?: string,
+  profile?: UserProfile | null,
+): Promise<{
+  sessionId: string;
+  results: Array<{ category: string; assessmentId: string; saved: boolean }>;
+  shareToken: string | null;
+}> {
+  if (categories.length === 0) {
+    throw new Error('saveMultiPillarAssessment: at least one category required');
+  }
+
+  if (categories.length === 1) {
+    const result = await savePartialAssessment(
+      coachUid, coachEmail, formData, overallScore, clientName, categories[0], organizationId, profile,
+    );
+    return {
+      sessionId: result.assessmentId || crypto.randomUUID(),
+      results: [{ category: categories[0], assessmentId: result.assessmentId, saved: !!result.assessmentId }],
+      shareToken: result.shareToken,
+    };
+  }
+
+  const sessionId = crypto.randomUUID();
+  const sessionContext = { sessionId, sessionCategories: [...categories] };
+  const results: Array<{ category: string; assessmentId: string; saved: boolean }> = [];
+  let shareToken: string | null = null;
+
+  for (const category of categories) {
+    try {
+      const r = await savePartialAssessment(
+        coachUid, coachEmail, formData, overallScore, clientName, category, organizationId, profile, sessionContext,
+      );
+      if (r.shareToken) shareToken = r.shareToken;
+      results.push({ category, assessmentId: r.assessmentId, saved: !!r.assessmentId });
+    } catch (err) {
+      logger.error(`[Multi-pillar save] Failed to save pillar ${category}:`, err);
+      results.push({ category, assessmentId: '', saved: false });
+    }
+  }
+
+  return { sessionId, results, shareToken };
 }
 
 /**

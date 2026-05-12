@@ -143,18 +143,23 @@ export const CONFIG = {
   },
 
   // --- POSTURE VIEWS ---
-  // Enforced sequence: Front → quarter turn LEFT → left profile (left side faces camera) →
-  // quarter turn LEFT → back → quarter turn LEFT → right profile (right side faces camera).
+  // Enforced sequence: Front → quarter turn RIGHT → left profile (anatomical left side
+  // faces the camera) → quarter turn RIGHT → back → quarter turn RIGHT → right profile
+  // (anatomical right side faces the camera).
   //
-  // Direction matters because the posture analysis pipeline (postureAlignmentSide.ts) treats
-  // `side-left` as the SUBJECT'S anatomical left side (uses MediaPipe left-side landmark
-  // indices 7/11/23/25/27). The photo we store under `side-left` MUST show the user's left
-  // side facing the camera. Starting from FRONT, the only one-turn way to get left-side-to-
-  // camera is to rotate to the user's LEFT (counter-clockwise from above) — turning right
-  // would put the right side to camera and silently invert all left-vs-right deviation math.
+  // When a client faces the camera and rotates a quarter-turn to their RIGHT, their
+  // anatomical LEFT side ends up facing the lens (think of it as the camera "seeing
+  // around" their left shoulder). The posture analysis pipeline (postureAlignmentSide.ts)
+  // treats `side-left` as the subject's anatomical LEFT side and uses MediaPipe left-side
+  // landmark indices (7/11/23/25/27), so this rotation produces the correct mapping.
+  //
+  // For this to hold, the captured frame MUST be un-mirrored (selfie display flips the
+  // preview, but the persisted JPEG is drawn from the raw <video> element — see
+  // captureImage in Companion.tsx and PostureGuidedCapturePanel.tsx). If captures are
+  // ever re-mirrored, all left-vs-right deviation math will silently invert.
   //
   // Each `instr` is read aloud by Aoede. We lead with the dominant turn cue ("quarter turn
-  // to your left") and confirm the side ("left shoulder closest to the camera") AFTER, so
+  // to your right") and confirm the side ("left shoulder closest to the camera") AFTER, so
   // the two cues reinforce instead of contradicting each other.
   POSTURE_VIEWS: [
     {
@@ -168,21 +173,21 @@ export const CONFIG = {
       id: 'side-left',
       label: 'LEFT SIDE',
       instr:
-        'Quarter turn to your left. Now your left shoulder is the one closest to the camera — stay in profile, full body in the guide box.',
+        'Quarter turn to your right. Now your left shoulder is the one closest to the camera — stay in profile, full body in the guide box.',
       captureOrder: 1,
     },
     {
       id: 'back',
       label: 'BACK',
       instr:
-        'Another quarter turn to your left. Your back is now to the camera — full body in the guide box.',
+        'Another quarter turn to your right. Your back is now to the camera — full body in the guide box.',
       captureOrder: 2,
     },
     {
       id: 'side-right',
       label: 'RIGHT SIDE',
       instr:
-        'One more quarter turn to your left. Now your right shoulder is the one closest to the camera — profile, full body in the guide box.',
+        'One more quarter turn to your right. Now your right shoulder is the one closest to the camera — profile, full body in the guide box.',
       captureOrder: 3,
     },
   ] as const,
@@ -239,12 +244,13 @@ export const CONFIG = {
         'Set the phone at about waist height and vertical before you continue — it makes framing much easier.',
       /**
        * Legacy TTS between views when Gemini Live is off. Direction MUST stay
-       * "left" to match POSTURE_VIEWS, which rotates the user counter-clockwise
-       * (front → left side → back → right side). Turning right would silently
-       * misalign the captured side with the analysis pipeline's left/right
+       * "right" to match POSTURE_VIEWS, which rotates the user clockwise
+       * (front → left side → back → right side). With un-mirrored captures, a
+       * quarter-turn right exposes the anatomical left side to the camera, which
+       * matches the `side-left` label and the analysis pipeline's left-side
        * landmark indices.
        */
-      POSTURE_QUARTER_TURN_NEXT: 'Nice one. Quarter turn to your left for the next view.',
+      POSTURE_QUARTER_TURN_NEXT: 'Nice one. Quarter turn to your right for the next view.',
     },
     CAPTURE: {
       COUNTDOWN_SEC: 5,

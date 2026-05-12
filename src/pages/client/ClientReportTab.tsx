@@ -2,7 +2,8 @@
  * Client Report tab: client-facing report for the latest assessment (embedded in client detail).
  */
 
-import { Suspense, lazy, useState, useEffect } from 'react';
+import { Suspense, lazy, useState, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useOutletContext, useSearchParams } from 'react-router-dom';
 import { useAssessmentLogic } from '@/hooks/useAssessmentLogic';
 import { useReportShare } from '@/hooks/useReportShare';
@@ -11,6 +12,7 @@ import { Loader2, FileText, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareWithClientReportDialog } from '@/components/reports/ShareWithClientReportDialog';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
+import { TAB_ACTIONS_SLOT_ID } from './ClientDetailLayout';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 
@@ -93,18 +95,7 @@ export default function ClientReportTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button
-          type="button"
-          size="sm"
-          className="h-9 rounded-lg bg-primary text-primary-foreground font-medium gap-1.5"
-          onClick={() => setShareModalOpen(true)}
-          disabled={shareLoading}
-        >
-          <Share2 className="h-4 w-4" />
-          Share with client
-        </Button>
-      </div>
+      <TabActionShare onClick={() => setShareModalOpen(true)} disabled={shareLoading} />
 
       <Suspense
         fallback={
@@ -140,5 +131,33 @@ export default function ClientReportTab() {
         onGenerateSocialShareArtifacts={handleGenerateSocialShareArtifacts}
       />
     </div>
+  );
+}
+
+/**
+ * Renders the "Share with client" trigger as an icon button inside the
+ * layout's tab-actions slot (right next to Manage). Using a portal keeps
+ * share state local to this tab while letting the trigger appear on the
+ * shared nav row.
+ */
+function TabActionShare({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setTarget(document.getElementById(TAB_ACTIONS_SLOT_ID));
+  }, []);
+  if (!target) return null;
+  return createPortal(
+    <Button
+      type="button"
+      variant="outline"
+      size="icon"
+      className="h-9 w-9 shrink-0 rounded-full"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label="Share report with client"
+    >
+      <Share2 className="h-4 w-4" />
+    </Button>,
+    target,
   );
 }

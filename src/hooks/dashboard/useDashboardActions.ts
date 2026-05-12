@@ -150,10 +150,26 @@ export function useDashboardActions(
     }
   };
 
-  const handleNewAssessmentForClient = async (clientName: string, category?: string, pillarCadenceHints?: { pillar: string; status: 'overdue' | 'due-soon' | 'up-to-date'; daysFromDue?: number }[]) => {
+  const handleNewAssessmentForClient = async (
+    clientName: string,
+    category?: string | string[],
+    pillarCadenceHints?: { pillar: string; status: 'overdue' | 'due-soon' | 'up-to-date'; daysFromDue?: number }[],
+  ) => {
     if (!user) return;
-    if (category) {
-      writePartialAssessment({ category, clientName });
+    // Normalize: a string[] with 2+ entries opens a multi-pillar session;
+    // a single string (or 1-element array) keeps the legacy single-pillar
+    // path. 'full' as a category clears partial state — that's the full
+    // assessment route.
+    const categories = Array.isArray(category)
+      ? category.filter((c) => c && c !== 'full')
+      : (category && category !== 'full' ? [category] : []);
+
+    if (categories.length > 0) {
+      writePartialAssessment({
+        clientName,
+        category: categories[0],
+        categories,
+      });
     } else {
       removePartialAssessment();
     }

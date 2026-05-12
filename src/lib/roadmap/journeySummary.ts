@@ -2,7 +2,7 @@ import type { RoadmapPhase } from './types';
 import { PHASE_NARRATIVES } from './types';
 import { getSessionBasedExpectation } from '@/lib/goals/achievableLandmarks';
 
-const GOAL_LABELS: Record<string, string> = {
+export const GOAL_LABELS: Record<string, string> = {
   'weight-loss': 'Weight loss',
   'build-muscle': 'Muscle building',
   'build-strength': 'Strength',

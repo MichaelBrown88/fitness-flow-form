@@ -112,7 +112,10 @@ export function ClientPill({ entry, dateKey, day, dayClients, onPillClick, isSel
 interface DayDetailPanelProps {
   selectedDay: DayClients;
   onClose: () => void;
+  /** Single-pillar callback (legacy). String pillar id or undefined for full. */
   onStartAssessment: (clientName: string, pillar?: string) => void;
+  /** Multi-pillar callback — pass an array of pillar ids for a grouped session. */
+  onStartSession?: (clientName: string, pillars: string[]) => void;
   onChangeDate?: (clientName: string, pillar: string, newDate: Date) => void;
   organizationId?: string;
   saving?: boolean;
@@ -122,11 +125,29 @@ export function DayDetailPanel({
   selectedDay,
   onClose,
   onStartAssessment,
+  onStartSession,
   onChangeDate,
   organizationId,
   saving,
 }: DayDetailPanelProps) {
   const [openDatePopoverId, setOpenDatePopoverId] = useState<string | null>(null);
+
+  // Group entries by client so multi-pillar same-day clients render as ONE
+  // row with a "Start session (N)" button instead of N separate Start buttons.
+  // A 'full' entry (full reassessment due) is kept separate from the
+  // multi-pillar group since it routes to the full assessment flow.
+  const grouped = React.useMemo(() => {
+    const map = new Map<string, { full: DueEntry[]; pillars: DueEntry[] }>();
+    for (const c of selectedDay.clients) {
+      const bucket = map.get(c.name) ?? { full: [], pillars: [] };
+      if (c.pillar === 'full') bucket.full.push(c);
+      else bucket.pillars.push(c);
+      map.set(c.name, bucket);
+    }
+    return Array.from(map.entries()).map(([name, b]) => ({ name, ...b }));
+  }, [selectedDay.clients]);
+
+  const canChangeDate = !!organizationId && !!onChangeDate && !saving;
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-4">
@@ -138,60 +159,108 @@ export function DayDetailPanel({
           <X className="h-4 w-4" />
         </button>
       </div>
-      <ul className="space-y-2">
-        {selectedDay.clients.map((c, i) => {
-          const popoverId = `${c.name}-${c.pillar}-${i}`;
-          const canChangeDate = !!organizationId && !!onChangeDate && !saving;
-          const displayClient = formatClientDisplayName(c.name);
+      <ul className="space-y-3">
+        {grouped.map((g) => {
+          const displayClient = formatClientDisplayName(g.name);
+          const isMultiPillar = g.pillars.length > 1;
+          const worstStatus: ScheduleStatus = g.pillars.some((p) => p.status === 'overdue')
+            ? 'overdue'
+            : g.pillars.some((p) => p.status === 'due-soon')
+              ? 'due-soon'
+              : 'up-to-date';
           return (
-            <li key={popoverId} className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <span className={`shrink-0 w-2 h-2 rounded-full ${
-                  c.status === 'overdue' ? 'bg-red-500' :
-                  c.status === 'due-soon' ? 'bg-amber-500' : 'bg-emerald-500'
-                }`} />
-                <span className="truncate text-sm text-foreground">
-                  <span className="font-semibold">{displayClient}</span>
-                  <span className="ml-2 text-xs text-muted-foreground">{getPillarLabel(c.pillar)}</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                {canChangeDate && (
-                  <Popover open={openDatePopoverId === popoverId} onOpenChange={(open) => setOpenDatePopoverId(open ? popoverId : null)}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        <CalendarIcon className="h-3 w-3" />
-                        Change date
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        defaultMonth={selectedDay.date}
-                        selected={selectedDay.date}
-                        onSelect={(date) => {
-                          if (date) {
-                            onChangeDate(c.name, c.pillar, date);
-                            setOpenDatePopoverId(null);
-                          }
-                        }}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1 text-[10px] font-bold uppercase tracking-wide text-foreground-secondary hover:bg-muted"
-                  onClick={() => onStartAssessment(c.name, c.pillar)}
-                >
-                  <Play className="h-3 w-3" />
-                  Start
-                </Button>
+            <li key={g.name} className="rounded-lg border border-border/60 bg-card-elevated/40 p-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2 min-w-0 flex-1">
+                  <span
+                    className={`mt-1.5 shrink-0 w-2 h-2 rounded-full ${
+                      worstStatus === 'overdue'
+                        ? 'bg-red-500'
+                        : worstStatus === 'due-soon'
+                          ? 'bg-amber-500'
+                          : 'bg-emerald-500'
+                    }`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground">{displayClient}</p>
+                    {g.pillars.length > 0 && (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        {g.pillars.map((p, i) => {
+                          const popoverId = `${g.name}-${p.pillar}-${i}`;
+                          return (
+                            <span
+                              key={popoverId}
+                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
+                                STATUS_COLORS[p.status]
+                              }`}
+                            >
+                              <span>{getPillarLabel(p.pillar, 'short')}</span>
+                              {canChangeDate && (
+                                <Popover
+                                  open={openDatePopoverId === popoverId}
+                                  onOpenChange={(open) => setOpenDatePopoverId(open ? popoverId : null)}
+                                >
+                                  <PopoverTrigger asChild>
+                                    <button
+                                      type="button"
+                                      className="ml-0.5 -mr-0.5 inline-flex items-center justify-center rounded-full p-0.5 text-current/70 hover:text-current hover:bg-foreground/5"
+                                      title="Reschedule this pillar"
+                                    >
+                                      <CalendarIcon className="h-3 w-3" />
+                                    </button>
+                                  </PopoverTrigger>
+                                  <PopoverContent align="end" className="w-auto p-0">
+                                    <Calendar
+                                      mode="single"
+                                      defaultMonth={selectedDay.date}
+                                      selected={selectedDay.date}
+                                      onSelect={(date) => {
+                                        if (date) {
+                                          onChangeDate?.(g.name, p.pillar, date);
+                                          setOpenDatePopoverId(null);
+                                        }
+                                      }}
+                                    />
+                                  </PopoverContent>
+                                </Popover>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  {g.pillars.length > 0 && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="h-7 gap-1 rounded-full px-3 text-[11px] font-bold uppercase tracking-wide"
+                      onClick={() => {
+                        if (isMultiPillar && onStartSession) {
+                          onStartSession(g.name, g.pillars.map((p) => p.pillar));
+                        } else {
+                          onStartAssessment(g.name, g.pillars[0].pillar);
+                        }
+                      }}
+                    >
+                      <Play className="h-3 w-3" />
+                      {isMultiPillar ? `Start session · ${g.pillars.length}` : 'Start'}
+                    </Button>
+                  )}
+                  {g.full.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1 rounded-full px-3 text-[11px] font-bold uppercase tracking-wide"
+                      onClick={() => onStartAssessment(g.name)}
+                    >
+                      <Play className="h-3 w-3" />
+                      Start full
+                    </Button>
+                  )}
+                </div>
               </div>
             </li>
           );

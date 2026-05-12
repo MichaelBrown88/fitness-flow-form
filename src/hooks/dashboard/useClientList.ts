@@ -47,7 +47,7 @@ export function useClientList(
     load();
     return () => { cancelled = true; };
   // Re-fetch schedules when items change (e.g. after partial assessment updates lastAssessmentDate)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [organizationId, scheduleVersion, items.length, coachUid]);
 
   const clientGroups = useMemo(() => {

@@ -17,6 +17,7 @@ import { getRoadmapForClient } from '@/services/roadmaps';
 import type { RoadmapItem } from '@/lib/roadmap/types';
 import {
   ArrowLeft,
+  Eye,
   UserPlus,
   MoreVertical,
   History,
@@ -25,6 +26,7 @@ import {
   Trash2,
   Loader2,
   ChevronDown,
+  Trophy,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -63,6 +65,9 @@ function buildClientPath(name: string, sub?: string): string {
   return sub ? `${base}/${sub}` : base;
 }
 
+/** DOM id of the slot inside the nav row where tab pages portal their actions. */
+export const TAB_ACTIONS_SLOT_ID = 'client-tab-actions';
+
 export default function ClientDetailLayout() {
   const { profile: authProfile } = useAuth();
   const clientData = useClientDetail();
@@ -87,6 +92,7 @@ export default function ClientDetailLayout() {
     assessments,
     incompleteDraft,
     handleFinishAssessment,
+    handleDiscardDraft,
     handleNewAssessment,
     navigateBack,
     deleteDialog,
@@ -132,6 +138,8 @@ export default function ClientDetailLayout() {
     }
   }, [loading, clientName, searchParams, setSearchParams, setTransferOpen, navigate]);
 
+  // Refetches when the user navigates between sub-tabs so saves on one
+  // tab (e.g. ARC) appear in another (e.g. Overview) without a full reload.
   useEffect(() => {
     if (!effectiveOrgId || !clientName) return;
     let cancelled = false;
@@ -163,7 +171,7 @@ export default function ClientDetailLayout() {
         if (!cancelled) setRoadmapStatus('none');
       });
     return () => { cancelled = true; };
-  }, [effectiveOrgId, clientName]);
+  }, [effectiveOrgId, clientName, location.pathname]);
 
   // Reset scroll position when navigating between client sub-tabs or to a new client
   useEffect(() => {
@@ -210,20 +218,31 @@ export default function ClientDetailLayout() {
         trail={[UI_COMMAND_MENU.CLIENTS]}
       />
 
-      {/* In-progress notice — slimmed to a pill so it's present without
-          dominating the page above the report content. */}
-      {incompleteDraft && (
+      {/* In-progress notice — only shown on the Overview tab. The Report
+          tab is a read-only surface and doesn't need this nudge; coaches
+          will see it when they return to the client profile. */}
+      {incompleteDraft && location.pathname === buildClientPath(clientName) && (
         <div className="flex items-center justify-between gap-3 rounded-full border border-score-amber-fg/20 bg-score-amber-muted/40 py-1.5 pl-4 pr-1.5">
           <p className="text-[13px] font-medium text-score-amber-fg">
             Assessment in progress — resume to complete the report.
           </p>
-          <Button
-            size="sm"
-            onClick={handleFinishAssessment}
-            className="h-7 shrink-0 rounded-full px-3 text-[12px] font-semibold"
-          >
-            Finish
-          </Button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleDiscardDraft}
+              className="h-7 rounded-full px-3 text-[12px] font-medium text-score-amber-fg hover:bg-score-amber-muted/60"
+            >
+              Discard
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleFinishAssessment}
+              className="h-7 rounded-full px-3 text-[12px] font-semibold"
+            >
+              Finish
+            </Button>
+          </div>
         </div>
       )}
 
@@ -274,15 +293,20 @@ export default function ClientDetailLayout() {
               <span className="flex items-center gap-1">More <ChevronDown className="h-3 w-3" /></span>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-44 rounded-lg">
+          <DropdownMenuContent align="start" className="w-48 rounded-lg">
             <DropdownMenuItem asChild>
               <Link to={buildClientPath(clientName, 'roadmap')} className="py-2.5 text-sm font-medium">
                 <Map className="mr-2 h-4 w-4" /> ARC™
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
+              <Link to={buildClientPath(clientName, 'coach-notes')} className="py-2.5 text-sm font-medium">
+                <Eye className="mr-2 h-4 w-4" /> Coach Notes
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
               <Link to={buildClientPath(clientName, 'achievements')} className="py-2.5 text-sm font-medium">
-                Milestones
+                <Trophy className="mr-2 h-4 w-4" /> Milestones
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
@@ -294,19 +318,25 @@ export default function ClientDetailLayout() {
         </DropdownMenu>
         </nav>
 
-        {/* Client management menu — distinct from the "More" tab above
-            (which holds nav to ARC™ / Milestones / Settings sub-pages). */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              className="h-9 shrink-0 gap-1.5 rounded-full px-3.5"
-              aria-label={UI_CLIENT_DETAIL.HEADER_ACTIONS_MENU_ARIA}
-            >
-              <MoreVertical className="h-4 w-4" />
-              Manage
-            </Button>
-          </DropdownMenuTrigger>
+        <div className="flex items-center gap-2">
+          {/* Tab-injected actions (e.g. Share on the Report tab) render
+              here via a portal — keeps tab-specific state inside the
+              tab page while letting it appear on the layout's nav row. */}
+          <div id={TAB_ACTIONS_SLOT_ID} className="flex items-center gap-2" />
+
+          {/* Client management menu — distinct from the "More" tab above
+              (which holds nav to ARC™ / Milestones / Settings sub-pages). */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="h-9 shrink-0 gap-1.5 rounded-full px-3.5"
+                aria-label={UI_CLIENT_DETAIL.HEADER_ACTIONS_MENU_ARIA}
+              >
+                <MoreVertical className="h-4 w-4" />
+                Manage
+              </Button>
+            </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 rounded-lg">
             <DropdownMenuItem onClick={() => handleNewAssessment()} className="py-3 text-sm font-medium">
               <UserPlus className="mr-2 h-4 w-4" />
@@ -340,6 +370,7 @@ export default function ClientDetailLayout() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
       <Outlet context={{ ...clientData, roadmapStatus, isRoadmapStale, roadmapItems } satisfies ClientDetailOutletContext} />

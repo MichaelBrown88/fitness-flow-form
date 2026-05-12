@@ -91,8 +91,13 @@ export interface UseClientDetailResult {
   setDeleteSnapshotDialog: React.Dispatch<React.SetStateAction<{ snapshotId: string } | null>>;
   
   handleSaveProfile: () => Promise<void>;
-  handleNewAssessment: (category?: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle') => Promise<void>;
+  handleNewAssessment: (
+    category?:
+      | 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle'
+      | Array<'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle'>,
+  ) => Promise<void>;
   handleFinishAssessment: () => void;
+  handleDiscardDraft: () => Promise<void>;
   handleDeleteAssessment: (id: string) => Promise<void>;
   handleEditSnapshot: (snapshot: AssessmentSnapshot) => void;
   handleDeleteSnapshot: () => Promise<void>;
@@ -259,15 +264,25 @@ export function useClientDetail(): UseClientDetailResult {
     }
   }, [user, clientName, editData, userProfile, profile?.dateOfBirth, profile?.gender, toast]);
 
-  // Start new assessment
+  // Start new assessment. Accepts a single pillar or an array; an array
+  // with 2+ entries opens the multi-pillar session flow.
   const handleNewAssessment = useCallback(async (
-    category?: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle'
+    category?:
+      | 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle'
+      | Array<'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle'>,
   ) => {
     if (!user) return;
-    
-    // Set partial assessment mode immediately if category specified
-    if (category) {
-      writePartialAssessment({ category, clientName });
+
+    const categories = Array.isArray(category)
+      ? category
+      : (category ? [category] : []);
+
+    if (categories.length > 0) {
+      writePartialAssessment({
+        clientName,
+        category: categories[0],
+        categories,
+      });
     } else {
       removePartialAssessment();
     }
@@ -325,8 +340,12 @@ export function useClientDetail(): UseClientDetailResult {
   }, [user, toast, userProfile]);
 
   const handleEditSnapshot = useCallback((snapshot: AssessmentSnapshot) => {
-    const summaryId = assessments[0]?.id;
-    if (!summaryId) return;
+    // Prefer the org-level summary doc id; fall back to a slug derived from
+    // the client name when the summary doc is missing (e.g. mid-DB-restructure
+    // clients whose org/clients/{slug} doc was never created or got stripped
+    // of its `clientNameLower`/`createdAt` fields). The slug is deterministic
+    // and the assessment edit flow only needs it for downstream navigation.
+    const summaryId = assessments[0]?.id || generateClientSlug(clientName);
     try {
       const rawType = snapshot.type;
       const editType =
@@ -493,18 +512,34 @@ export function useClientDetail(): UseClientDetailResult {
     };
   }, [user, clientName, userProfile]);
 
-  // Check for incomplete draft (Save for Later) so we can show "Finish assessment" CTA
+  // Check for incomplete draft (Save for Later) so we can show "Finish assessment" CTA.
+  // A draft is only relevant if it's NEWER than the most recent saved snapshot —
+  // otherwise the assessment was completed and the draft is just orphaned state
+  // (the clearDraftAssessment call after save can fail silently on legacy data).
   useEffect(() => {
     if (!clientName || !readOrgId) return;
     let cancelled = false;
     getDraftAssessment(clientName, readOrgId)
-      .then((draft) => {
+      .then(async (draft) => {
         if (cancelled) return;
-        if (draft?.formData && Object.keys(draft.formData).length > 0) {
-          setIncompleteDraft(draft);
-        } else {
+        if (!draft?.formData || Object.keys(draft.formData).length === 0) {
           setIncompleteDraft(null);
+          return;
         }
+        const draftMs = draft.updatedAt?.toMillis?.() ?? 0;
+        const latestSnapshotMs = snapshots[0]?.timestamp?.toMillis?.() ?? 0;
+        if (draftMs > 0 && latestSnapshotMs > draftMs) {
+          // Snapshot is newer than draft — assessment was completed, draft is stale.
+          setIncompleteDraft(null);
+          try {
+            const { clearDraftAssessment } = await import('@/services/coachAssessments');
+            await clearDraftAssessment(clientName, readOrgId);
+          } catch {
+            // non-fatal — UI will hide the banner regardless of cleanup result
+          }
+          return;
+        }
+        setIncompleteDraft(draft);
       })
       .catch(() => {
         if (!cancelled) setIncompleteDraft(null);
@@ -512,7 +547,7 @@ export function useClientDetail(): UseClientDetailResult {
     return () => {
       cancelled = true;
     };
-  }, [clientName, readOrgId]);
+  }, [clientName, readOrgId, snapshots]);
 
   const handleFinishAssessment = useCallback(() => {
     if (!incompleteDraft) return;
@@ -530,6 +565,17 @@ export function useClientDetail(): UseClientDetailResult {
     }
     navigate(ROUTES.ASSESSMENT);
   }, [incompleteDraft, clientName, navigate]);
+
+  const handleDiscardDraft = useCallback(async () => {
+    if (!clientName || !readOrgId) return;
+    setIncompleteDraft(null);
+    try {
+      const { clearDraftAssessment } = await import('@/services/coachAssessments');
+      await clearDraftAssessment(clientName, readOrgId);
+    } catch (err) {
+      logger.warn('[ClientDetail] Failed to clear draft assessment', err);
+    }
+  }, [clientName, readOrgId]);
 
   // Load category scores for current assessment
   useEffect(() => {
@@ -773,6 +819,7 @@ export function useClientDetail(): UseClientDetailResult {
     handleSaveProfile,
     handleNewAssessment,
     handleFinishAssessment,
+    handleDiscardDraft,
     handleDeleteAssessment,
     handleEditSnapshot,
     handleDeleteSnapshot,

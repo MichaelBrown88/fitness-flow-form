@@ -290,7 +290,25 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
       const viewData = VIEWS[viewIdx];
       if (!viewData) return false;
 
-      const imageSrc = webcam.getScreenshot();
+      // Capture an un-mirrored frame directly from the underlying <video> element.
+      // react-webcam's getScreenshot() reflects the on-screen mirror transform when
+      // `mirrored` is true, which would invert anatomical L/R for downstream MediaPipe
+      // analysis. Drawing the raw video to an offscreen canvas preserves true
+      // anatomical orientation while leaving the live preview's selfie mirror untouched.
+      const imageSrc = (() => {
+        const video = webcam.video as HTMLVideoElement | null;
+        if (!video) return null;
+        const width = video.videoWidth;
+        const height = video.videoHeight;
+        if (!width || !height) return null;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.drawImage(video, 0, 0, width, height);
+        return canvas.toDataURL('image/jpeg', 0.9);
+      })();
       if (!imageSrc) return false;
 
       try {

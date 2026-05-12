@@ -7,8 +7,6 @@ import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
 import type { CoachPlan } from '@/lib/recommendations';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ReportHeader } from './client/sub-components/ReportHeader';
-import { ClientInfoBar } from './client/sub-components/ClientInfoBar';
 import { AxisSummaryCard } from './client/sub-components/AxisSummaryCard';
 import { useClientReportData } from './client/useClientReportData';
 import { useScrollRevealSections } from '@/hooks/useScrollRevealSections';
@@ -148,23 +146,10 @@ export default function ClientReport({
   return (
     <div className={containerClass}>
       <div className={`${contentClass} overflow-x-hidden`}>
-        {standalone && (
-          <>
-            <ReportHeader
-              clientName={clientName}
-              reportDate={reportDate}
-              standalone={standalone}
-              activeView={activeView}
-              setActiveView={setActiveView}
-            />
-            <ClientInfoBar formData={formData} />
-          </>
-        )}
-
-        {/* The single AXIS hero — combines the headline number, narrative,
-            archetype, and the AXIS Bloom into one cohesive card. Renders
-            only in client view; coach surface passes coachActions to
-            enable the action row. */}
+        {/* Headline hero — name, vitals, AXIS Score, archetype, Bloom, and
+            five-pillar trend bars. Replaces the prior ReportHeader +
+            ClientInfoBar strip; the page chrome above (breadcrumb, banner,
+            tabs) is owned by ClientReportTab. */}
         {activeView === 'client' && safeScores.categories?.length > 0 && (
           <AxisSummaryCard
             clientName={clientName}
@@ -177,6 +162,7 @@ export default function ClientReport({
             orgName={reportMeta?.orgName}
             coachName={reportMeta?.coachName}
             assessmentNumber={reportMeta?.assessmentNumber}
+            formData={formData}
             showActions={Boolean(coachActions)}
             onShare={coachActions?.onShare}
             onSendToClient={coachActions?.onSendToClient}

@@ -19,11 +19,8 @@ import { generatePhaseTargets, extractBaselineScores, determineActivePhase, comp
 import type { RoadmapPhase, PhaseTarget } from '@/lib/roadmap/types';
 import { copyTextToClipboard } from '@/lib/utils/clipboard';
 import { CONFIG } from '@/config';
-import { getClientProfile } from '@/services/clientProfiles';
+import { getClientProfile, generateClientSlug } from '@/services/clientProfiles';
 import { writeNotification } from '@/services/notificationWriter';
-import { getDb } from '@/services/firebase';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
-import { ORGANIZATION } from '@/lib/database/paths';
 import { computeScores } from '@/lib/scoring';
 import type { ScoreSummary } from '@/lib/scoring/types';
 import type { FormData } from '@/contexts/FormContext';
@@ -31,29 +28,27 @@ import type { FormData } from '@/contexts/FormContext';
 const SAVE_DELAY_MS = 1500;
 const COPIED_FEEDBACK_MS = 2000;
 
+/**
+ * Resolve the client's latest assessment for ARC creation. Tries the
+ * canonical sources in order — current/state → snapshots → null.
+ *
+ * The previous implementation queried clients by `clientNameLower`,
+ * which silently failed for legacy client docs missing that field. We
+ * now derive the slug from the client name directly (it's the doc id
+ * for both new UUID and legacy slug clients alike, since the lookup
+ * collection translates) and read formData from the canonical paths.
+ */
 async function loadLatestAssessment(orgId: string, clientName: string) {
-  // In v2 the client profile doc has no inline formData — it lives in current/state.
-  // Read the client slug from the profile first, then fetch current/state.
-  const q = query(
-    collection(getDb(), ORGANIZATION.clients.collection(orgId)),
-    where('clientNameLower', '==', clientName.toLowerCase()),
-    orderBy('createdAt', 'desc'),
-    limit(1),
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  const profileDoc = snap.docs[0];
-  const slug = profileDoc.id;
+  const slug = generateClientSlug(clientName);
 
-  const { getCurrentAssessment } = await import('@/services/assessmentHistory');
-  const current = await getCurrentAssessment('', clientName, orgId);
+  const { getCurrentAssessment, getSnapshots } = await import('@/services/assessmentHistory');
+
+  const current = await getCurrentAssessment('', clientName, orgId).catch(() => null);
   if (current && Object.keys(current.formData ?? {}).length > 0) {
     return { id: slug, formData: current.formData };
   }
 
-  // Fallback: try the latest session directly
-  const { getSnapshots } = await import('@/services/assessmentHistory');
-  const sessions = await getSnapshots('', clientName, 1, orgId);
+  const sessions = await getSnapshots('', clientName, 1, orgId).catch(() => []);
   if (sessions.length > 0 && Object.keys(sessions[0].formData ?? {}).length > 0) {
     return { id: slug, formData: sessions[0].formData };
   }
@@ -270,13 +265,37 @@ export function useRoadmapData(clientName: string) {
 
   const debouncedSave = useCallback(
     (newSummary: string, newItems: RoadmapItem[]) => {
-      if (!initialLoadDone.current || !effectiveOrgId || !roadmapId) return;
+      if (!initialLoadDone.current || !effectiveOrgId) return;
       clearTimeout(saveTimer.current);
       saveTimer.current = setTimeout(async () => {
         setSaving(true);
         try {
           const itemsToSave = latestScores ? refreshTrackablesFromScores(newItems, latestScores) : newItems;
-          await updateRoadmap(effectiveOrgId, roadmapId, { summary: newSummary, items: itemsToSave });
+          if (roadmapId) {
+            await updateRoadmap(effectiveOrgId, roadmapId, { summary: newSummary, items: itemsToSave });
+          } else if (needsCreation && user && latestAssessmentId) {
+            // First save from the inline editor — promote the in-memory plan
+            // to a persisted doc; subsequent edits use updateRoadmap above.
+            const { targets, baselines, active } = buildCreatePayload(itemsToSave);
+            const newId = await createRoadmap({
+              organizationId: effectiveOrgId,
+              clientName,
+              assessmentId: latestAssessmentId,
+              coachUid: user.uid,
+              summary: newSummary,
+              items: itemsToSave,
+              previousScores: latestScores ?? undefined,
+              phaseTargets: targets,
+              baselineScores: baselines,
+              activePhase: active,
+              clientGoals: clientGoals.length ? clientGoals : undefined,
+            });
+            setRoadmapId(newId);
+            setNeedsCreation(false);
+            if (targets) setPhaseTargets(targets);
+            if (baselines) setBaselineScores(baselines);
+            setActivePhase(active);
+          }
         } catch (err) {
           logger.error('Auto-save failed', 'ROADMAP_PAGE', err);
         } finally {
@@ -284,7 +303,7 @@ export function useRoadmapData(clientName: string) {
         }
       }, SAVE_DELAY_MS);
     },
-    [effectiveOrgId, roadmapId, latestScores],
+    [effectiveOrgId, roadmapId, latestScores, needsCreation, user, latestAssessmentId, clientName, clientGoals, buildCreatePayload],
   );
 
   const handleSummaryChange = useCallback(

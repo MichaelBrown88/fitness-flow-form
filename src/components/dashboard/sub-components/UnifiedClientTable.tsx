@@ -14,6 +14,7 @@ import { ClientActionsDropdown } from './ClientActionsDropdown';
 import { ClientTableBulkActions } from './unifiedClientTableBulk';
 import { PauseClientDialog } from '@/components/client/PauseClientDialog';
 import { generateClientSlug } from '@/services/clientProfiles';
+import { MiniBloom } from '@/components/client/console/MiniBloom';
 import type { ClientGroup } from '@/hooks/dashboard/types';
 import type { UserProfile } from '@/types/auth';
 import type { PartialAssessmentCategory } from '@/types/client';
@@ -79,6 +80,19 @@ function axisTone(score: number): 'green' | 'amber' | 'red' | 'muted' {
   if (score >= 75) return 'green';
   if (score >= 50) return 'amber';
   return 'red';
+}
+
+// MiniBloom expects canonical pillar order: [Body, Strength, Cardio, Movement, Lifestyle]
+const PILLAR_ORDER_FOR_BLOOM = ['bodyComp', 'strength', 'cardio', 'movementQuality', 'lifestyle'] as const;
+
+function bloomScoresForClient(client: ClientGroup): number[] | null {
+  const summary = client.assessments[0]?.scoresSummary;
+  if (!summary?.categories?.length) return null;
+  const byId = new Map(summary.categories.map((c) => [c.id, c.score]));
+  const scores = PILLAR_ORDER_FOR_BLOOM.map((id) => byId.get(id) ?? 0);
+  // Skip rendering when nothing meaningful — all-zero arrays look broken.
+  if (scores.every((s) => s === 0)) return null;
+  return scores;
 }
 
 const AXIS_PILL_CLASS: Record<'green' | 'amber' | 'red' | 'muted', string> = {
@@ -445,7 +459,13 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       </td>
                     )}
                     <td className="px-3 py-3 sm:px-4 md:px-6">
-                      <AxisScorePill score={client.latestScore} />
+                      <div className="flex items-center gap-2.5">
+                        {(() => {
+                          const bs = bloomScoresForClient(client);
+                          return bs ? <MiniBloom scores={bs} size={36} /> : null;
+                        })()}
+                        <AxisScorePill score={client.latestScore} />
+                      </div>
                     </td>
                     <td className="hidden px-3 py-3 sm:px-4 md:table-cell md:px-6">
                       <ClientStatusPill status={attentionMap?.get(client.name)} />
@@ -562,8 +582,12 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                   </div>
                 )}
 
-                {/* Line 2: score, trend, coach, date, next due — all visible */}
+                {/* Line 2: bloom thumb, score, trend, coach, date, next due */}
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  {(() => {
+                    const bs = bloomScoresForClient(client);
+                    return bs ? <MiniBloom scores={bs} size={32} /> : null;
+                  })()}
                   <AxisScorePill score={client.latestScore} />
                   <ClientStatusPill status={attentionMap?.get(client.name)} />
                   <TrendIndicator trend={client.scoreChange} />

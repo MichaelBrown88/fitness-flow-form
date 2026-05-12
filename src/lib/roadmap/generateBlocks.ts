@@ -3,6 +3,8 @@ import type { FormData } from '@/contexts/FormContext';
 import type { RoadmapBlock, RoadmapCategory, BlockUrgency, RoadmapPhase } from './types';
 import { resolveTrackables } from './trackableMapping';
 import { MOVEMENT_FINDING_DETAILS, CATEGORY_DETAIL_CONFIG } from './findingDetails';
+import { buildClientProfile } from '@/lib/physiology/profile';
+import { weeksForScoreImprovement, PHASE_FRACTIONS } from '@/lib/physiology/rates';
 
 const CATEGORY_ICONS: Record<string, string> = {
   bodyComp: 'Scale',
@@ -13,7 +15,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 
 const LOADING_GOALS = new Set(['build-muscle', 'build-strength', 'sport-performance']);
 
-const GOAL_CATEGORY_MAP: Record<string, RoadmapCategory[]> = {
+export const GOAL_CATEGORY_MAP: Record<string, RoadmapCategory[]> = {
   'weight-loss': ['bodyComp', 'cardio', 'lifestyle'],
   'build-muscle': ['strength', 'bodyComp'],
   'build-strength': ['strength', 'movementQuality'],
@@ -353,8 +355,20 @@ export function generateRoadmapBlocks(
   const urgencyOrder: Record<BlockUrgency, number> = { critical: 0, prerequisite: 1, parallel: 2, optional: 3 };
   blocks.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]);
 
+  // Rates-driven post-processing — compute realistic targetWeeks per
+  // block based on the client's training profile rather than the legacy
+  // severity-inverted heuristic. Each phase delivers a fraction of the
+  // total improvement journey (foundation 30%, dev 70%, performance 100%).
+  const profile = buildClientProfile(formData, scores);
   for (const block of blocks) {
-    block.trackables = resolveTrackables(block, scores);
+    block.trackables = resolveTrackables(block, scores, formData);
+    if (block.score != null) {
+      const phaseFraction = PHASE_FRACTIONS[block.phase];
+      // Performance-tier goal score = 80 (proxy until explicit goal scores wire through).
+      const goalScore = 80;
+      const phaseTargetScore = block.score + (goalScore - block.score) * phaseFraction;
+      block.targetWeeks = weeksForScoreImprovement(profile, block.score, phaseTargetScore);
+    }
   }
 
   return blocks;
@@ -413,8 +427,20 @@ export function getAllPossibleBlocksForClient(
   const urgencyOrder: Record<BlockUrgency, number> = { critical: 0, prerequisite: 1, parallel: 2, optional: 3 };
   blocks.sort((a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]);
 
+  // Rates-driven post-processing — compute realistic targetWeeks per
+  // block based on the client's training profile rather than the legacy
+  // severity-inverted heuristic. Each phase delivers a fraction of the
+  // total improvement journey (foundation 30%, dev 70%, performance 100%).
+  const profile = buildClientProfile(formData, scores);
   for (const block of blocks) {
-    block.trackables = resolveTrackables(block, scores);
+    block.trackables = resolveTrackables(block, scores, formData);
+    if (block.score != null) {
+      const phaseFraction = PHASE_FRACTIONS[block.phase];
+      // Performance-tier goal score = 80 (proxy until explicit goal scores wire through).
+      const goalScore = 80;
+      const phaseTargetScore = block.score + (goalScore - block.score) * phaseFraction;
+      block.targetWeeks = weeksForScoreImprovement(profile, block.score, phaseTargetScore);
+    }
   }
 
   return blocks;

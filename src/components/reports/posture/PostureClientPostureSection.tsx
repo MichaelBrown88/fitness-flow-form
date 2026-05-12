@@ -79,7 +79,7 @@ export function PostureClientPostureSection({ postureResults, postureImages }: P
         </div>
       </div>
 
-      <div className="hidden md:grid md:grid-cols-2 md:gap-3">
+      <div className="hidden md:grid md:grid-cols-4 md:gap-2">
         {availableViews.map((view) => {
           const url = getImageUrl(postureImages, view);
           const dev = viewHasDeviation(view);

@@ -33,7 +33,10 @@ function safeRemoveItem(key: string): void {
 
 export type PartialAssessmentSessionRecord = {
   clientName?: string;
+  /** @deprecated Single-category callers — read `categories` first via `readPartialAssessmentCategories`. */
   category?: string;
+  /** Multi-pillar session: array of pillar ids. Canonical form when present. */
+  categories?: string[];
 };
 
 export type PillarCadenceHint = {
@@ -99,20 +102,36 @@ export function readPartialAssessmentClientNameHint(): string {
   return typeof name === 'string' ? name : '';
 }
 
-/** Category used by completeness checks when in partial mode. */
-export function readPartialAssessmentCategory(): PartialCategory | undefined {
+function isPartialCategory(v: unknown): v is PartialCategory {
+  return (
+    v === 'bodycomp' ||
+    v === 'posture' ||
+    v === 'fitness' ||
+    v === 'strength' ||
+    v === 'lifestyle'
+  );
+}
+
+/**
+ * All pillars in the active partial session. Reads `categories` first
+ * (multi-pillar canonical form), falls back to legacy single `category`.
+ * Returns an empty array when the session is full or missing.
+ */
+export function readPartialAssessmentCategories(): PartialCategory[] {
   const rec = readPartialAssessmentRecord();
-  const c = rec?.category;
-  if (
-    c === 'bodycomp' ||
-    c === 'posture' ||
-    c === 'fitness' ||
-    c === 'strength' ||
-    c === 'lifestyle'
-  ) {
-    return c;
+  const arr = Array.isArray(rec?.categories) ? rec!.categories : null;
+  if (arr && arr.length > 0) {
+    return arr.filter(isPartialCategory);
   }
-  return undefined;
+  if (isPartialCategory(rec?.category)) {
+    return [rec!.category as PartialCategory];
+  }
+  return [];
+}
+
+/** Single-category accessor preserved for legacy callers (returns the first pillar in the set). */
+export function readPartialAssessmentCategory(): PartialCategory | undefined {
+  return readPartialAssessmentCategories()[0];
 }
 
 export function readPartialCategoryString(): string | null {

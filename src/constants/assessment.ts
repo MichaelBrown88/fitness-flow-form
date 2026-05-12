@@ -164,6 +164,9 @@ export const ASSESSMENT_LABELS = {
     goalLevelStrength: 'Strength target',
     goalLevelFitness: 'Fitness target',
     goalLevelBodyRecomp: 'Body recomposition target',
+    goalDeadline: 'Goal deadline (optional)',
+    trainingFrequency: 'Training frequency',
+    trainingExperience: 'Training experience',
   },
 } as const;
 
@@ -282,6 +285,9 @@ export const ASSESSMENT_TOOLTIPS = {
     goalLevelStrength: 'Select your target strength improvement. Recommended options are based on your training experience and current fitness level.',
     goalLevelFitness: 'Select your target fitness level. Targets are based on VO2 max percentiles and include specific RHR and recovery HR goals.',
     goalLevelBodyRecomp: 'Select your target body composition look. Body recomposition uses a slight calorie deficit to lose fat while building muscle simultaneously. Target body fat percentages are automatically adjusted based on your gender.',
+    goalDeadline: 'Optional — when you would like to hit your headline goal. Drives the realism check on your ARC™ timeline.',
+    trainingFrequency: 'How many sessions per week you can commit to. Drives every projected timeline in your ARC™ — train more often, hit milestones sooner.',
+    trainingExperience: 'Your consistent training history. Beginners see faster early gains; advanced trainees plateau slower. Calibrates the rate of expected progress.',
   },
 } as const;
 
@@ -406,6 +412,19 @@ export const ASSESSMENT_OPTIONS = {
     { value: 'fit', label: 'Fit' },
     { value: 'athletic', label: 'Athletic (recommended)' },
     { value: 'shredded', label: 'Shredded' },
+  ],
+  trainingFrequency: [
+    { value: '0', label: 'Not training currently' },
+    { value: '1', label: '1 session / week' },
+    { value: '2', label: '2 sessions / week' },
+    { value: '3', label: '3 sessions / week' },
+    { value: '4', label: '4 sessions / week' },
+    { value: '5+', label: '5+ sessions / week' },
+  ],
+  trainingExperience: [
+    { value: 'beginner', label: 'Beginner — under 1 year of consistent training' },
+    { value: 'intermediate', label: 'Intermediate — 1 to 3 years' },
+    { value: 'advanced', label: 'Advanced — 3+ years of consistent training' },
   ],
   // P1 Options
   activityLevel: [

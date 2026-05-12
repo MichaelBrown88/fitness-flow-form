@@ -15,6 +15,7 @@ import type { ScoreSummary } from '@/lib/scoring';
 import { logger } from '@/lib/utils/logger';
 import {
   readPartialAssessmentRecord,
+  readPartialAssessmentCategories,
   parseEditAssessmentPayload,
   removeEditAssessment,
   removePartialAssessment,
@@ -163,6 +164,7 @@ export function useAssessmentSave({
       let shareToken: string | null = null;
       let category: string | null = null;
       let publicReportSynced = true;
+      let multiPillarToastShown = false;
       
         // Check for edit mode first
         const parsedRaw = parseEditAssessmentPayload();
@@ -259,7 +261,94 @@ export function useAssessmentSave({
         }
 
         const parsedPartial = readPartialAssessmentRecord();
-        if (parsedPartial?.category) {
+        const sessionCategories = readPartialAssessmentCategories();
+        const isMultiPillar = sessionCategories.length > 1;
+
+        if (isMultiPillar) {
+          const storedName = parsedPartial?.clientName;
+          const completeCategories = sessionCategories.filter((c) =>
+            isAssessmentComplete(formData, 'partial', c),
+          );
+
+          if (completeCategories.length === 0) {
+            const orgId = profile?.organizationId;
+            if (orgId) {
+              await saveDraftAssessment(clientName, formData, orgId);
+            }
+            writeSessionDraftAssessmentBundle(formData, storedName || clientName);
+            toast({
+              title: 'Draft saved',
+              description: 'Finish at least one pillar to update the live report.',
+            });
+            setSaving(false);
+            saveInitiatedRef.current = false;
+            return;
+          }
+
+          const { saveMultiPillarAssessment } = await import('@/services/coachAssessments');
+          const result = await saveMultiPillarAssessment(
+            user.uid,
+            user.email,
+            formData,
+            scores.overall,
+            storedName || clientName,
+            completeCategories,
+            profile?.organizationId,
+            profile,
+          );
+
+          const savedCategories = result.results.filter((r) => r.saved).map((r) => r.category);
+          if (savedCategories.length === 0) {
+            // No-op (Firestore detected no changes for any pillar) — bail out cleanly
+            return;
+          }
+
+          // Pick a representative pillar/assessmentId for the downstream pipeline
+          // (achievements eval, ARC drift, notifications) which is keyed off a single id.
+          const repAssessment = result.results.find((r) => r.saved)!;
+          assessmentId = repAssessment.assessmentId;
+          shareToken = result.shareToken;
+          category = repAssessment.category as PartialCategory;
+          publicReportSynced = false;
+
+          // Stamp profile dates for every pillar that actually saved.
+          const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
+          const now = Timestamp.now();
+          const updateData: Record<string, unknown> = { lastAssessmentDate: now };
+          for (const c of savedCategories) {
+            if (c === 'bodycomp') updateData[CLIENT_PROFILE_LAST_BODY_COMP_AT] = now;
+            else if (c === 'posture') updateData.lastPostureDate = now;
+            else if (c === 'fitness') updateData.lastFitnessDate = now;
+            else if (c === 'strength') updateData.lastStrengthDate = now;
+            else if (c === 'lifestyle') updateData.lastLifestyleDate = now;
+          }
+          if (shareToken) updateData.shareToken = shareToken;
+          await createOrUpdateClientProfile(
+            user.uid,
+            storedName || clientName,
+            updateData,
+            profile?.organizationId,
+            profile,
+          );
+
+          // Custom toast — names every pillar that saved
+          const skipped = completeCategories.filter((c) => !savedCategories.includes(c));
+          const formatList = (arr: string[]) =>
+            arr.map((c) => c.charAt(0).toUpperCase() + c.slice(1)).join(', ');
+          toast({
+            title: `${savedCategories.length} pillar${savedCategories.length === 1 ? '' : 's'} saved`,
+            description: skipped.length > 0
+              ? `${formatList(savedCategories)} updated. Skipped (no changes): ${formatList(skipped)}.`
+              : `${formatList(savedCategories)} updated and merged.`,
+          });
+          multiPillarToastShown = true;
+
+          setHighlightCategory(savedCategories[0] as PartialCategory);
+          removePartialAssessment();
+          if (profile?.organizationId) {
+            await clearDraftAssessment(storedName || clientName, profile.organizationId);
+          }
+        } else if (parsedPartial?.category) {
           const cat = parsedPartial.category;
           const storedName = parsedPartial.clientName;
           category = cat;
@@ -410,10 +499,12 @@ export function useAssessmentSave({
       });
       setSavingId(assessmentId);
       clearDraft();
-      toast({ 
-        title: category ? UI_TOASTS.SUCCESS.PARTIAL_ASSESSMENT_SAVED : UI_TOASTS.SUCCESS.ASSESSMENT_SAVED, 
-        description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.` 
-      });
+      if (!multiPillarToastShown) {
+        toast({
+          title: category ? UI_TOASTS.SUCCESS.PARTIAL_ASSESSMENT_SAVED : UI_TOASTS.SUCCESS.ASSESSMENT_SAVED,
+          description: category ? `${category.charAt(0).toUpperCase() + category.slice(1)} data updated and merged.` : `Progress for ${clientName} has been saved.`
+        });
+      }
 
       if (!publicReportSynced) {
         toast({

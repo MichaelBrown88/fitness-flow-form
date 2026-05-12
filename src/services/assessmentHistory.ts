@@ -98,6 +98,14 @@ export type AssessmentSnapshot = {
     overall: number;
     categories: { id: string; score: number; weaknesses: string[] }[];
   };
+  /** When set, identifies all snapshots written in the same coaching session.
+   *  Same-session snapshots share an identical `timestamp` and a UUID
+   *  generated at submit time. */
+  sessionId?: string;
+  /** Denormalized list of every pillar covered by the originating session
+   *  — convenience for "show me everything in that session" queries
+   *  without having to join across N docs. */
+  sessionCategories?: string[];
 };
 
 // ---------------------------------------------------------------------------
@@ -220,6 +228,7 @@ export async function updateCurrentAssessment(
   _category?: AssessmentChange["category"],
   organizationId?: string,
   scoresSummary?: AssessmentSnapshot["scoresSummary"],
+  sessionContext?: { sessionId: string; sessionCategories: string[] },
 ): Promise<boolean> {
   if (!organizationId) {
     throw new Error("organizationId is required for updateCurrentAssessment");
@@ -268,6 +277,7 @@ export async function updateCurrentAssessment(
       undefined,
       organizationId,
       scoresSummary,
+      sessionContext,
     );
   }
 
@@ -287,6 +297,7 @@ export async function createSnapshot(
   notes?: string,
   organizationId?: string,
   scoresSummary?: AssessmentSnapshot["scoresSummary"],
+  sessionContext?: { sessionId: string; sessionCategories: string[] },
 ): Promise<string> {
   if (!organizationId) {
     throw new Error("organizationId is required for createSnapshot");
@@ -337,6 +348,9 @@ export async function createSnapshot(
     createdBy: coachUid,
     ...(scoresSummary ? { scoresSummary } : {}),
     ...(scoreSummary ? { scoreSummary } : {}),
+    ...(sessionContext
+      ? { sessionId: sessionContext.sessionId, sessionCategories: sessionContext.sessionCategories }
+      : {}),
   });
 
   return sessionId;
@@ -387,6 +401,8 @@ export async function getSnapshots(
       overallScore: typeof data.overallScore === "number" ? data.overallScore : 0,
       notes: data.notes,
       scoresSummary: data.scoresSummary,
+      sessionId: data.sessionId,
+      sessionCategories: Array.isArray(data.sessionCategories) ? data.sessionCategories : undefined,
     });
   });
 

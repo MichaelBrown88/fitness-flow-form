@@ -129,6 +129,14 @@ export const ORGANIZATION = {
      */
     draft: (orgId: string, clientSlug: string) =>
       `organizations/${orgId}/clients/${clientSlug}/assessmentDrafts/draft` as const,
+
+    /**
+     * Coach Notes — diagnostic + prescriptive content per client. Lives
+     * separately from the ARC™ (which is the journey). Auto-generated
+     * from each assessment; coach-edited fields survive regeneration.
+     */
+    coachNotes: (orgId: string, clientSlug: string) =>
+      `organizations/${orgId}/clients/${clientSlug}/coachNotes/notes` as const,
   },
 
   /** Slug-to-UUID lookup for clients: organizations/{orgId}/clientLookup/{slug} */

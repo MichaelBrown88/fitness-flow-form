@@ -34,7 +34,7 @@ function entryKey(entry: SelectedEntry): string {
 
 interface CalendarViewProps {
   reassessmentQueue: UseReassessmentQueueResult;
-  onNewAssessmentForClient: (clientName: string, category?: string) => void;
+  onNewAssessmentForClient: (clientName: string, category?: string | string[]) => void;
   organizationId?: string;
   onScheduleChanged?: () => void;
   /** Tighter grid and less chrome so the month fits typical dashboard panes without scrolling. */
@@ -483,6 +483,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           selectedDay={selectedDay}
           onClose={() => setSelectedDay(null)}
           onStartAssessment={onNewAssessmentForClient}
+          onStartSession={(clientName, pillars) => onNewAssessmentForClient(clientName, pillars)}
           onChangeDate={handleChangeDateSingle}
           organizationId={organizationId}
           saving={saving}

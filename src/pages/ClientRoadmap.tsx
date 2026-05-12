@@ -133,6 +133,7 @@ export default function ClientRoadmap() {
             saving={saving}
             generatedBlocks={generatedBlocks}
             allPossibleBlocks={allPossibleBlocks}
+            clientGoals={clientGoals}
           />
         </>
       ) : (

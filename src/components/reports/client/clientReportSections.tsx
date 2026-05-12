@@ -1,9 +1,8 @@
 /* eslint-disable react-refresh/only-export-components -- section IDs and meta co-located for ClientReport */
 import React from 'react';
-import { Activity, Scale, Dumbbell, Heart, Zap, Sun } from 'lucide-react';
+import { Scale, Dumbbell, Heart, Zap, Sun } from 'lucide-react';
 
 export const SECTION_IDS = [
-  'starting-point',
   'body-comp',
   'strength',
   'cardio',
@@ -19,12 +18,6 @@ export const SECTION_META: Record<
   SectionId,
   { title: string; shortTitle: string; summary: string; icon: React.ReactNode }
 > = {
-  'starting-point': {
-    title: 'Strengths & Focus Areas',
-    shortTitle: 'Focus',
-    summary: 'What\'s working well and where to direct effort next',
-    icon: <Activity className={iconClass} />,
-  },
   'body-comp': {
     title: 'Body Composition',
     shortTitle: 'Body',
@@ -57,4 +50,4 @@ export const SECTION_META: Record<
   },
 };
 
-export const DEFAULT_OPEN: SectionId[] = ['starting-point'];
+export const DEFAULT_OPEN: SectionId[] = [];

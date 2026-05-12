@@ -268,7 +268,7 @@ export function RoadmapBuilder({ clientName, blocks, allPossibleBlocks = [], cli
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           <div className="lg:col-span-2 lg:max-h-[80vh] lg:overflow-y-auto lg:pr-2 lg:sticky lg:top-4">
-            <BlockPalette blocks={paletteBlocks} />
+            <BlockPalette blocks={paletteBlocks} clientGoals={clientGoals} />
           </div>
           <div className="lg:col-span-3">
             <BuilderTimeline

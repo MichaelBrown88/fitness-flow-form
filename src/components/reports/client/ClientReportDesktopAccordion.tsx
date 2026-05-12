@@ -1,35 +1,36 @@
 import React from 'react';
-import { SECTION_IDS } from './clientReportSections';
-import { ClientReportCollapsibleSection } from './ClientReportCollapsibleSection';
+import { SECTION_IDS, type SectionId } from './clientReportSections';
 import { renderClientReportSection, type ClientReportSectionContext } from './renderClientReportSection';
-import type { SectionId } from './clientReportSections';
 
 interface ClientReportDesktopAccordionProps {
-  isSectionOpen: (id: SectionId) => boolean;
-  toggleSection: (id: SectionId) => void;
+  /** Kept for prop-compat; pillar cards no longer collapse, so these are unused. */
+  isSectionOpen?: (id: SectionId) => boolean;
+  toggleSection?: (id: SectionId) => void;
   setSectionRef: (id: SectionId) => (el: HTMLElement | null) => void;
   sectionCtx: ClientReportSectionContext;
 }
 
+/**
+ * Renders the five pillar cards stacked, in pillar order. Each card is
+ * always-expanded — the prior collapsible chrome is gone now that the
+ * card itself carries the petal-badge / score / summary / strengths /
+ * focus / detail header.
+ */
 export function ClientReportDesktopAccordion({
-  isSectionOpen,
-  toggleSection,
   setSectionRef,
   sectionCtx,
 }: ClientReportDesktopAccordionProps) {
   return (
     <>
-      {SECTION_IDS.map((id) => (
-        <ClientReportCollapsibleSection
-          key={id}
-          id={id}
-          open={isSectionOpen(id)}
-          onToggle={toggleSection}
-          sectionRef={setSectionRef(id)}
-        >
-          {renderClientReportSection(id, sectionCtx)}
-        </ClientReportCollapsibleSection>
-      ))}
+      {SECTION_IDS.map((id) => {
+        const node = renderClientReportSection(id, sectionCtx);
+        if (!node) return null;
+        return (
+          <div key={id} ref={setSectionRef(id)} data-section-id={id}>
+            {node}
+          </div>
+        );
+      })}
     </>
   );
 }

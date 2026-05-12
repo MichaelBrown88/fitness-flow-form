@@ -14,11 +14,14 @@ import {
 } from 'lucide-react';
 import { WorkspaceBreadcrumb } from '@/components/dashboard/WorkspaceBreadcrumb';
 import { WorkspaceKpiCard } from '@/components/dashboard/WorkspaceKpiCard';
+import { MiniBloom } from '@/components/client/console/MiniBloom';
+import type { ClientGroup } from '@/hooks/dashboard/types';
 import { useAuth } from '@/hooks/useAuth';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { cn } from '@/lib/utils';
 import type { ReassessmentItem } from '@/hooks/useReassessmentQueue';
+import { getPillarLabel } from '@/constants/pillars';
 import type { DashboardOutletContext } from './DashboardLayout';
 
 function greetingHour(): string {
@@ -38,6 +41,18 @@ function formatToday(): string {
 
 const isInactive = (c: { clientStatus?: string }) =>
   c.clientStatus === 'deleted' || c.clientStatus === 'archived' || c.clientStatus === 'paused';
+
+// MiniBloom expects canonical pillar order: [Body, Strength, Cardio, Movement, Lifestyle]
+const PILLAR_ORDER_FOR_BLOOM = ['bodyComp', 'strength', 'cardio', 'movementQuality', 'lifestyle'] as const;
+
+function bloomScoresForClient(client: ClientGroup): number[] | null {
+  const summary = client.assessments[0]?.scoresSummary;
+  if (!summary?.categories?.length) return null;
+  const byId = new Map(summary.categories.map((c) => [c.id, c.score]));
+  const scores = PILLAR_ORDER_FOR_BLOOM.map((id) => byId.get(id) ?? 0);
+  if (scores.every((s) => s === 0)) return null;
+  return scores;
+}
 
 export default function DashboardWork() {
   const ctx = useOutletContext<DashboardOutletContext>();
@@ -111,6 +126,10 @@ export default function DashboardWork() {
     title: string;
     meta: string;
     action?: { label: string; onClick: () => void };
+    /** When present, the SignalRow renders the client's MiniBloom in
+     *  place of the generic icon tile — ties signals back to the AXIS
+     *  bloom brand and gives coaches an at-a-glance visual fingerprint. */
+    bloomScores?: number[];
   };
 
   const signalItems = useMemo<SignalItem[]>(() => {
@@ -123,6 +142,7 @@ export default function DashboardWork() {
         title: `${formatClientDisplayName(c.name)} ready for studio`,
         meta: 'Remote intake complete · answers will pre-fill',
         action: { label: 'Continue', onClick: () => ctx.handleNewAssessmentForClient(c.name) },
+        bloomScores: bloomScoresForClient(c) ?? undefined,
       });
     }
     for (const c of scoreAlerts.slice(0, 3)) {
@@ -133,6 +153,7 @@ export default function DashboardWork() {
         title: `${formatClientDisplayName(c.name)} · score dropped`,
         meta: `From ${c.latestScore - (c.scoreChange ?? 0)} to ${c.latestScore} · review and reach out`,
         action: { label: 'Open', onClick: () => navigate(`/client/${encodeURIComponent(c.name)}`) },
+        bloomScores: bloomScoresForClient(c) ?? undefined,
       });
     }
     for (const c of unsharableClients.slice(0, 3)) {
@@ -146,6 +167,7 @@ export default function DashboardWork() {
           label: 'Share',
           onClick: () => navigate(`/client/${encodeURIComponent(c.name)}/report?share=1`),
         },
+        bloomScores: bloomScoresForClient(c) ?? undefined,
       });
     }
     return items;
@@ -229,6 +251,7 @@ export default function DashboardWork() {
               queue={ctx.reassessmentQueue.queue}
               search={ctx.search}
               onOpenClient={(name) => navigate(`/client/${encodeURIComponent(name)}`)}
+              onStartAssessment={(name, pillars) => ctx.handleNewAssessmentForClient(name, pillars)}
             />
           </Panel>
         </section>
@@ -355,9 +378,11 @@ interface ClientAttentionListProps {
   queue: ReassessmentItem[];
   search?: string;
   onOpenClient: (name: string) => void;
+  /** Start a (multi-)pillar assessment session for the client. */
+  onStartAssessment?: (clientName: string, pillars: string[]) => void;
 }
 
-function ClientAttentionList({ queue, search, onOpenClient }: ClientAttentionListProps) {
+function ClientAttentionList({ queue, search, onOpenClient, onStartAssessment }: ClientAttentionListProps) {
   const filtered = queue
     .filter((item) => item.status === 'overdue' || item.status === 'due-soon')
     .filter((item) => {
@@ -384,6 +409,7 @@ function ClientAttentionList({ queue, search, onOpenClient }: ClientAttentionLis
           item={item}
           isLast={idx === filtered.length - 1}
           onOpen={() => onOpenClient(item.clientName)}
+          onStartAssessment={onStartAssessment}
         />
       ))}
     </ul>
@@ -394,13 +420,23 @@ interface ClientAttentionRowProps {
   item: ReassessmentItem;
   isLast: boolean;
   onOpen: () => void;
+  onStartAssessment?: (clientName: string, pillars: string[]) => void;
 }
 
-function ClientAttentionRow({ item, isLast, onOpen }: ClientAttentionRowProps) {
+function ClientAttentionRow({ item, isLast, onOpen, onStartAssessment }: ClientAttentionRowProps) {
   const tone = axisTone(item.overallScore);
   const status = STATUS_PILL[item.status as 'overdue' | 'due-soon' | 'up-to-date'] ?? STATUS_PILL['up-to-date'];
   const displayName = formatClientDisplayName(item.clientName);
-  const sub = item.statusReason || `Last assessed ${item.daysSinceAssessment} day${item.daysSinceAssessment === 1 ? '' : 's'} ago`;
+
+  // Pillars actually due now — drive the chip set + "Start session" affordance.
+  const duePillars = (item.pillarSchedules ?? [])
+    .filter((p) => p.status === 'overdue' || p.status === 'due-soon')
+    .map((p) => p.pillar);
+  const isMultiPillar = duePillars.length > 1;
+
+  const sub = isMultiPillar
+    ? `${duePillars.length} pillars due`
+    : (item.statusReason || `Last assessed ${item.daysSinceAssessment} day${item.daysSinceAssessment === 1 ? '' : 's'} ago`);
 
   return (
     <li
@@ -418,6 +454,18 @@ function ClientAttentionRow({ item, isLast, onOpen }: ClientAttentionRowProps) {
           {displayName}
         </div>
         <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{sub}</div>
+        {isMultiPillar && (
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            {duePillars.map((p) => (
+              <span
+                key={p}
+                className="inline-flex items-center rounded-full border border-border bg-card-elevated px-1.5 py-0.5 text-[10px] font-semibold text-foreground-secondary"
+              >
+                {getPillarLabel(p, 'short')}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       {item.overallScore > 0 ? (
         <span className={cn('inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-bold', AXIS_PILL_TONE[tone])}>
@@ -432,13 +480,23 @@ function ClientAttentionRow({ item, isLast, onOpen }: ClientAttentionRowProps) {
         <span className={cn('h-1.5 w-1.5 rounded-full', status.dot)} aria-hidden />
         {status.label}
       </span>
-      <Button
-        variant="outline"
-        onClick={onOpen}
-        className="h-8 rounded-full px-3 text-[12px] font-semibold"
-      >
-        Open
-      </Button>
+      <div className="flex items-center gap-1.5">
+        {duePillars.length > 0 && onStartAssessment && (
+          <Button
+            onClick={() => onStartAssessment(item.clientName, duePillars)}
+            className="h-8 rounded-full px-3 text-[12px] font-semibold"
+          >
+            {isMultiPillar ? `Start session · ${duePillars.length}` : 'Start'}
+          </Button>
+        )}
+        <Button
+          variant="outline"
+          onClick={onOpen}
+          className="h-8 rounded-full px-3 text-[12px] font-semibold"
+        >
+          Open
+        </Button>
+      </div>
     </li>
   );
 }
@@ -456,6 +514,7 @@ interface SignalRowProps {
     title: string;
     meta: string;
     action?: { label: string; onClick: () => void };
+    bloomScores?: number[];
   };
 }
 
@@ -464,9 +523,15 @@ function SignalRow({ item }: SignalRowProps) {
   const tone = SIGNAL_TONE_TILE[item.tone];
   return (
     <li className="flex items-start gap-3 px-3 py-3">
-      <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', tone.tile)} aria-hidden>
-        <Icon className={cn('h-4 w-4', tone.icon)} />
-      </div>
+      {item.bloomScores ? (
+        <div className="shrink-0">
+          <MiniBloom scores={item.bloomScores} size={36} />
+        </div>
+      ) : (
+        <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', tone.tile)} aria-hidden>
+          <Icon className={cn('h-4 w-4', tone.icon)} />
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         <div className="text-[13px] font-semibold leading-snug text-foreground">{item.title}</div>
         <div className="text-[12px] leading-relaxed text-muted-foreground">{item.meta}</div>

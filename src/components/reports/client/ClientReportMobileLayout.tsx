@@ -11,7 +11,7 @@ interface ClientReportMobileLayoutProps {
 }
 
 export function ClientReportMobileLayout({ sectionCtx }: ClientReportMobileLayoutProps) {
-  const [mobileTab, setMobileTab] = useState<MobileTabId>('starting-point');
+  const [mobileTab, setMobileTab] = useState<MobileTabId>('body-comp');
 
   return (
     <>

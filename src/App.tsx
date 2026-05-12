@@ -42,6 +42,7 @@ const ClientOverview = lazy(() => import("./pages/client/ClientOverview"));
 const ClientHistory = lazy(() => import("./pages/client/ClientHistory"));
 const ClientRoadmapTab = lazy(() => import("./pages/client/ClientRoadmapTab"));
 const ClientReportTab = lazy(() => import("./pages/client/ClientReportTab"));
+const ClientCoachNotesTab = lazy(() => import("./pages/client/ClientCoachNotesTab"));
 const ClientAchievementsTab = lazy(() => import("./pages/client/ClientAchievementsTab"));
 const ClientSettings = lazy(() => import("./pages/client/ClientSettings"));
 const OrgAdminLayout = lazy(() => import("./pages/org/OrgAdminLayout"));
@@ -79,6 +80,9 @@ const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Blog = lazy(() => import("./pages/Blog"));
 const Demo = lazy(() => import("./pages/Demo"));
+
+// Internal design explorations
+const AxisExplorations = lazy(() => import("./pages/AxisExplorations"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -194,6 +198,8 @@ const App = () => (
                     <Route path="/contact" element={<Contact />} />
                     <Route path="/blog" element={<Blog />} />
                     <Route path="/demo" element={<Demo />} />
+                    {/* Internal AXIS signature design comparison (no auth — sample data) */}
+                    <Route path="/axis-explorations" element={<AxisExplorations />} />
                     {/* Onboarding - allows unauthenticated access (will create account at step 1) */}
                     <Route path="/onboarding" element={<Onboarding />} />
                     {/* Zero-friction sandbox trial — no sign-up required */}
@@ -243,6 +249,7 @@ const App = () => (
                         <Route index element={<ClientOverview />} />
                         <Route path="report" element={<ClientReportTab />} />
                         <Route path="roadmap" element={<ClientRoadmapTab />} />
+                        <Route path="coach-notes" element={<ClientCoachNotesTab />} />
                         <Route path="achievements" element={<ClientAchievementsTab />} />
                         <Route path="coaches-report" element={<Navigate to=".." replace />} />
                         <Route path="history" element={<ClientHistory />} />

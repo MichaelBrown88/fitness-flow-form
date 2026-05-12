@@ -1,13 +1,12 @@
 /* eslint-disable react-refresh/only-export-components -- mobile tab config co-located with nav components */
 import React from 'react';
-import { Activity, Scale, Dumbbell, Heart, Zap, Sun } from 'lucide-react';
+import { Scale, Dumbbell, Heart, Zap, Sun } from 'lucide-react';
 import { SECTION_IDS, type SectionId } from './clientReportSections';
 
 export type MobileTabId = SectionId;
 export const MOBILE_TAB_IDS = SECTION_IDS;
 
 export const MOBILE_TAB_META: Record<MobileTabId, { label: string; icon: React.ElementType }> = {
-  'starting-point': { label: 'Overview', icon: Activity },
   'body-comp': { label: 'Body', icon: Scale },
   strength: { label: 'Strength', icon: Dumbbell },
   cardio: { label: 'Cardio', icon: Heart },

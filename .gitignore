@@ -16,6 +16,8 @@ functions/.env
 .env.development.local
 .env.test.local
 .env.production.local
+.env.local.bak.*
+.env.*.bak.*
 
 # Build outputs
 dist/
@@ -80,6 +82,9 @@ repomix-output.xml
 
 # Cursor IDE
 .cursor/
+
+# Superpowers skill state (local tooling, not source)
+.superpowers/
 
 # Package manager lock files (optional - uncomment if you want to ignore them)
 # package-lock.json

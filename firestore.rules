@@ -236,6 +236,14 @@ service cloud.firestore {
           allow read: if canReadClientDoc(orgId, clientSlug);
           allow write: if canWriteOrgData(orgId);
         }
+
+        // Coach notes — diagnostic + prescription per client (coach-only,
+        // never seen by the client). Auto-generated from assessments and
+        // editable by the assigned coach.
+        match /coachNotes/{doc} {
+          allow read: if canReadClientDoc(orgId, clientSlug);
+          allow write: if canWriteOrgData(orgId);
+        }
       }
 
       // GDPR erasure requests

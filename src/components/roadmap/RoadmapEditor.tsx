@@ -4,7 +4,8 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates, arrayMove } from '@dnd-kit/sortable';
-import { ArrowDownAZ } from 'lucide-react';
+import { ArrowDownAZ, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { RoadmapItem, RoadmapPhase, RoadmapBlock } from '@/lib/roadmap/types';
 import { applySuggestedOrder } from '@/lib/roadmap/sortPhaseItems';
 import { PhaseDropZone } from './PhaseDropZone';
@@ -45,6 +46,8 @@ interface RoadmapEditorProps {
   saving?: boolean;
   generatedBlocks?: RoadmapBlock[];
   allPossibleBlocks?: RoadmapBlock[];
+  /** Client's stated goals — drives the goal-relevance grouping in the palette. */
+  clientGoals?: string[];
 }
 
 export const RoadmapEditor: React.FC<RoadmapEditorProps> = ({
@@ -55,6 +58,7 @@ export const RoadmapEditor: React.FC<RoadmapEditorProps> = ({
   saving,
   generatedBlocks = [],
   allPossibleBlocks = [],
+  clientGoals = [],
 }) => {
   const [localSummary, setLocalSummary] = useState(summary);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -169,7 +173,7 @@ export const RoadmapEditor: React.FC<RoadmapEditorProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {paletteBlocks.length > 0 && (
             <div className="lg:col-span-2 lg:max-h-[70vh] lg:overflow-y-auto lg:pr-2 lg:sticky lg:top-4">
-              <BlockPalette blocks={paletteBlocks} />
+              <BlockPalette blocks={paletteBlocks} clientGoals={clientGoals} />
             </div>
           )}
           <div className={paletteBlocks.length > 0 ? 'lg:col-span-3' : 'lg:col-span-full'}>
@@ -186,6 +190,60 @@ export const RoadmapEditor: React.FC<RoadmapEditorProps> = ({
                   Order by urgency
                 </button>
               </div>
+
+              {/* Empty-ARC recovery CTA — auto-fill from generated blocks
+                  (or the broader palette superset as fallback) so the
+                  editor is never a dead end. */}
+              {items.length === 0 ? (
+                (() => {
+                  const autoFillSource = generatedBlocks.length > 0 ? generatedBlocks : allPossibleBlocks;
+                  const sourceLabel = generatedBlocks.length > 0
+                    ? `${generatedBlocks.length} priority milestone${generatedBlocks.length === 1 ? '' : 's'} from the latest assessment`
+                    : `${allPossibleBlocks.length} possible milestone${allPossibleBlocks.length === 1 ? '' : 's'} from this client's full metric set`;
+                  return (
+                    <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-5">
+                      {autoFillSource.length > 0 ? (
+                        <>
+                          <p className="text-sm font-bold text-foreground">
+                            This ARC™ is empty
+                          </p>
+                          <p className="mt-1 max-w-[60ch] text-[13px] leading-relaxed text-foreground-secondary">
+                            We can auto-fill it with {sourceLabel} — drag, edit, or remove
+                            anything that doesn't fit. {generatedBlocks.length === 0 && allPossibleBlocks.length > 0
+                              ? 'No high-priority findings surfaced for this client, but the full metric set is still trackable.'
+                              : ''}
+                          </p>
+                          <div className="mt-3">
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-1.5 rounded-full"
+                              onClick={() => {
+                                const newItems = autoFillSource.map((b) => blockToItem(b, b.phase));
+                                onItemsChange(newItems);
+                              }}
+                            >
+                              <Sparkles className="h-3.5 w-3.5" />
+                              Auto-fill from latest assessment
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm font-bold text-foreground">
+                            This ARC™ is empty
+                          </p>
+                          <p className="mt-1 max-w-[60ch] text-[13px] leading-relaxed text-foreground-secondary">
+                            No assessment data is loaded for this client. Make sure a full
+                            assessment has been completed, then refresh this page.
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()
+              ) : null}
+
               {displayPhases.map((phase, idx) => (
                 <PhaseDropZone
                   key={phase}

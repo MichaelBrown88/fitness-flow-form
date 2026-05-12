@@ -22,6 +22,17 @@ export interface FormData {
   goalLevelBodyRecomp: string;
   goalLevelStrength: string;
   goalLevelFitness: string;
+  /** Optional ISO date — when the client wants to hit their headline goal.
+   *  Drives ARC timeline realism check; omitted = no deadline. */
+  goalDeadline: string;
+  /** Sessions per week the client expects to train — drives every
+   *  physiological rate calculation in coach notes + ARC milestones.
+   *  Values: '0' / '1' / '2' / '3' / '4' / '5+'. */
+  trainingFrequency: string;
+  /** Self-reported training experience — drives novice/intermediate/advanced
+   *  rate adjustments. Values: 'beginner' (<1y) / 'intermediate' (1-3y) /
+   *  'advanced' (3+y). */
+  trainingExperience: string;
   activityLevel: string;
   sleepArchetype: string;
   sleepDuration: string; // Legacy field
@@ -245,6 +256,9 @@ export const initialFormData: FormData = {
   goalLevelBodyRecomp: '',
   goalLevelStrength: '',
   goalLevelFitness: '',
+  goalDeadline: '',
+  trainingFrequency: '',
+  trainingExperience: '',
   activityLevel: '',
   sleepArchetype: '',
   sleepDuration: '', // Legacy

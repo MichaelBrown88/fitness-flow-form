@@ -77,7 +77,7 @@ const FALLBACK_HUES = [188, 350, 28, 262, 152];
 const FIXED_LIGHTNESS = 45;
 const FIXED_SATURATION = 72;
 
-function pillarHueAt(name: string, fullLabel: string, index: number): number {
+export function pillarHueAt(name: string, fullLabel: string, index: number): number {
   return (
     PILLAR_HUES[fullLabel]?.h ??
     PILLAR_HUES[name]?.h ??
@@ -85,7 +85,7 @@ function pillarHueAt(name: string, fullLabel: string, index: number): number {
   );
 }
 
-function pillarColor(hue: number, alpha = 1): string {
+export function pillarColor(hue: number, alpha = 1): string {
   return alpha === 1
     ? `hsl(${hue} ${FIXED_SATURATION}% ${FIXED_LIGHTNESS}%)`
     : `hsl(${hue} ${FIXED_SATURATION}% ${FIXED_LIGHTNESS}% / ${alpha})`;
@@ -97,13 +97,29 @@ function petalAngle(i: number, n: number): number {
   return -Math.PI / 2 + (i * 2 * Math.PI) / n;
 }
 
-interface XY { x: number; y: number; }
+export interface XY { x: number; y: number; }
 
-function petalDimsFor(score: number, baseR: number, maxScale: number, fatness: number): { length: number; halfWidth: number } {
+export function petalDimsFor(score: number, baseR: number, maxScale: number, fatness: number): { length: number; halfWidth: number } {
   const t = Math.max(0, Math.min(100, score)) / 100;
   const length = baseR * (0.30 + t * (maxScale - 0.30));
-  const halfWidth = length * fatness * (0.55 + Math.sqrt(t) * 0.45);
+  // Sharper width curve — wilted petals are thin/fragile, bloomed ones swollen.
+  const halfWidth = length * fatness * (0.30 + Math.sqrt(t) * 0.70);
   return { length, halfWidth };
+}
+
+// ─── Wilt model ──────────────────────────────────────────────────────
+// Low scores → wilted, asymmetric, jagged petals with sparse flickering
+// dot fields and minimal glow. High scores → smooth, swollen petals
+// with dense flowing dot fields and vivid pulsing glow.
+
+export function wiltFor(score: number): number {
+  const t = Math.max(0, Math.min(100, score)) / 100;
+  return Math.pow(1 - t, 1.4);
+}
+
+function noise1(seed: number): number {
+  const x = Math.sin(seed * 12.9898 + 78.233) * 43758.5453;
+  return (x - Math.floor(x)) * 2 - 1;
 }
 
 /**
@@ -157,17 +173,132 @@ function curvedAngularPath(vertices: XY[], cornerRadius: number, bowFactor: numb
   return parts.join(' ');
 }
 
-function petalPath(cx: number, cy: number, ux: number, uy: number, length: number, halfWidth: number, cornerRadius: number): string {
+export function petalVerts(cx: number, cy: number, ux: number, uy: number, length: number, halfWidth: number, wilt: number, seed: number): XY[] {
   const nx = -uy;
   const ny = ux;
   const sideAlong = 0.58;
-  const vertices: XY[] = [
+
+  // Base 4-vertex kite — the "full bloom" shape.
+  const baseVerts: XY[] = [
     { x: cx + length * ux, y: cy + length * uy },
     { x: cx + sideAlong * length * ux - halfWidth * nx, y: cy + sideAlong * length * uy - halfWidth * ny },
     { x: cx, y: cy },
     { x: cx + sideAlong * length * ux + halfWidth * nx, y: cy + sideAlong * length * uy + halfWidth * ny },
   ];
-  return curvedAngularPath(vertices, cornerRadius, 0.07);
+
+  // Side count maps to score: full bloom → 4 verts, full wilt → 9 verts.
+  const totalExtras = Math.round(wilt * 5);
+  const subsPerEdge = [0, 0, 0, 0];
+  for (let k = 0; k < totalExtras; k++) subsPerEdge[k % 4]++;
+
+  const verts: XY[] = [];
+  for (let i = 0; i < 4; i++) {
+    const a = baseVerts[i];
+    const b = baseVerts[(i + 1) % 4];
+    verts.push(a);
+    const subs = subsPerEdge[i];
+    for (let s = 1; s <= subs; s++) {
+      const t = s / (subs + 1);
+      const mx = a.x + (b.x - a.x) * t;
+      const my = a.y + (b.y - a.y) * t;
+      const edgeX = b.x - a.x;
+      const edgeY = b.y - a.y;
+      const len = Math.hypot(edgeX, edgeY) || 1;
+      const perpX = -edgeY / len;
+      const perpY = edgeX / len;
+      const jitter = noise1(seed * 100 + i * 10 + s) * wilt * 0.30 * len;
+      verts.push({ x: mx + perpX * jitter, y: my + perpY * jitter });
+    }
+  }
+  return verts;
+}
+
+export function petalPathFromVerts(verts: XY[], wilt: number): string {
+  // Edges bow outward at full bloom (swollen), cave at full wilt (shriveled).
+  const bow = 0.14 - wilt * 0.20;
+  // Fully rounded at bloom, perfectly sharp at full wilt.
+  const cr = (1 - wilt) * 32;
+  return curvedAngularPath(verts, cr, bow);
+}
+
+interface PetalDot { cx: number; cy: number; r: number; alpha: number; delay: number; }
+
+/**
+ * Generates the dot-matrix fill positions for one petal.
+ * Bloomed petals get a dense uniform grid with delays mapped to
+ * distance-from-anchor — light flows outward like a heartbeat. Wilted
+ * petals get a sparse, jittered, mostly-dropped field with random
+ * delays — flickers arrhythmically.
+ */
+function petalDots(
+  verts: XY[],
+  wilt: number,
+  seed: number,
+  cx: number,
+  cy: number,
+  ux: number,
+  uy: number,
+  length: number,
+  animDuration: number,
+): PetalDot[] {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const v of verts) {
+    if (v.x < minX) minX = v.x;
+    if (v.y < minY) minY = v.y;
+    if (v.x > maxX) maxX = v.x;
+    if (v.y > maxY) maxY = v.y;
+  }
+  // Pad so dots cover the curved silhouette (bow extends past raw verts).
+  const padX = (maxX - minX) * 0.12;
+  const padY = (maxY - minY) * 0.12;
+  minX -= padX;
+  maxX += padX;
+  minY -= padY;
+  maxY += padY;
+
+  // Calmer 10×14 grid — at the production rendered size the original
+  // 16×22 reads as noise. This is a soft halftone instead.
+  const cols = 10;
+  const rows = 14;
+  const dx = (maxX - minX) / cols;
+  const dy = (maxY - minY) / rows;
+  const dotR = 1.0 + (1 - wilt) * 0.5;
+  const waveRange = animDuration * 0.75;
+  const randRange = animDuration;
+
+  const dots: PetalDot[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const baseX = minX + (c + 0.5) * dx;
+      const baseY = minY + (r + 0.5) * dy;
+      const jx = noise1(seed * 999 + r * 100 + c) * wilt * dx * 0.55;
+      const jy = noise1(seed * 999 + r * 100 + c + 7777) * wilt * dy * 0.55;
+      const x = baseX + jx;
+      const y = baseY + jy;
+
+      const alphaBase = 0.30 + (1 - wilt) * 0.50;
+      const alphaJit = noise1(seed * 999 + r * 100 + c + 3333) * wilt * 0.55;
+      const alpha = Math.max(0.04, Math.min(0.92, alphaBase + alphaJit));
+
+      // Drop probability ramps with wilt — 0% at bloom, ~85% at full wilt.
+      const keepRoll = noise1(seed * 999 + r * 100 + c + 5555);
+      const dropProb = Math.pow(wilt, 1.3) * 0.85;
+      if ((keepRoll + 1) / 2 < dropProb) continue;
+
+      // Project onto petal axis → "distance from anchor" → wave delay.
+      const distAlong = Math.max(0, (x - cx) * ux + (y - cy) * uy);
+      const distNorm = length > 0 ? Math.min(1, distAlong / length) : 0;
+      const waveDelay = distNorm * waveRange;
+      const randDelay = Math.abs(noise1(seed * 999 + r * 100 + c + 1111)) * randRange;
+      const delay = (1 - wilt) * waveDelay + wilt * randDelay;
+
+      dots.push({ cx: x, cy: y, r: dotR, alpha, delay });
+    }
+  }
+  return dots;
 }
 
 // ─── Animation hook ─────────────────────────────────────────────────
@@ -216,11 +347,13 @@ export default function OverallRadarChart({ data, previousData, compact = false 
   const baseR = (size / 2) - labelGap - (compact ? 24 : 38);
   const maxScale = 1.0;
   const fatness = 0.42;
-  const cornerRadius = compact ? 5 : 7;
 
   const filterId = useId();
   const safeId = filterId.replace(/:/g, '');
   const glowId = `axis-glow-${safeId}`;
+
+  // Dot-matrix shimmer cycle — must match the CSS animation duration below.
+  const DOT_ANIM_DURATION = 3.2;
 
   // ─── Animation targets
   const currentScores = useMemo(() => data.map((d) => d.value), [data]);
@@ -237,18 +370,23 @@ export default function OverallRadarChart({ data, previousData, compact = false 
   const n = data.length;
   const ringStops = [25, 50, 75, 100];
 
-  // Per-pillar paths + colours (live, follow the animation)
+  // Per-pillar paths + colours + dot fields (live, follow the animation).
+  // Wilt drives geometry irregularity, glow intensity, and dot density.
   const petals = animatedScores.map((s, i) => {
     const angle = petalAngle(i, n);
     const ux = Math.cos(angle);
     const uy = Math.sin(angle);
     const dims = petalDimsFor(s, baseR, maxScale, fatness);
+    const wilt = wiltFor(s);
+    const seed = i + 1;
+    const verts = petalVerts(cx, cy, ux, uy, dims.length, dims.halfWidth, wilt, seed);
+    const d = petalPathFromVerts(verts, wilt);
     const hue = pillarHueAt(data[i].name, data[i].fullLabel, i);
-    return {
-      d: petalPath(cx, cy, ux, uy, dims.length, dims.halfWidth, cornerRadius),
-      stroke: pillarColor(hue),
-      glow: pillarColor(hue, 0.9),
-    };
+    const colour = pillarColor(hue);
+    const glowAlpha = Math.pow(1 - wilt, 1.5) * 0.95;
+    const glowWidth = 1 + Math.pow(1 - wilt, 1.3) * 6;
+    const dots = petalDots(verts, wilt, seed, cx, cy, ux, uy, dims.length, DOT_ANIM_DURATION);
+    return { d, stroke: colour, glow: colour, glowAlpha, glowWidth, dots, wilt };
   });
 
   // ─── Centre AXIS brand mark (faceted diamond)
@@ -264,17 +402,26 @@ export default function OverallRadarChart({ data, previousData, compact = false 
     <div className="relative h-full w-full">
       <style>{`
         @keyframes axisBloomBreathe {
-          0%, 100% { stroke-width: 2.4; }
-          50%      { stroke-width: 2.6; }
+          0%, 100% { stroke-width: 3.2; }
+          50%      { stroke-width: 3.5; }
         }
         @keyframes axisBloomGlowBreathe {
-          0%, 100% { opacity: 0.6; }
-          50%      { opacity: 0.85; }
+          0%, 100% { opacity: 0.55; }
+          50%      { opacity: 1.0; }
+        }
+        @keyframes axisDotShimmer {
+          0%, 100% { opacity: 0.45; transform: scale(0.80); }
+          50%      { opacity: 1.0;  transform: scale(1.20); }
         }
         .axis-petal-crisp { animation: axisBloomBreathe 3.4s ease-in-out infinite; }
         .axis-petal-glow  { animation: axisBloomGlowBreathe 3.4s ease-in-out infinite; }
+        .axis-dot {
+          animation: axisDotShimmer ${DOT_ANIM_DURATION}s ease-in-out infinite;
+          transform-box: fill-box;
+          transform-origin: center;
+        }
         @media (prefers-reduced-motion: reduce) {
-          .axis-petal-crisp, .axis-petal-glow { animation: none; }
+          .axis-petal-crisp, .axis-petal-glow, .axis-dot { animation: none; }
         }
       `}</style>
       <svg
@@ -284,11 +431,16 @@ export default function OverallRadarChart({ data, previousData, compact = false 
         aria-label="AXIS Score five-pillar bloom"
       >
         <defs>
-          {/* Stronger glow than before — gives the bloom more presence
-              ("pop off the page" per Michael). */}
+          {/* Stronger glow than before — gives the bloom more presence. */}
           <filter id={glowId} x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="7" />
           </filter>
+          {/* Per-petal clipPaths — confine each dot field to its petal silhouette. */}
+          {petals.map((p, i) => (
+            <clipPath key={`clip-${i}`} id={`axis-clip-${safeId}-${i}`}>
+              <path d={p.d} />
+            </clipPath>
+          ))}
         </defs>
 
         {/* Reference rings */}
@@ -355,14 +507,43 @@ export default function OverallRadarChart({ data, previousData, compact = false 
           );
         })}
 
-        {/* Glow layer — thicker stroke (4) so the haloes have real presence */}
+        {/* Dot-matrix fills — radial-wave flow for bloomed petals,
+            chaotic flicker for wilted ones. Clipped to each silhouette. */}
+        {petals.map((p, i) => (
+          <g key={`dots-${i}`} clipPath={`url(#axis-clip-${safeId}-${i})`}>
+            {p.dots.map((dot, di) => (
+              <circle
+                key={di}
+                cx={dot.cx.toFixed(2)}
+                cy={dot.cy.toFixed(2)}
+                r={dot.r.toFixed(2)}
+                fill={p.stroke}
+                fillOpacity={dot.alpha.toFixed(3)}
+                className="axis-dot"
+                style={{ animationDelay: `${dot.delay.toFixed(2)}s` }}
+              />
+            ))}
+          </g>
+        ))}
+
+        {/* Glow halo — per-petal width + opacity ramp with score, so
+            wilted petals barely glow and bloomed ones pulse vividly. */}
         <g className="axis-petal-glow" filter={`url(#${glowId})`}>
           {petals.map((p, i) => (
-            <path key={`glow-${i}`} d={p.d} fill="none" stroke={p.glow} strokeWidth={4} strokeLinejoin="round" />
+            <path
+              key={`glow-${i}`}
+              d={p.d}
+              fill="none"
+              stroke={p.glow}
+              strokeWidth={p.glowWidth.toFixed(2)}
+              strokeOpacity={p.glowAlpha.toFixed(3)}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
           ))}
         </g>
 
-        {/* Crisp outline strokes — slightly thicker (2.4) for more pop */}
+        {/* Crisp outline strokes — breathing animation handles stroke-width. */}
         {petals.map((p, i) => (
           <path
             key={`petal-${i}`}
@@ -370,8 +551,8 @@ export default function OverallRadarChart({ data, previousData, compact = false 
             d={p.d}
             fill="none"
             stroke={p.stroke}
-            strokeWidth={2.4}
             strokeLinejoin="round"
+            strokeLinecap="round"
           />
         ))}
 
@@ -427,7 +608,7 @@ export default function OverallRadarChart({ data, previousData, compact = false 
   );
 }
 
-const COMPACT_LABELS: Record<string, string> = {
+export const COMPACT_LABELS: Record<string, string> = {
   'Body Composition': 'Body',
   'Functional Strength': 'Strength',
   'Metabolic Fitness': 'Cardio',
