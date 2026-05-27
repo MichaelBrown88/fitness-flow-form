@@ -175,7 +175,11 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
                   </>
                 )}
               </Button>
-              
+              <p className="text-center text-[11px] leading-relaxed text-muted-foreground">
+                iPhone HEIC photos are converted automatically. If upload fails, export as JPEG from
+                Photos (Share → Save Image) and try again.
+              </p>
+
               <Button
                 onClick={handleDirectScan}
                 disabled={!session?.id || !profile?.organizationId}
@@ -303,6 +307,7 @@ export const PostureCompanionModal: React.FC<PostureCompanionModalProps> = ({
           </DialogHeader>
           {deviceCaptureOpen && session?.id && profile?.organizationId ? (
             <PostureGuidedCapturePanel
+              mode="coachSession"
               sessionId={session.id}
               organizationId={profile.organizationId}
               profile={profile}

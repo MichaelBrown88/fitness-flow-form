@@ -244,6 +244,14 @@ service cloud.firestore {
           allow read: if canReadClientDoc(orgId, clientSlug);
           allow write: if canWriteOrgData(orgId);
         }
+
+        // Consultation transcripts — coach-only text Q&A (not on client report).
+        match /consultations/{consultationId} {
+          allow read: if canReadClientDoc(orgId, clientSlug);
+          allow create: if canWriteOrgData(orgId);
+          allow update: if canWriteOrgData(orgId);
+          allow delete: if isOrgAdmin(orgId) || (isPlatformAdmin() && hasDataAccess(orgId));
+        }
       }
 
       // GDPR erasure requests

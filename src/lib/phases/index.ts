@@ -21,7 +21,6 @@ export { phaseP2 } from './phaseP2';
 export { phaseP3 } from './phaseP3';
 export { phaseP4 } from './phaseP4';
 export { phaseP5 } from './phaseP5';
-export { phaseP6 } from './phaseP6';
 export { phaseP7 } from './phaseP7';
 
 // Combined phase definitions array
@@ -31,7 +30,6 @@ import { phaseP2 } from './phaseP2';
 import { phaseP3 } from './phaseP3';
 import { phaseP4 } from './phaseP4';
 import { phaseP5 } from './phaseP5';
-import { phaseP6 } from './phaseP6';
 import { phaseP7 } from './phaseP7';
 import type { PhaseDefinition } from './types';
 
@@ -42,6 +40,5 @@ export const phaseDefinitions: PhaseDefinition[] = [
   phaseP3,
   phaseP4,
   phaseP5,
-  phaseP6,
   phaseP7,
 ];

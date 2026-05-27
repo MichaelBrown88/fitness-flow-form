@@ -6,6 +6,7 @@ import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { HttpsError, onCall, onRequest } from 'firebase-functions/v2/https';
 import { requestShareLinks, sendReportEmail } from './share';
+import { sendRemoteIntakeLinkEmail } from './sendRemoteIntakeEmail';
 import {
   handleCreateCheckoutSession,
   handleCreateLandingGuestCheckoutSession,
@@ -19,6 +20,9 @@ import {
 } from './stripe';
 import { handleSubmitPublicErasureRequest } from './publicErasureRequest';
 import { handleExecuteClientErasure } from './executeClientErasure';
+import { handleBackfillSnapshotPosture } from './backfillSnapshotPosture';
+import { handleFetchSnapshotImageBytes } from './fetchSnapshotImageBytes';
+import { handleConvertClientUploadHeic } from './convertClientUploadHeic';
 import { handleGeneratePublicReportSocialShareArtifacts } from './generatePublicReportSocialShareArtifacts';
 import { handleAssessmentCompletedTrigger } from './webhooks';
 import { handleSendCoachInvite } from './invites';
@@ -109,6 +113,15 @@ export const emailReport = onCall({
   return sendReportEmail(request);
 });
 
+export const emailRemoteIntakeLink = onCall({
+  enforceAppCheck: false,
+}, async (request) => {
+  const db = admin.firestore();
+  const key = buildRateLimitKey('emailIntake', request.auth?.uid, request.rawRequest?.ip);
+  await assertRateLimit(db, key, { maxRequests: 5, windowSeconds: 60 });
+  return sendRemoteIntakeLinkEmail(request);
+});
+
 // Stripe payment functions
 export const createCheckoutSession = onCall({
   enforceAppCheck: false,
@@ -165,6 +178,24 @@ export const submitPublicErasureRequest = onCall(
 export const executeClientErasure = onCall(
   { enforceAppCheck: false },
   handleExecuteClientErasure,
+);
+
+/** Backfill posture findings on a historical session doc (bypasses session immutability rule). */
+export const backfillSnapshotPosture = onCall(
+  { enforceAppCheck: false },
+  handleBackfillSnapshotPosture,
+);
+
+/** Server-side proxy for reading Storage image bytes when client CORS is unavailable. */
+export const fetchSnapshotImageBytes = onCall(
+  { enforceAppCheck: false },
+  handleFetchSnapshotImageBytes,
+);
+
+/** HEIC/HEIF → JPEG when browser WASM decoders fail (posture / client photo upload). */
+export const convertClientUploadHeic = onCall(
+  { enforceAppCheck: false, memory: '512MiB', timeoutSeconds: 60 },
+  handleConvertClientUploadHeic,
 );
 
 /** In-app Stripe subscription capacity change (authenticated org billing). */

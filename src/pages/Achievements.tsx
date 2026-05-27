@@ -7,9 +7,11 @@ import AppShell from '@/components/layout/AppShell';
 import { useAchievements } from '@/hooks/useAchievements';
 import { useTokenAchievements } from '@/hooks/useTokenAchievements';
 import { ACHIEVEMENT_DEFINITIONS } from '@/constants/achievements';
+import { filterPublicAchievementList } from '@/lib/achievements/publicAchievementsView';
 import { StreakDisplay } from '@/components/achievements/StreakDisplay';
 import { TrophyGrid } from '@/components/achievements/TrophyGrid';
 import { MilestoneProgress } from '@/components/achievements/MilestoneProgress';
+import { ClientPortalShell } from '@/components/client/ClientPortalShell';
 
 type AchievementHookReturn = ReturnType<typeof useAchievements>;
 
@@ -59,7 +61,15 @@ export default function AchievementsPage() {
   const uidAchievements = useAchievements();
   const achievements: AchievementHookReturn = token ? tokenAchievements : uidAchievements;
 
-  const { streaks, trophies, milestones } = fillDefaults(achievements);
+  const filled = fillDefaults(achievements);
+  const publicFiltered = token
+    ? {
+        streaks: filterPublicAchievementList(filled.streaks),
+        trophies: filterPublicAchievementList(filled.trophies),
+        milestones: filterPublicAchievementList(filled.milestones),
+      }
+    : filled;
+  const { streaks, trophies, milestones } = publicFiltered;
   const clientName = token ? 'Client' : undefined;
   const handleBack = () => {
     if (token) {
@@ -85,9 +95,11 @@ export default function AchievementsPage() {
           <Trophy className="w-5 h-5 text-yellow-950" />
         </div>
         <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-bold text-foreground">ARC™ milestones</h1>
+          <h1 className="text-lg sm:text-xl font-bold text-foreground">Milestones</h1>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            {achievements.unlockedCount} of {ACHIEVEMENT_DEFINITIONS.length} unlocked on your journey
+            {token
+              ? `${achievements.unlockedCount} unlocked${milestones.some((m) => !m.unlockedAt) ? ' · more on the way' : ''}`
+              : `${achievements.unlockedCount} of ${ACHIEVEMENT_DEFINITIONS.length} unlocked on your journey`}
           </p>
         </div>
       </div>
@@ -100,7 +112,7 @@ export default function AchievementsPage() {
 
   if (achievements.isLoading) {
     return token ? (
-      <AppShell title="ARC™ milestones" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
+      <AppShell title="Milestones" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 text-primary motion-safe:animate-spin" />
         </div>
@@ -114,8 +126,10 @@ export default function AchievementsPage() {
 
   if (token) {
     return (
-      <AppShell title="ARC™ milestones" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
-        {content}
+      <AppShell title="Milestones" mode="public" showClientNav shareToken={token} clientName={clientName ?? 'Client'}>
+        <ClientPortalShell token={token} activeTab="wins">
+          {content}
+        </ClientPortalShell>
       </AppShell>
     );
   }

@@ -55,9 +55,9 @@ export const phaseP0: PhaseDefinition = {
           conditional: {
             showWhen: {
               field: 'recentActivity',
-              notValue: 'stopped-6-months'
-            }
-          }
+              value: 'currently-training',
+            },
+          },
         },
         {
           id: 'primaryTrainingStyleOther' as keyof FormData,

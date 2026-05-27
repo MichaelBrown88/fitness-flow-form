@@ -12,15 +12,20 @@ import { resolveClientDisplayNameFromOrgClientDoc } from '@/services/clientProfi
 import { getDraft } from '@/hooks/useAssessmentDraft';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
+  hasPartialAssessmentInSession,
   isAssessmentSetupConfirmedInSession,
+  isConsultationCompleteInSession,
   parseEditAssessmentPayload,
   readPartialAssessmentRecord,
+  readStudioSessionStep,
   removeAssessmentSetupConfirmed,
   removeEditAssessment,
   removePartialAssessment,
   removePrefillClient,
 } from '@/lib/assessment/assessmentSessionStorage';
 import { shouldSkipSessionPlanWizard } from '@/lib/assessment/assessmentGateUtils';
+import { hasActiveBaselineSession } from '@/lib/assessment/baselineSession';
+import { AssessmentStudioSteps } from './AssessmentStudioSteps';
 import { PhaseFormContent } from './PhaseFormContent';
 import { AssessmentClientStep } from './AssessmentClientStep';
 import { AssessmentPlanWizard } from './AssessmentPlanWizard';
@@ -57,7 +62,15 @@ export function AssessmentGate({
   const [skippedClientStep, setSkippedClientStep] = useState(false);
   const [forceClientStep, setForceClientStep] = useState(false);
   const [setupConfirmed, setSetupConfirmed] = useState(() => isAssessmentSetupConfirmedInSession());
-  const [sessionPlanComplete, setSessionPlanComplete] = useState(() => shouldSkipSessionPlanWizard());
+  const [sessionPlanComplete, setSessionPlanComplete] = useState(() =>
+    shouldSkipSessionPlanWizard(formData.assessmentPlan),
+  );
+  const [studioStepsComplete, setStudioStepsComplete] = useState(() => {
+    if (!hasActiveBaselineSession()) return true;
+    if (hasPartialAssessmentInSession()) return true;
+    const step = readStudioSessionStep();
+    return step === 'phase' || isConsultationCompleteInSession();
+  });
   const hasClientFromUrl = useMemo(() => searchParams.get('client') ?? null, [searchParams]);
 
   useEffect(() => {
@@ -121,7 +134,7 @@ export function AssessmentGate({
   const needsSessionPlan =
     showForm &&
     !sessionPlanComplete &&
-    !shouldSkipSessionPlanWizard() &&
+    !shouldSkipSessionPlanWizard(formData.assessmentPlan) &&
     formData.assessmentPlan == null;
 
   const handlePlanWizardDone = useCallback(() => {
@@ -129,10 +142,10 @@ export function AssessmentGate({
   }, []);
 
   useEffect(() => {
-    if (shouldSkipSessionPlanWizard()) {
+    if (shouldSkipSessionPlanWizard(formData.assessmentPlan)) {
       setSessionPlanComplete(true);
     }
-  }, []);
+  }, [formData.assessmentPlan]);
 
   const isResolvingUrlClient = Boolean(hasClientFromUrl && !formData.fullName?.trim());
 
@@ -163,6 +176,20 @@ export function AssessmentGate({
 
   if (showForm && needsSessionPlan) {
     return <AssessmentPlanWizard onComplete={handlePlanWizardDone} />;
+  }
+
+  const needsStudioSteps =
+    showForm &&
+    !studioStepsComplete &&
+    hasActiveBaselineSession() &&
+    !hasPartialAssessmentInSession();
+
+  if (needsStudioSteps) {
+    return (
+      <AssessmentStudioSteps
+        onComplete={() => setStudioStepsComplete(true)}
+      />
+    );
   }
 
   if (showForm) {

@@ -27,15 +27,11 @@
 
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import type { RadarData } from '@/lib/reports/radarData';
+import { pillarColor, pillarHueAt } from '@/lib/reports/pillarChartColors';
 
-export interface RadarData {
-  name: string;
-  value: number;
-  fullLabel: string;
-  /** Legacy field — kept for prop-compat; pillar colour is now derived
-   *  by name lookup against the AXIS palette. */
-  color: string;
-}
+export type { RadarData } from '@/lib/reports/radarData';
+export { pillarColor, pillarHueAt } from '@/lib/reports/pillarChartColors';
 
 interface OverallRadarChartProps {
   data: RadarData[];
@@ -45,53 +41,7 @@ interface OverallRadarChartProps {
   compact?: boolean;
 }
 
-// ─── Per-pillar palette (fixed brightness; identity only) ───────────
-
-interface PillarHue { h: number; alias: string }
-
-const PILLAR_HUES: Record<string, PillarHue> = {
-  // Canonical full labels
-  'Body Composition': { h: 188, alias: 'Cyan' },
-  'Functional Strength': { h: 350, alias: 'Rose' },
-  'Metabolic Fitness': { h: 28, alias: 'Amber' },
-  'Movement Quality': { h: 262, alias: 'Indigo' },
-  'Lifestyle Factors': { h: 152, alias: 'Emerald' },
-  // Short labels (mobile / compact)
-  Body: { h: 188, alias: 'Cyan' },
-  Strength: { h: 350, alias: 'Rose' },
-  Cardio: { h: 28, alias: 'Amber' },
-  Movement: { h: 262, alias: 'Indigo' },
-  Lifestyle: { h: 152, alias: 'Emerald' },
-  // Category id keys (kit data shape)
-  bodyComp: { h: 188, alias: 'Cyan' },
-  strength: { h: 350, alias: 'Rose' },
-  cardio: { h: 28, alias: 'Amber' },
-  movementQuality: { h: 262, alias: 'Indigo' },
-  lifestyle: { h: 152, alias: 'Emerald' },
-};
-
-// Order-based fallback hues so pillars in non-standard orders still get
-// a consistent identity (5 hues spaced around the wheel).
-const FALLBACK_HUES = [188, 350, 28, 262, 152];
-
-const FIXED_LIGHTNESS = 45;
-const FIXED_SATURATION = 72;
-
-export function pillarHueAt(name: string, fullLabel: string, index: number): number {
-  return (
-    PILLAR_HUES[fullLabel]?.h ??
-    PILLAR_HUES[name]?.h ??
-    FALLBACK_HUES[index % FALLBACK_HUES.length]
-  );
-}
-
-export function pillarColor(hue: number, alpha = 1): string {
-  return alpha === 1
-    ? `hsl(${hue} ${FIXED_SATURATION}% ${FIXED_LIGHTNESS}%)`
-    : `hsl(${hue} ${FIXED_SATURATION}% ${FIXED_LIGHTNESS}% / ${alpha})`;
-}
-
-// ─── Geometry ───────────────────────────────────────────────────────
+// ─── Geometry (legacy bloom — axis-explorations only) ───────────────
 
 function petalAngle(i: number, n: number): number {
   return -Math.PI / 2 + (i * 2 * Math.PI) / n;

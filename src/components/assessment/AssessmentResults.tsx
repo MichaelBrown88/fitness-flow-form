@@ -146,7 +146,12 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
                 if (isEditMode) {
                   onClearEditMode?.();
                 }
-                navigate(`/coach/assessments/${savingId}`);
+                const name = formData.fullName?.trim();
+                if (name) {
+                  navigate(`/dashboard/clients/${encodeURIComponent(name)}/report`);
+                } else {
+                  navigate(`/coach/assessments/${savingId}`);
+                }
               }}
               className="rounded-lg h-12 text-sm font-bold"
             >
@@ -158,7 +163,12 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
             <Button
               variant="outline"
               size="lg"
-              onClick={() => navigate(`/client/${encodeURIComponent(formData.fullName?.trim() ?? '')}`)}
+              onClick={() => {
+                const name = formData.fullName?.trim();
+                if (name) {
+                  navigate(`/dashboard/clients/${encodeURIComponent(name)}/report`);
+                }
+              }}
               className="rounded-lg h-12 text-sm font-bold"
             >
               <User className="mr-2 h-4 w-4" />
@@ -238,7 +248,6 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
           scores={scores}
           goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
           formData={formData}
-          plan={plan}
           standalone={false}
           organizationId={profile?.organizationId}
         />

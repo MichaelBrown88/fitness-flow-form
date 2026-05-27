@@ -5,7 +5,7 @@
  * Attention+ARC / Pillar snapshots / Quick actions / Activity timeline.
  *
  * Journey is the headline data viz: STARTING POINT → CURRENT → GOAL,
- * each rendered with a MiniBloom snapshot. The trend chart underneath
+ * each rendered with a compact pillar radar snapshot. The trend chart underneath
  * shows the longitudinal AXIS score over all assessments.
  */
 
@@ -29,13 +29,12 @@ import {
   Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { UI_CLIENT_DETAIL } from '@/constants/ui';
 import { computeScores, type ScoreSummary, type ScoreCategory } from '@/lib/scoring';
 import { determineArchetype } from '@/lib/clientArchetypes';
-import {
-  PillarPetalBadge,
-  type PillarKey,
-} from '@/components/reports/client/sub-components/PillarPetalBadge';
-import { MiniBloom } from '@/components/client/console/MiniBloom';
+import { MiniPillarRadar } from '@/components/reports/MiniPillarRadar';
+import { PillarScoreBadge } from '@/components/reports/PillarScoreBadge';
+import type { PillarKey } from '@/lib/reports/radarData';
 import type { Trackable } from '@/lib/roadmap/types';
 import type { Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
@@ -44,6 +43,11 @@ import { getCoachNotes } from '@/services/coachNotes';
 import type { CoachNotesDoc } from '@/lib/coachNotes/types';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
 import { cn } from '@/lib/utils';
+
+function buildClientPath(name: string, sub?: string): string {
+  const base = `/dashboard/clients/${encodeURIComponent(name)}`;
+  return sub ? `${base}/${sub}` : base;
+}
 
 // ─── Pillar canonical order (matches the radar chart) ────────────────
 
@@ -67,7 +71,7 @@ const BASELINE_PILLARS: { id: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 
 
 // ─── Helpers ─────────────────────────────────────────────────────────
 
-function scoresToBloomArray(scores: ScoreSummary | null | undefined): number[] {
+function scoresToRadarArray(scores: ScoreSummary | null | undefined): number[] {
   if (!scores) return [0, 0, 0, 0, 0];
   return PILLAR_ORDER.map(({ id }) => scores.categories?.find((c) => c.id === id)?.score ?? 0);
 }
@@ -160,7 +164,7 @@ export default function ClientOverview() {
   const startingScores = useMemo(() => {
     if (!startingSnapshot) return null;
     if (startingSnapshot.scoresSummary) {
-      // Convert scoresSummary into the shape MiniBloom expects.
+      // Convert scoresSummary into canonical five-pillar radar order.
       return PILLAR_ORDER.map((p) => {
         const cat = startingSnapshot.scoresSummary?.categories.find((c) => c.id === p.id);
         return cat?.score ?? 0;
@@ -168,14 +172,14 @@ export default function ClientOverview() {
     }
     try {
       const computed = computeScores(startingSnapshot.formData);
-      return scoresToBloomArray(computed);
+      return scoresToRadarArray(computed);
     } catch {
       return null;
     }
   }, [startingSnapshot]);
   const startingOverall = startingSnapshot?.overallScore ?? 0;
 
-  const currentBloom = useMemo(() => scoresToBloomArray(scores), [scores]);
+  const currentRadar = useMemo(() => scoresToRadarArray(scores), [scores]);
   const currentOverall = stats?.latestScore ?? scores?.overall ?? 0;
 
   // ARC trackables (flattened, with parent title preserved).
@@ -305,16 +309,48 @@ export default function ClientOverview() {
         archetype={archetype?.name}
         currentOverall={currentOverall}
         scoreChange={stats?.scoreChange ?? 0}
-        bloomScores={currentBloom}
+        radarScores={currentRadar}
         lastAssessedAt={lastAssessmentDate}
         roadmapStatus={roadmapStatus}
       />
+
+      {profile?.remoteIntakePending && !profile?.remoteIntakeAwaitingStudio ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">{UI_CLIENT_DETAIL.INTAKE_PENDING_PILL}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{UI_CLIENT_DETAIL.INTAKE_PENDING_DESC}</p>
+          </div>
+        </div>
+      ) : null}
+
+      {profile?.remoteIntakeAwaitingStudio ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+          <p className="text-sm font-medium text-foreground">{UI_CLIENT_DETAIL.INTAKE_READY_PILL}</p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => navigate(buildClientPath(clientName, 'consultation'))}
+            >
+              {UI_CLIENT_DETAIL.INTAKE_REVIEW_CTA}
+            </Button>
+            <Button
+              size="sm"
+              className="rounded-full"
+              onClick={() => void handleNewAssessment()}
+            >
+              Continue in studio
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       <JourneySection
         startingScores={startingScores}
         startingOverall={startingOverall}
         startingDate={timestampToDate(startingSnapshot?.timestamp ?? null)}
-        currentScores={currentBloom}
+        currentScores={currentRadar}
         currentOverall={currentOverall}
         currentDate={lastAssessmentDate}
         goal={goalScores}
@@ -350,7 +386,7 @@ export default function ClientOverview() {
       <CoachNotesCard
         stats={coachNotesStats}
         loaded={coachNotes != null}
-        onView={() => navigate(`/dashboard/clients/${encodeURIComponent(clientName)}/coach-notes`)}
+        onView={() => navigate(`/dashboard/clients/${encodeURIComponent(clientName)}/timeline#notes`)}
       />
 
       <PillarSnapshots
@@ -363,7 +399,7 @@ export default function ClientOverview() {
       <QuickActionsBar
         onNewAssessment={() => void handleNewAssessment()}
         onArc={() => navigate(`/dashboard/clients/${encodeURIComponent(clientName)}/roadmap`)}
-        onHistory={() => navigate(`/dashboard/clients/${encodeURIComponent(clientName)}/history`)}
+        onHistory={() => navigate(`/dashboard/clients/${encodeURIComponent(clientName)}/timeline`)}
       />
 
       <ActivityTimeline snapshots={sortedSnapshots.slice(-6).reverse()} />
@@ -379,7 +415,7 @@ interface HeroStripProps {
   archetype: string | null | undefined;
   currentOverall: number;
   scoreChange: number;
-  bloomScores: number[];
+  radarScores: number[];
   lastAssessedAt: Date | null;
   roadmapStatus: 'loading' | 'none' | 'draft' | 'sent';
 }
@@ -390,7 +426,7 @@ function HeroStrip({
   archetype,
   currentOverall,
   scoreChange,
-  bloomScores,
+  radarScores,
   lastAssessedAt,
   roadmapStatus,
 }: HeroStripProps) {
@@ -447,7 +483,7 @@ function HeroStrip({
           </div>
         </div>
 
-        {/* Right: AXIS score + bloom */}
+        {/* Right: AXIS score + pillar radar */}
         <div className="flex items-center gap-6">
           <div className="text-right">
             <p className="inline-flex items-center justify-end gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
@@ -474,7 +510,7 @@ function HeroStrip({
               </p>
             ) : null}
           </div>
-          <MiniBloom scores={bloomScores} size={120} />
+          <MiniPillarRadar scores={radarScores} size={120} />
         </div>
       </div>
     </section>
@@ -591,7 +627,7 @@ function JourneyCard({ eyebrow, score, when, scores, variant, available, fallbac
         )}
       </div>
       <div className="ml-auto">
-        <MiniBloom scores={scores} size={92} variant={variant} />
+        <MiniPillarRadar scores={scores} size={92} variant={variant} />
       </div>
     </div>
   );
@@ -600,7 +636,7 @@ function JourneyCard({ eyebrow, score, when, scores, variant, available, fallbac
 // ─── Goal card ───────────────────────────────────────────────────────
 //
 // Three states:
-//  - 'arc'    → ARC milestones drive numeric targets (per-pillar bloom + score)
+//  - 'arc'    → ARC milestones drive numeric targets (per-pillar radar + score)
 //  - 'stated' → client has stated qualitative goals (chips), ARC pending
 //  - 'none'   → no goals set yet (placeholder + "Set goal →")
 
@@ -1141,7 +1177,7 @@ function PillarSnapshots({
                 <span className={cn('text-3xl font-bold leading-none tracking-[-0.025em] tabular-nums', TONE_TEXT[tone(score)])}>
                   {score || '—'}
                 </span>
-                <PillarPetalBadge pillar={p.id} score={score} size={56} />
+                <PillarScoreBadge pillar={p.id} score={score} size={56} />
               </div>
             </button>
           );

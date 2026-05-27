@@ -137,6 +137,17 @@ export const ORGANIZATION = {
      */
     coachNotes: (orgId: string, clientSlug: string) =>
       `organizations/${orgId}/clients/${clientSlug}/coachNotes/notes` as const,
+
+    /**
+     * Coach consultation transcripts (text Q&A). Append-only per visit;
+     * client doc holds latestConsultationId for quick load.
+     */
+    consultations: {
+      collection: (orgId: string, clientSlug: string) =>
+        `organizations/${orgId}/clients/${clientSlug}/consultations` as const,
+      doc: (orgId: string, clientSlug: string, consultationId: string) =>
+        `organizations/${orgId}/clients/${clientSlug}/consultations/${consultationId}` as const,
+    },
   },
 
   /** Slug-to-UUID lookup for clients: organizations/{orgId}/clientLookup/{slug} */

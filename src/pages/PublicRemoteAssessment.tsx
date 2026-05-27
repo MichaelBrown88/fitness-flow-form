@@ -1,42 +1,41 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Loader2, CheckCircle, Shirt, Droplets, Clock, ClipboardList } from 'lucide-react';
-import AppShell from '@/components/layout/AppShell';
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { RemoteIntakeLayout } from '@/components/remote/RemoteIntakeLayout';
 import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
 import {
   fetchRemoteAssessmentSession,
   submitRemoteAssessmentFields,
 } from '@/services/remoteAssessmentClient';
 import { logger } from '@/lib/utils/logger';
-import type { RemotePostureView } from '@/lib/types/remoteAssessment';
-import { RemoteWizardShell } from '@/components/remote/RemoteWizardShell';
+import type { RemotePostureView, RemoteSessionFailReason } from '@/lib/types/remoteAssessment';
+import { RemoteMobileShell } from '@/components/remote/RemoteMobileShell';
+import { RemoteIntakeWelcome } from '@/components/remote/RemoteIntakeWelcome';
 import {
-  RemoteBasicInfoStep,
-  INITIAL_BASIC_INFO,
-  isBasicInfoValid,
-  type BasicInfoState,
-} from '@/components/remote/steps/RemoteBasicInfoStep';
+  RemoteMobileChoiceField,
+  RemoteMobileTextField,
+  RemoteMobileYesNoField,
+} from '@/components/remote/RemoteMobileField';
+import { RemoteMobileDateWheelPicker } from '@/components/remote/RemoteMobileDateWheelPicker';
+import { RemotePostureIntroIllustration } from '@/components/remote/RemotePostureIntroIllustration';
+import { RemotePostureGuidedCapture } from '@/components/remote/RemotePostureGuidedCapture';
+import { RemoteIntakeSuccess } from '@/components/remote/RemoteIntakeSuccess';
 import {
-  PublicRemoteLifestyleFields,
   INITIAL_LIFESTYLE_REMOTE,
   type LifestyleRemoteState,
 } from '@/components/remote/PublicRemoteLifestyleFields';
-import { RemoteParQStep } from '@/components/remote/steps/RemoteParQStep';
+import { initialBasicFromPrefill } from '@/lib/remote/remoteIntakePrefill';
+import type { RemoteBasicInfoPrefill } from '@/lib/remote/remoteIntakePrefill';
 import {
-  RemoteBodyCompStep,
-  type BodyCompStatus,
-} from '@/components/remote/steps/RemoteBodyCompStep';
-import { RemotePostureStep } from '@/components/remote/steps/RemotePostureStep';
-import { parqQuestions } from '@/components/ParQQuestionnaire';
+  buildRemoteIntakeScreens,
+  isScreenValid,
+  screenSubtitle,
+  screenTitle,
+  type RemoteIntakeScreen,
+} from '@/lib/remote/remoteIntakeFlow';
+import type { BasicInfoState } from '@/components/remote/steps/RemoteBasicInfoStep';
 
-const STEPS = [
-  { id: 'basicInfo', label: 'Basic Info' },
-  { id: 'lifestyle', label: 'Lifestyle' },
-  { id: 'parq', label: 'Health Screening' },
-  { id: 'bodyComp', label: 'Body Comp' },
-  { id: 'posture', label: 'Posture' },
-] as const;
+const REMOTE_INTAKE_COMPLETE_KEY = 'remote-intake-complete';
 
 function lifestyleToFields(lifestyle: LifestyleRemoteState, allowed: Set<string>): Record<string, string> {
   const out: Record<string, string> = {};
@@ -60,72 +59,139 @@ function lifestyleToFields(lifestyle: LifestyleRemoteState, allowed: Set<string>
   return out;
 }
 
+function isScreenValidWithMeds(
+  screen: RemoteIntakeScreen,
+  basic: BasicInfoState,
+  lifestyle: LifestyleRemoteState,
+  parq: Record<string, string>,
+  posturePaths: Partial<Record<RemotePostureView, string>>,
+): boolean {
+  if (
+    screen.kind === 'text' &&
+    screen.field === 'medicationsNotes' &&
+    lifestyle.medicationsFlag !== 'yes'
+  ) {
+    return true;
+  }
+  if (screen.kind === 'text' && screen.field === 'fullName') {
+    return basic.fullName.trim().length >= 2;
+  }
+  if (screen.kind === 'text' && screen.field === 'email') {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(basic.email.trim());
+  }
+  return isScreenValid(screen, basic, lifestyle, parq, posturePaths);
+}
+
 export default function PublicRemoteAssessment() {
   const { token } = useParams<{ token: string }>();
 
-  // Session
   const [checking, setChecking] = useState(true);
+  const [sessionFailReason, setSessionFailReason] = useState<RemoteSessionFailReason | null>(null);
   const [allowedKeys, setAllowedKeys] = useState<Set<string>>(new Set());
+  const [prefill, setPrefill] = useState<RemoteBasicInfoPrefill>({});
 
-  // Wizard navigation
-  const [currentStep, setCurrentStep] = useState(0);
+  const [screenIndex, setScreenIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [postureCaptureOpen, setPostureCaptureOpen] = useState(false);
 
-  // Step state
-  const [basicInfo, setBasicInfo] = useState<BasicInfoState>(INITIAL_BASIC_INFO);
+  const [basicInfo, setBasicInfo] = useState<BasicInfoState>(() => initialBasicFromPrefill({}));
   const [lifestyle, setLifestyle] = useState<LifestyleRemoteState>(INITIAL_LIFESTYLE_REMOTE);
   const [parqAnswers, setParqAnswers] = useState<Record<string, string>>({});
-  const [bodyCompStatus, setBodyCompStatus] = useState<BodyCompStatus>('pending');
-  const [bodyCompFields, setBodyCompFields] = useState<Record<string, string>>({});
-  const [postureSkipped, setPostureSkipped] = useState(false);
-  const [postureConsentGiven, setPostureConsentGiven] = useState(false);
   const [posturePaths, setPosturePaths] = useState<Partial<Record<RemotePostureView, string>>>({});
 
   useEffect(() => {
-    if (!token) { setChecking(false); return; }
+    if (!token) {
+      setChecking(false);
+      return;
+    }
     let cancelled = false;
     void (async () => {
       const res = await fetchRemoteAssessmentSession(token);
       if (cancelled) return;
       if (res.ok) {
+        setSessionFailReason(null);
         setAllowedKeys(new Set(res.allowedKeys));
+        const p = res.prefill ?? {};
+        setPrefill(p);
+        setBasicInfo(initialBasicFromPrefill(p));
+      } else {
+        setSessionFailReason(res.reason);
+        setAllowedKeys(new Set());
       }
       setChecking(false);
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [token]);
 
-  // Per-step validity
-  const isCurrentStepValid = useMemo(() => {
-    switch (currentStep) {
-      case 0: return isBasicInfoValid(basicInfo);
-      case 1: return !!lifestyle.activityLevel;
-      case 2: {
-        const visible = parqQuestions.filter(q => {
-          if (!q.conditional) return true;
-          return basicInfo.gender === q.conditional.showWhen.value;
-        });
-        return visible.every(q => (parqAnswers[q.id] ?? '') !== '');
+  const screens = useMemo(() => {
+    const built = buildRemoteIntakeScreens({
+      allowedKeys,
+      prefill,
+      gender: basicInfo.gender,
+    });
+    return built.filter((s) => {
+      if (s.kind === 'text' && s.field === 'medicationsNotes') {
+        return lifestyle.medicationsFlag === 'yes';
       }
-      case 3: return bodyCompStatus === 'skipped' || bodyCompStatus === 'confirmed';
-      case 4: return postureSkipped || Object.keys(posturePaths).length > 0;
-      default: return false;
-    }
-  }, [currentStep, basicInfo, lifestyle, parqAnswers, bodyCompStatus, postureSkipped, posturePaths]);
+      return true;
+    });
+  }, [allowedKeys, prefill, basicInfo.gender, lifestyle.medicationsFlag]);
 
-  const handleNext = () => {
-    if (currentStep < STEPS.length - 1) {
-      setCurrentStep((s) => s + 1);
-    } else {
-      void handleSubmitAll();
-    }
-  };
+  const currentScreen = screens[screenIndex];
+  const progress = screens.length > 0 ? (screenIndex + 1) / screens.length : 0;
 
-  const handleBack = () => {
-    setCurrentStep((s) => Math.max(0, s - 1));
-  };
+  const currentValid = useMemo(() => {
+    if (!currentScreen) return false;
+    return isScreenValidWithMeds(currentScreen, basicInfo, lifestyle, parqAnswers, posturePaths);
+  }, [currentScreen, basicInfo, lifestyle, parqAnswers, posturePaths]);
+
+  const postureCapturedCount = Object.keys(posturePaths).length;
+
+  const primaryDisabled = useMemo(() => {
+    if (!currentScreen) return true;
+    if (currentScreen.kind === 'posture' && postureCapturedCount === 0) {
+      return false;
+    }
+    return !currentValid;
+  }, [currentScreen, currentValid, postureCapturedCount]);
+
+  const intakeLayout =
+    currentScreen &&
+    currentScreen.kind !== 'welcome' &&
+    currentScreen.kind !== 'group'
+      ? 'centered'
+      : 'default';
+
+  const intakeTitle = useMemo(() => {
+    if (!currentScreen) return undefined;
+    if (currentScreen.kind === 'dateOfBirth') {
+      return ASSESSMENT_COPY.REMOTE_INTAKE_DOB_TITLE;
+    }
+    if (currentScreen.kind === 'posture') {
+      return ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_TITLE;
+    }
+    return screenTitle(currentScreen);
+  }, [currentScreen]);
+
+  const intakeSubtitle = useMemo(() => {
+    if (!currentScreen) return undefined;
+    if (currentScreen.kind === 'dateOfBirth') {
+      return currentScreen.readOnly
+        ? 'We already have this from your coach — tap Next to confirm.'
+        : ASSESSMENT_COPY.REMOTE_INTAKE_DOB_HINT;
+    }
+    if (currentScreen.kind === 'posture') {
+      if (postureCapturedCount > 0) {
+        return ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_DONE(postureCapturedCount);
+      }
+      return ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_PREP;
+    }
+    return screenSubtitle(currentScreen);
+  }, [currentScreen, postureCapturedCount]);
 
   const handleSubmitAll = async () => {
     if (!token) return;
@@ -137,19 +203,14 @@ export default function PublicRemoteAssessment() {
         ...lifestyleToFields(lifestyle, allowedKeys),
         ...parqAnswers,
       };
-      if (bodyCompStatus === 'confirmed') {
-        Object.assign(fields, bodyCompFields);
+      for (const [view, path] of Object.entries(posturePaths)) {
+        if (path) fields[`postureRemotePath_${view}`] = path;
       }
-      if (!postureSkipped) {
-        for (const [view, path] of Object.entries(posturePaths)) {
-          if (path) fields[`postureRemotePath_${view}`] = path;
-        }
-      }
-      // Remove empty strings
       for (const k of Object.keys(fields)) {
         if (!fields[k]) delete fields[k];
       }
       await submitRemoteAssessmentFields(token, fields);
+      sessionStorage.setItem(REMOTE_INTAKE_COMPLETE_KEY, '1');
       setSubmitted(true);
     } catch (err) {
       logger.error('[PublicRemoteAssessment] Submit failed:', err);
@@ -159,175 +220,249 @@ export default function PublicRemoteAssessment() {
     }
   };
 
-  // Loading / invalid / submitted states
+  const goNext = () => {
+    if (!currentScreen) return;
+    if (currentScreen.kind === 'posture' && Object.keys(posturePaths).length === 0) {
+      setPostureCaptureOpen(true);
+      return;
+    }
+    if (screenIndex >= screens.length - 1) {
+      void handleSubmitAll();
+      return;
+    }
+    setScreenIndex((i) => i + 1);
+  };
+
+  const goBack = () => {
+    setScreenIndex((i) => Math.max(0, i - 1));
+  };
+
   if (!token) {
     return (
-      <AppShell title="Remote check-in" mode="public">
-        <div className="max-w-md mx-auto px-4 py-8 text-center text-muted-foreground text-sm">
-          {ASSESSMENT_COPY.REMOTE_INVALID}
-        </div>
-      </AppShell>
+      <RemoteIntakeLayout>
+        <p className="text-center text-sm text-muted-foreground">{ASSESSMENT_COPY.REMOTE_INVALID}</p>
+      </RemoteIntakeLayout>
     );
   }
 
   if (checking) {
-    return (
-      <AppShell title="Remote check-in" mode="public">
-        <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
-          <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
-          <p className="text-sm">Checking your link...</p>
-        </div>
-      </AppShell>
-    );
+    return <RemoteIntakeLayout loading />;
   }
 
   if (allowedKeys.size === 0) {
+    const failCopy =
+      sessionFailReason === 'expired'
+        ? ASSESSMENT_COPY.REMOTE_EXPIRED
+        : sessionFailReason === 'disabled'
+          ? ASSESSMENT_COPY.REMOTE_UNAVAILABLE
+          : sessionFailReason === 'network'
+            ? ASSESSMENT_COPY.REMOTE_NETWORK
+            : ASSESSMENT_COPY.REMOTE_INVALID;
     return (
-      <AppShell title="Remote check-in" mode="public">
-        <div className="max-w-md mx-auto px-4 py-8 text-center text-muted-foreground text-sm">
-          {ASSESSMENT_COPY.REMOTE_INVALID}
+      <RemoteIntakeLayout>
+        <div className="mx-auto max-w-sm space-y-3 text-center">
+          <h2 className="text-lg font-semibold text-foreground">Link not working</h2>
+          <p className="text-sm leading-relaxed text-muted-foreground">{failCopy}</p>
         </div>
-      </AppShell>
+      </RemoteIntakeLayout>
     );
   }
 
   if (submitted) {
     return (
-      <AppShell title="Remote check-in" mode="public">
-        <div className="max-w-md mx-auto px-4 py-10 space-y-8">
-          {/* Success header */}
-          <div className="text-center space-y-3">
-            <div className="flex justify-center">
-              <div className="rounded-full bg-emerald-100 dark:bg-emerald-950 p-4">
-                <CheckCircle className="h-10 w-10 text-emerald-600 dark:text-emerald-400" />
-              </div>
-            </div>
-            <h2 className="text-xl font-bold text-foreground">You're all set!</h2>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Your coach has received your answers and will review them before your session.
-            </p>
-          </div>
-
-          {/* What happens next */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">What happens next</h3>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-primary">1</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Your coach reviews your answers and prepares your personalised assessment plan.
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-primary">2</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Your coach will confirm your appointment time and any outstanding questions.
-                </p>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-xs font-bold text-primary">3</span>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  In studio, your coach will complete the physical assessments — body measurements, posture, and fitness tests.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Studio prep tips */}
-          <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">How to prepare for your session</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Shirt className="h-4 w-4 text-muted-foreground shrink-0" />
-                <p className="text-sm text-muted-foreground">Wear comfortable, form-fitting workout clothes.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <ClipboardList className="h-4 w-4 text-muted-foreground shrink-0" />
-                <p className="text-sm text-muted-foreground">Avoid large meals for 2 hours before your session.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Droplets className="h-4 w-4 text-muted-foreground shrink-0" />
-                <p className="text-sm text-muted-foreground">Stay well-hydrated on the day — drink water throughout the morning.</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                <p className="text-sm text-muted-foreground">Arrive 5 minutes early so we can get started on time.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </AppShell>
+      <RemoteIntakeLayout>
+        <RemoteIntakeSuccess />
+      </RemoteIntakeLayout>
     );
   }
 
-  const renderStep = () => {
-    switch (currentStep) {
-      case 0:
-        return <RemoteBasicInfoStep value={basicInfo} onChange={setBasicInfo} />;
-      case 1:
+  if (postureCaptureOpen && token) {
+    return (
+      <RemotePostureGuidedCapture
+        token={token}
+        onComplete={(paths) => {
+          setPosturePaths(paths);
+          setPostureCaptureOpen(false);
+          if (screenIndex < screens.length - 1) {
+            setScreenIndex((i) => i + 1);
+          } else {
+            void handleSubmitAll();
+          }
+        }}
+        onClose={() => setPostureCaptureOpen(false)}
+      />
+    );
+  }
+
+  const renderScreenBody = () => {
+    if (!currentScreen) return null;
+    switch (currentScreen.kind) {
+      case 'dateOfBirth':
         return (
-          <PublicRemoteLifestyleFields
-            value={lifestyle}
-            onChange={setLifestyle}
-            allowedKeys={allowedKeys}
+          <RemoteMobileDateWheelPicker
+            value={basicInfo.dateOfBirth}
+            onChange={(iso) => setBasicInfo((prev) => ({ ...prev, dateOfBirth: iso }))}
+            readOnly={currentScreen.readOnly}
           />
         );
-      case 2:
+      case 'text':
+        if (currentScreen.domain === 'basic') {
+          const field = currentScreen.field as keyof BasicInfoState;
+          return (
+            <RemoteMobileTextField
+              label={currentScreen.label}
+              showLabel={false}
+              value={basicInfo[field]}
+              onChange={(v) => setBasicInfo((prev) => ({ ...prev, [field]: v }))}
+              type={currentScreen.inputType}
+              placeholder={currentScreen.placeholder}
+              autoComplete={currentScreen.autoComplete}
+              inputMode={currentScreen.inputMode}
+              readOnly={currentScreen.readOnly}
+            />
+          );
+        }
+        {
+          const field = currentScreen.field as keyof LifestyleRemoteState;
+          return (
+            <RemoteMobileTextField
+              label={currentScreen.label}
+              showLabel={false}
+              value={lifestyle[field]}
+              onChange={(v) => setLifestyle((prev) => ({ ...prev, [field]: v }))}
+              type={currentScreen.inputType}
+              placeholder={currentScreen.placeholder}
+              inputMode={currentScreen.inputMode}
+            />
+          );
+        }
+      case 'select':
+        if (currentScreen.domain === 'basic') {
+          const field = currentScreen.field as keyof BasicInfoState;
+          return (
+            <RemoteMobileChoiceField
+              value={basicInfo[field]}
+              onChange={(v) => setBasicInfo((prev) => ({ ...prev, [field]: v }))}
+              options={currentScreen.options}
+            />
+          );
+        }
+        {
+          const field = currentScreen.field as keyof LifestyleRemoteState;
+          return (
+            <RemoteMobileChoiceField
+              value={lifestyle[field]}
+              onChange={(v) => setLifestyle((prev) => ({ ...prev, [field]: v }))}
+              options={currentScreen.options}
+            />
+          );
+        }
+      case 'group':
         return (
-          <RemoteParQStep
-            value={parqAnswers}
-            onChange={(patch) => setParqAnswers((prev) => ({ ...prev, ...patch }))}
-            gender={basicInfo.gender}
+          <div className="space-y-4">
+            {currentScreen.fields.map((f) => (
+              <RemoteMobileTextField
+                key={f.field}
+                label={f.label}
+                value={lifestyle[f.field]}
+                onChange={(v) => setLifestyle((prev) => ({ ...prev, [f.field]: v }))}
+                placeholder={f.placeholder}
+                inputMode="numeric"
+              />
+            ))}
+          </div>
+        );
+      case 'parq':
+        return (
+          <RemoteMobileYesNoField
+            label={currentScreen.label}
+            value={parqAnswers[currentScreen.questionId] ?? ''}
+            onChange={(v) =>
+              setParqAnswers((prev) => ({ ...prev, [currentScreen.questionId]: v }))
+            }
           />
         );
-      case 3:
+      case 'posture':
         return (
-          <RemoteBodyCompStep
-            token={token}
-            status={bodyCompStatus}
-            fields={bodyCompFields}
-            onStatusChange={setBodyCompStatus}
-            onFieldsChange={setBodyCompFields}
-          />
-        );
-      case 4:
-        return (
-          <RemotePostureStep
-            token={token}
-            skipped={postureSkipped}
-            consentGiven={postureConsentGiven}
-            posturePaths={posturePaths}
-            onSkip={() => setPostureSkipped((v) => !v)}
-            onConsentGiven={() => setPostureConsentGiven(true)}
-            onPosturePathsChange={setPosturePaths}
-          />
+          <div className="flex w-full flex-col items-center gap-6">
+            {postureCapturedCount === 0 ? (
+              <>
+                <RemotePostureIntroIllustration />
+                <p className="max-w-sm text-center text-base leading-relaxed text-foreground/90">
+                  {ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_BODY}
+                </p>
+                <p className="max-w-sm text-center text-sm leading-relaxed text-muted-foreground">
+                  {ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_TIP}
+                </p>
+              </>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 w-full max-w-sm rounded-2xl text-base"
+                onClick={() => setPostureCaptureOpen(true)}
+              >
+                {ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_RETAKE}
+              </Button>
+            )}
+          </div>
         );
       default:
         return null;
     }
   };
 
+  const primaryLabel =
+    currentScreen?.kind === 'posture' && postureCapturedCount === 0
+      ? ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_START
+      : screenIndex >= screens.length - 1
+        ? 'Submit'
+        : 'Next';
+
+  const intakeBrandHeader = (
+    <header className="shrink-0 border-b border-border/60 px-4 py-3">
+      <div className="mx-auto flex max-w-md items-center gap-2">
+        <div
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
+          aria-hidden
+        >
+          OA
+        </div>
+        <span className="text-sm font-semibold tracking-tight">One Assess</span>
+      </div>
+    </header>
+  );
+
+  if (currentScreen?.kind === 'welcome') {
+    return (
+      <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
+        {intakeBrandHeader}
+        <RemoteIntakeWelcome onStart={goNext} loading={submitting} />
+      </div>
+    );
+  }
+
   return (
-    <AppShell title="Assessment" mode="public" lockViewportHeight>
-      <RemoteWizardShell
-        steps={[...STEPS]}
-        currentStep={currentStep}
-        isValid={isCurrentStepValid}
-        isSubmitting={submitting}
-        onBack={handleBack}
-        onNext={handleNext}
-      >
-        {error && (
-          <p className="mb-4 text-sm text-destructive">{error}</p>
-        )}
-        {renderStep()}
-      </RemoteWizardShell>
-    </AppShell>
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
+      {intakeBrandHeader}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <RemoteMobileShell
+          progress={progress}
+          title={intakeTitle}
+          subtitle={intakeSubtitle}
+          layout={intakeLayout}
+          primaryLabel={primaryLabel}
+          primaryDisabled={primaryDisabled}
+          primaryLoading={submitting}
+          onPrimary={goNext}
+          showBack={screenIndex > 0}
+          onBack={goBack}
+          className="flex-1"
+        >
+          {error ? <p className="mb-4 text-sm text-destructive">{error}</p> : null}
+          {renderScreenBody()}
+        </RemoteMobileShell>
+      </div>
+    </div>
   );
 }

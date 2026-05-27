@@ -23,9 +23,9 @@ import { buildJourneySummaryContent } from '@/lib/roadmap/journeySummary';
 import { groupPhaseItemsByPillar, CATEGORY_ORDER } from '@/lib/roadmap/sortPhaseItems';
 import { getPillarLabel } from '@/constants/pillars';
 import {
-  PillarPetalBadge,
-  type PillarKey,
-} from '@/components/reports/client/sub-components/PillarPetalBadge';
+  PillarScoreBadge,
+} from '@/components/reports/PillarScoreBadge';
+import type { PillarKey } from '@/lib/reports/radarData';
 import { TrackableBar } from './TrackableBar';
 import { cn } from '@/lib/utils';
 
@@ -454,7 +454,7 @@ function PillarGroup({ category, items }: { category: RoadmapCategory; items: Ro
     <div>
       <div className="mb-2.5 flex items-center gap-2">
         {pillarKey ? (
-          <PillarPetalBadge pillar={pillarKey} score={100} size={28} />
+          <PillarScoreBadge pillar={pillarKey} score={100} size={28} />
         ) : (
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-card-elevated">
             <Icon className="h-3.5 w-3.5 text-foreground-secondary" />

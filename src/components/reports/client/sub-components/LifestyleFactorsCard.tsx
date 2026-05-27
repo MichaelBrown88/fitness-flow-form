@@ -188,6 +188,13 @@ function FactorRow({ factor }: { factor: Factor }) {
   );
 }
 
+function clientStatusLabel(tone: Tone): string {
+  if (tone === 'good') return 'On track';
+  if (tone === 'concern') return 'Room to improve';
+  if (tone === 'critical') return 'Worth focusing on';
+  return '—';
+}
+
 function ToneChip({ tone }: { tone: Tone }) {
   const cls =
     tone === 'good'
@@ -197,10 +204,9 @@ function ToneChip({ tone }: { tone: Tone }) {
         : tone === 'critical'
           ? 'bg-score-red-light text-score-red-fg'
           : 'bg-muted text-muted-foreground';
-  const label = tone === 'unknown' ? '—' : tone;
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold capitalize ${cls}`}>
-      {label}
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${cls}`}>
+      {clientStatusLabel(tone)}
     </span>
   );
 }

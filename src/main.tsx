@@ -39,6 +39,7 @@ import('@/lib/setup/admin/platformDataReconciler');
 if (import.meta.env.DEV) {
   import('@/services/achievements'); // registers populateClientData on window
   import('@/services/diagnoseClient'); // registers diagnoseClient, fixClientAnimations on window
+  import('@/services/backfillSnapshotPosture'); // registers backfillSnapshotPosture on window
 }
 
 // Global error handlers — catch uncaught errors and rejected promises.

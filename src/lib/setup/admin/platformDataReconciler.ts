@@ -1,5 +1,5 @@
 import { httpsCallable } from 'firebase/functions';
-import { collection, collectionGroup, deleteDoc, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where, limit, Timestamp } from 'firebase/firestore';
+import { collection, collectionGroup, deleteDoc, deleteField, doc, getDoc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, where, limit, Timestamp } from 'firebase/firestore';
 import {
   getAIUsageLogsCollection,
   getOrganizationDoc,
@@ -1653,6 +1653,849 @@ export async function diagnoseCurrentState(): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Data integrity audit — read-only, structured findings + console summary
+// ---------------------------------------------------------------------------
+
+export type DataIntegrityIssue =
+  | 'summary-missing-clientNameLower'
+  | 'summary-clientNameLower-mismatch'
+  | 'summary-missing-createdAt'
+  | 'summary-missing-coachUid'
+  | 'summary-missing-organizationId'
+  | 'summary-orgId-mismatch'
+  | 'summary-slug-format-invalid'
+  | 'summary-doc-id-is-uuid'
+  | 'current-state-missing'
+  | 'current-state-formData-empty'
+  | 'current-state-score-mismatch'
+  | 'sessions-none'
+  | 'sessions-zero-score-with-data'
+  | 'sessions-missing-timestamp'
+  | 'sessions-posture-images-orphaned'
+  | 'profile-fullName-vs-summary-mismatch';
+
+export interface ClientIntegrityReport {
+  orgId: string;
+  orgName: string;
+  slug: string;
+  clientName: string;
+  issues: DataIntegrityIssue[];
+  meta: {
+    sessionCount: number;
+    hasCurrentState: boolean;
+    lastSessionAt: string | null;
+    sessionsWithZeroScore: number;
+  };
+}
+
+export interface DataIntegrityReport {
+  auditedAt: string;
+  totals: {
+    organizations: number;
+    clientsScanned: number;
+    clientsWithIssues: number;
+    sessionsScanned: number;
+  };
+  issueCounts: Record<DataIntegrityIssue, number>;
+  clients: ClientIntegrityReport[];
+}
+
+/**
+ * Read-only audit. Walks the caller's org → every client summary doc and verifies
+ * the fields each query downstream depends on. Surfaces orphans, stale scores,
+ * legacy UUID-based doc IDs, and posture images that were sanitised to placeholders
+ * without a Storage URL fallback.
+ *
+ * Scoped to a single org so coach-level auth (which can't list every org) still
+ * works. Pass an explicit `orgId` to override; otherwise resolves from the
+ * caller's user profile.
+ *
+ * Run from the browser console:
+ *   const r = await auditDataIntegrity();
+ *   console.table(r.clients.map(c => ({ name: c.clientName, issues: c.issues.join(', ') })))
+ *
+ * Does NOT write. Use targeted backfill functions to remediate.
+ */
+export async function auditDataIntegrity(orgIdArg?: string): Promise<DataIntegrityReport> {
+  const db = getDb();
+  const { computeScores } = await import('@/lib/scoring');
+  const slugPattern = /^[a-z][a-z0-9\-._]+$/;
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const issueCounts: Record<DataIntegrityIssue, number> = {
+    'summary-missing-clientNameLower': 0,
+    'summary-clientNameLower-mismatch': 0,
+    'summary-missing-createdAt': 0,
+    'summary-missing-coachUid': 0,
+    'summary-missing-organizationId': 0,
+    'summary-orgId-mismatch': 0,
+    'summary-slug-format-invalid': 0,
+    'summary-doc-id-is-uuid': 0,
+    'current-state-missing': 0,
+    'current-state-formData-empty': 0,
+    'current-state-score-mismatch': 0,
+    'sessions-none': 0,
+    'sessions-zero-score-with-data': 0,
+    'sessions-missing-timestamp': 0,
+    'sessions-posture-images-orphaned': 0,
+    'profile-fullName-vs-summary-mismatch': 0,
+  };
+
+  const clientReports: ClientIntegrityReport[] = [];
+  let sessionsScanned = 0;
+
+  const orgId = orgIdArg ?? await resolveCallerOrgId();
+  let orgName = orgId;
+  try {
+    const orgSnap = await getDoc(doc(db, `organizations/${orgId}`));
+    if (orgSnap.exists()) {
+      orgName = (orgSnap.data().name as string | undefined) ?? orgId;
+    }
+  } catch {
+    // Coaches may not have read on the org doc itself in some rule configurations;
+    // fall back to the orgId as the display name. The clients sub-collection is what matters.
+  }
+
+  const clientsSnap = await getDocs(getOrgClientsCollection(orgId));
+
+  for (const clientDoc of clientsSnap.docs) {
+    const slug = clientDoc.id;
+    const data = clientDoc.data() as Record<string, unknown>;
+    const clientName = (data.clientName as string | undefined) ?? slug;
+    const issues: DataIntegrityIssue[] = [];
+
+    // ─── Summary doc field checks ─────────────────────────────────
+    if (!data.clientNameLower || typeof data.clientNameLower !== 'string') {
+      issues.push('summary-missing-clientNameLower');
+    } else if (
+      typeof data.clientName === 'string' &&
+      data.clientNameLower !== (data.clientName as string).toLowerCase()
+    ) {
+      // Value mismatch — most commonly the slug form (with dashes) ended up here
+      // instead of the actual lowercased clientName. Breaks getClientAssessments.
+      issues.push('summary-clientNameLower-mismatch');
+    }
+    if (!data.createdAt) issues.push('summary-missing-createdAt');
+    if (!data.coachUid) issues.push('summary-missing-coachUid');
+    if (!data.organizationId) {
+      issues.push('summary-missing-organizationId');
+    } else if (data.organizationId !== orgId) {
+      issues.push('summary-orgId-mismatch');
+    }
+
+    // Doc-ID shape: should be a slug, never a raw UUID
+    if (uuidPattern.test(slug)) {
+      issues.push('summary-doc-id-is-uuid');
+    } else if (!slugPattern.test(slug)) {
+      issues.push('summary-slug-format-invalid');
+    }
+
+    // ─── Current state doc ────────────────────────────────────────
+    const currentRef = doc(db, `organizations/${orgId}/clients/${slug}/current/state`);
+    let hasCurrentState = false;
+    let currentFormData: Record<string, unknown> | undefined;
+    try {
+      const currentSnap = await getDoc(currentRef);
+      hasCurrentState = currentSnap.exists();
+      if (!hasCurrentState) {
+        issues.push('current-state-missing');
+      } else {
+        const cd = currentSnap.data() as { formData?: Record<string, unknown>; overallScore?: number };
+        currentFormData = cd.formData;
+        const fdKeys = currentFormData ? Object.keys(currentFormData).length : 0;
+        if (fdKeys === 0) {
+          issues.push('current-state-formData-empty');
+        } else {
+          try {
+            const recomputed = Math.round(
+              computeScores(currentFormData as unknown as import('@/contexts/FormContext').FormData).overall,
+            );
+            const stored = Math.round(cd.overallScore ?? 0);
+            if (stored > 0 && Math.abs(recomputed - stored) > 5) {
+              issues.push('current-state-score-mismatch');
+            }
+          } catch {
+            // computeScores can throw on malformed legacy data — not an integrity issue per se
+          }
+        }
+      }
+    } catch {
+      // Rule may deny reading current/state for this client (e.g. cross-coach within org)
+      // — treat as "unknown" rather than flagging, to avoid false positives.
+    }
+
+    // ─── Sessions (snapshots) ─────────────────────────────────────
+    const sessionsRef = collection(db, `organizations/${orgId}/clients/${slug}/sessions`);
+    let sessionCount = 0;
+    let sessionsWithZeroScore = 0;
+    let lastSessionAt: string | null = null;
+    let postureOrphanFlagged = false;
+
+    try {
+      const sessionsSnap = await getDocs(sessionsRef);
+      sessionCount = sessionsSnap.size;
+      sessionsScanned += sessionCount;
+
+      if (sessionCount === 0 && hasCurrentState) {
+        issues.push('sessions-none');
+      }
+
+      for (const s of sessionsSnap.docs) {
+        const sd = s.data() as {
+          timestamp?: Timestamp;
+          overallScore?: number;
+          formData?: Record<string, unknown>;
+        };
+        const ts = sd.timestamp;
+        if (!ts) {
+          if (!issues.includes('sessions-missing-timestamp')) {
+            issues.push('sessions-missing-timestamp');
+          }
+        } else {
+          const iso = ts.toDate().toISOString();
+          if (!lastSessionAt || iso > lastSessionAt) lastSessionAt = iso;
+        }
+        const stored = Math.round(sd.overallScore ?? 0);
+        const fdSize = sd.formData ? Object.keys(sd.formData).length : 0;
+        if (stored === 0 && fdSize > 10) sessionsWithZeroScore += 1;
+
+        if (!postureOrphanFlagged) {
+          const pi = sd.formData?.postureImages as Record<string, string> | undefined;
+          const pis = sd.formData?.postureImagesStorage as Record<string, string> | undefined;
+          if (
+            pi && Object.values(pi).some((v) => typeof v === 'string' && v.startsWith('(base64_removed')) &&
+            (!pis || Object.keys(pis).length === 0)
+          ) {
+            issues.push('sessions-posture-images-orphaned');
+            postureOrphanFlagged = true;
+          }
+        }
+      }
+      if (sessionsWithZeroScore > 0) issues.push('sessions-zero-score-with-data');
+    } catch {
+      // Skip this client's sessions if rules deny — most likely a cross-coach
+      // doc whose subcollection isn't readable. Summary-level issues still recorded.
+    }
+
+    // ─── Profile name vs summary name ─────────────────────────────
+    const fullNameInCurrent = currentFormData?.fullName as string | undefined;
+    if (
+      fullNameInCurrent &&
+      clientName &&
+      fullNameInCurrent.trim().toLowerCase() !== clientName.trim().toLowerCase()
+    ) {
+      issues.push('profile-fullName-vs-summary-mismatch');
+    }
+
+    for (const i of issues) issueCounts[i] += 1;
+
+    if (issues.length > 0) {
+      clientReports.push({
+        orgId,
+        orgName,
+        slug,
+        clientName,
+        issues,
+        meta: {
+          sessionCount,
+          hasCurrentState,
+          lastSessionAt,
+          sessionsWithZeroScore,
+        },
+      });
+    }
+  }
+
+  const report: DataIntegrityReport = {
+    auditedAt: new Date().toISOString(),
+    totals: {
+      organizations: 1,
+      clientsScanned: clientsSnap.size,
+      clientsWithIssues: clientReports.length,
+      sessionsScanned,
+    },
+    issueCounts,
+    clients: clientReports.sort((a, b) => b.issues.length - a.issues.length),
+  };
+
+  logger.info('Data Integrity Audit', JSON.stringify({
+    auditedAt: report.auditedAt,
+    orgId,
+    totals: report.totals,
+    issueCounts: report.issueCounts,
+    top5: report.clients.slice(0, 5).map((c) => ({ name: c.clientName, issues: c.issues })),
+  }, null, 2));
+
+  return report;
+}
+
+/**
+ * Read-only single-client introspection. Dumps the raw summary doc + simulates
+ * the exact `getClientAssessments` query so we can see whether the doc matches
+ * what the query filter expects.
+ *
+ * Run: `await inspectClient('fawaz-naser-alrandi')`
+ */
+export async function inspectClient(slugOrName: string): Promise<{
+  orgId: string;
+  slug: string;
+  summaryDoc: Record<string, unknown> | null;
+  queryResults: {
+    byClientNameLower: { value: string; count: number; ids: string[] };
+    byClientName: { value: string; count: number; ids: string[] };
+  };
+  diagnosis: string[];
+}> {
+  const db = getDb();
+  const orgId = await resolveCallerOrgId();
+  const slugified = slugOrName.trim().toLowerCase().replace(/\s+/g, '-');
+
+  const summaryRef = doc(db, `organizations/${orgId}/clients/${slugified}`);
+  const summarySnap = await getDoc(summaryRef);
+  const rawDoc = summarySnap.exists() ? (summarySnap.data() as Record<string, unknown>) : null;
+
+  // Strip giant payloads so the output is greppable in the console.
+  // We only need the query-relevant integrity fields here.
+  const summaryDoc: Record<string, unknown> | null = rawDoc
+    ? {
+        clientName: rawDoc.clientName,
+        clientNameLower: rawDoc.clientNameLower,
+        createdAt: rawDoc.createdAt,
+        updatedAt: rawDoc.updatedAt,
+        coachUid: rawDoc.coachUid,
+        coachEmail: rawDoc.coachEmail,
+        organizationId: rawDoc.organizationId,
+        overallScore: rawDoc.overallScore,
+        assessmentCount: rawDoc.assessmentCount,
+        isSummary: rawDoc.isSummary,
+        isPartial: rawDoc.isPartial,
+        pillar: rawDoc.pillar,
+        category: rawDoc.category,
+        fullDocFieldNames: Object.keys(rawDoc).sort(),
+      }
+    : null;
+
+  // Simulate the exact query getClientAssessments runs
+  const storedName = (rawDoc?.clientName as string | undefined) ?? slugOrName;
+  const lowerForQuery = storedName.toLowerCase();
+
+  const byNameLowerQ = query(
+    getOrgClientsCollection(orgId),
+    where('clientNameLower', '==', lowerForQuery),
+  );
+  const byNameLowerSnap = await getDocs(byNameLowerQ);
+
+  // Also try matching by the literal stored clientNameLower value
+  const literalCl = rawDoc?.clientNameLower as string | undefined;
+  const byLiteralQ = literalCl
+    ? query(getOrgClientsCollection(orgId), where('clientNameLower', '==', literalCl))
+    : null;
+  const byLiteralSnap = byLiteralQ ? await getDocs(byLiteralQ) : null;
+
+  const diagnosis: string[] = [];
+  if (!rawDoc) {
+    diagnosis.push(`No summary doc exists at organizations/${orgId}/clients/${slugified}`);
+  } else {
+    if (!rawDoc.clientNameLower) {
+      diagnosis.push('Summary doc missing `clientNameLower` — getClientAssessments would never match.');
+    } else if (typeof rawDoc.clientNameLower !== 'string') {
+      diagnosis.push(`Summary doc has non-string clientNameLower: ${JSON.stringify(rawDoc.clientNameLower)}`);
+    } else if (rawDoc.clientNameLower !== lowerForQuery) {
+      diagnosis.push(
+        `clientNameLower mismatch — stored: "${rawDoc.clientNameLower}" vs expected "${lowerForQuery}". ` +
+        `Whitespace? Case? Slug-vs-name? Hex dump: stored=[${[...(rawDoc.clientNameLower as string)].map((c) => c.charCodeAt(0)).join(',')}] expected=[${[...lowerForQuery].map((c) => c.charCodeAt(0)).join(',')}]`,
+      );
+    }
+    if (!rawDoc.createdAt) {
+      diagnosis.push('Summary doc missing `createdAt` — orderBy(createdAt) would exclude it from listed results.');
+    }
+  }
+  if (byNameLowerSnap.size === 0) {
+    diagnosis.push(`Query \`where('clientNameLower','==','${lowerForQuery}')\` returns 0 docs.`);
+  }
+
+  return {
+    orgId,
+    slug: slugified,
+    summaryDoc,
+    queryResults: {
+      byClientNameLower: {
+        value: lowerForQuery,
+        count: byNameLowerSnap.size,
+        ids: byNameLowerSnap.docs.map((d) => d.id),
+      },
+      byClientName: {
+        value: literalCl ?? '<no stored value>',
+        count: byLiteralSnap?.size ?? 0,
+        ids: byLiteralSnap?.docs.map((d) => d.id) ?? [],
+      },
+    },
+    diagnosis,
+  };
+}
+
+/**
+ * Read-only inspector. Dumps the postureAiResults structure for each session of
+ * a client — keys, structuredFindings count per view, sample finding. Use to
+ * diagnose "posture analysis says well-aligned but the image overlays show
+ * obvious deviations" cases.
+ *
+ * Run: `await inspectSnapshotPosture('fawaz-naser-alrandi')`
+ */
+export async function inspectSnapshotPosture(slugOrName: string): Promise<{
+  orgId: string;
+  slug: string;
+  sessions: Array<{
+    sessionId: string;
+    type: string | undefined;
+    timestamp: string | null;
+    postureAiResultsKeys: string[];
+    perView: Record<string, { hasStructuredFindings: boolean; findingCount: number; sampleFinding: unknown }>;
+    hasPostureImagesStorage: boolean;
+    hasPostureImages: boolean;
+  }>;
+}> {
+  const db = getDb();
+  const orgId = await resolveCallerOrgId();
+  const slug = slugOrName.trim().toLowerCase().replace(/\s+/g, '-');
+
+  const sessionsRef = collection(db, `organizations/${orgId}/clients/${slug}/sessions`);
+  const sessionsSnap = await getDocs(sessionsRef);
+
+  const sessions = sessionsSnap.docs.map((s) => {
+    const sd = s.data() as {
+      type?: string;
+      timestamp?: Timestamp;
+      formData?: {
+        postureAiResults?: Record<string, { structuredFindings?: unknown[] }>;
+        postureImages?: Record<string, string>;
+        postureImagesStorage?: Record<string, string>;
+      };
+    };
+    const par = sd.formData?.postureAiResults ?? {};
+    const perView: Record<string, { hasStructuredFindings: boolean; findingCount: number; sampleFinding: unknown }> = {};
+    for (const [view, viewData] of Object.entries(par)) {
+      const sf = viewData?.structuredFindings;
+      perView[view] = {
+        hasStructuredFindings: Array.isArray(sf),
+        findingCount: Array.isArray(sf) ? sf.length : 0,
+        sampleFinding: Array.isArray(sf) && sf.length > 0 ? sf[0] : null,
+      };
+    }
+    return {
+      sessionId: s.id,
+      type: sd.type,
+      timestamp: sd.timestamp?.toDate?.()?.toISOString?.() ?? null,
+      postureAiResultsKeys: Object.keys(par),
+      perView,
+      hasPostureImagesStorage: !!sd.formData?.postureImagesStorage && Object.keys(sd.formData.postureImagesStorage).length > 0,
+      hasPostureImages: !!sd.formData?.postureImages && Object.keys(sd.formData.postureImages).length > 0,
+    };
+  });
+
+  return { orgId, slug, sessions: sessions.sort((a, b) => (b.timestamp ?? '').localeCompare(a.timestamp ?? '')) };
+}
+
+/**
+ * Read-only inspector for the SUMMARY doc's embedded `formData.postureAiResults`
+ * (the field `getCoachAssessment` returns for slug-based reads). Use to compare
+ * against `inspectClientCurrentPosture` — if summary has keys but no structured
+ * findings while current/state has both, the enrichment fallback is skipping.
+ *
+ * Run: `await inspectClientSummaryPosture('fawaz-naser-alrandi')`
+ */
+export async function inspectClientSummaryPosture(slugOrName: string): Promise<{
+  orgId: string;
+  slug: string;
+  hasFormData: boolean;
+  postureAiResultsKeys: string[];
+  perView: Record<string, { hasStructuredFindings: boolean; findingCount: number }>;
+  totalFindings: number;
+}> {
+  const db = getDb();
+  const orgId = await resolveCallerOrgId();
+  const slug = slugOrName.trim().toLowerCase().replace(/\s+/g, '-');
+
+  const snap = await getDoc(doc(db, `organizations/${orgId}/clients/${slug}`));
+  if (!snap.exists()) {
+    return { orgId, slug, hasFormData: false, postureAiResultsKeys: [], perView: {}, totalFindings: 0 };
+  }
+  const data = snap.data() as {
+    formData?: { postureAiResults?: Record<string, { structuredFindings?: unknown[] }> };
+  };
+  const par = data.formData?.postureAiResults ?? {};
+  const perView: Record<string, { hasStructuredFindings: boolean; findingCount: number }> = {};
+  let totalFindings = 0;
+  for (const [view, v] of Object.entries(par)) {
+    const sf = v?.structuredFindings;
+    const count = Array.isArray(sf) ? sf.length : 0;
+    perView[view] = { hasStructuredFindings: Array.isArray(sf), findingCount: count };
+    totalFindings += count;
+  }
+  return {
+    orgId,
+    slug,
+    hasFormData: !!data.formData,
+    postureAiResultsKeys: Object.keys(par),
+    perView,
+    totalFindings,
+  };
+}
+
+/**
+ * Read-only inspector for `current/state` — the doc the live report reads from.
+ * Shows whether postureAiResults exists, per-view findings counts, and what
+ * was merged in vs left out. Use alongside `inspectSnapshotPosture` to compare
+ * "what's in the sessions" vs "what the report actually pulls."
+ *
+ * Run: `await inspectClientCurrentPosture('fawaz-naser-alrandi')`
+ */
+export async function inspectClientCurrentPosture(slugOrName: string): Promise<{
+  orgId: string;
+  slug: string;
+  hasCurrentState: boolean;
+  postureAiResultsKeys: string[];
+  perView: Record<string, { hasStructuredFindings: boolean; findingCount: number; sampleFinding: unknown }>;
+  hasPostureImagesStorage: boolean;
+  hasPostureImages: boolean;
+  formDataFieldCount: number;
+}> {
+  const db = getDb();
+  const orgId = await resolveCallerOrgId();
+  const slug = slugOrName.trim().toLowerCase().replace(/\s+/g, '-');
+
+  const currentSnap = await getDoc(doc(db, `organizations/${orgId}/clients/${slug}/current/state`));
+  if (!currentSnap.exists()) {
+    return {
+      orgId, slug, hasCurrentState: false, postureAiResultsKeys: [], perView: {},
+      hasPostureImagesStorage: false, hasPostureImages: false, formDataFieldCount: 0,
+    };
+  }
+
+  const data = currentSnap.data() as {
+    formData?: {
+      postureAiResults?: Record<string, { structuredFindings?: unknown[] }>;
+      postureImages?: Record<string, string>;
+      postureImagesStorage?: Record<string, string>;
+    };
+  };
+  const fd = data.formData ?? {};
+  const par = fd.postureAiResults ?? {};
+  const perView: Record<string, { hasStructuredFindings: boolean; findingCount: number; sampleFinding: unknown }> = {};
+  for (const [view, viewData] of Object.entries(par)) {
+    const sf = viewData?.structuredFindings;
+    perView[view] = {
+      hasStructuredFindings: Array.isArray(sf),
+      findingCount: Array.isArray(sf) ? sf.length : 0,
+      sampleFinding: Array.isArray(sf) && sf.length > 0 ? sf[0] : null,
+    };
+  }
+
+  return {
+    orgId,
+    slug,
+    hasCurrentState: true,
+    postureAiResultsKeys: Object.keys(par),
+    perView,
+    hasPostureImagesStorage: !!fd.postureImagesStorage && Object.keys(fd.postureImagesStorage).length > 0,
+    hasPostureImages: !!fd.postureImages && Object.keys(fd.postureImages).length > 0,
+    formDataFieldCount: Object.keys(fd).length,
+  };
+}
+
+/**
+ * Backfill `clientNameLower` on every client summary doc so it equals
+ * `clientName.toLowerCase()`. Fixes docs whose `clientNameLower` was overwritten
+ * with the slug form during the DB restructure — that breaks `getClientAssessments`
+ * (which queries `where('clientNameLower','==',clientName.toLowerCase())`).
+ *
+ * dryRun=true (default) → reports what would change without writing.
+ * dryRun=false → actually writes the corrected values via setDoc({merge:true}).
+ *
+ * Run: `await backfillClientNameLower()` to preview, then `await backfillClientNameLower(false)` to apply.
+ */
+export async function backfillClientNameLower(dryRun: boolean = true): Promise<{
+  dryRun: boolean;
+  scanned: number;
+  fixed: Array<{ slug: string; clientName: string; oldLower: string; newLower: string }>;
+  skipped: Array<{ slug: string; reason: string }>;
+}> {
+  const db = getDb();
+  const orgId = await resolveCallerOrgId();
+  const clientsSnap = await getDocs(getOrgClientsCollection(orgId));
+
+  const fixed: Array<{ slug: string; clientName: string; oldLower: string; newLower: string }> = [];
+  const skipped: Array<{ slug: string; reason: string }> = [];
+
+  for (const clientDoc of clientsSnap.docs) {
+    const slug = clientDoc.id;
+    const data = clientDoc.data() as { clientName?: string; clientNameLower?: string };
+
+    const clientName = data.clientName;
+    if (!clientName || typeof clientName !== 'string') {
+      skipped.push({ slug, reason: 'no clientName field — leave alone' });
+      continue;
+    }
+
+    const expected = clientName.toLowerCase();
+    const actual = data.clientNameLower;
+    if (actual === expected) {
+      skipped.push({ slug, reason: 'already correct' });
+      continue;
+    }
+
+    if (!dryRun) {
+      await setDoc(
+        doc(db, `organizations/${orgId}/clients/${slug}`),
+        { clientNameLower: expected },
+        { merge: true },
+      );
+    }
+    fixed.push({
+      slug,
+      clientName,
+      oldLower: actual ?? '<missing>',
+      newLower: expected,
+    });
+  }
+
+  logger.info(
+    `[backfillClientNameLower] ${dryRun ? 'DRY RUN' : 'APPLIED'} ` +
+    `— scanned=${clientsSnap.size} would-fix=${fixed.length} skipped=${skipped.length}`,
+    JSON.stringify(fixed, null, 2),
+  );
+
+  return { dryRun, scanned: clientsSnap.size, fixed, skipped };
+}
+
+/**
+ * Recompute `overallScore` on every session whose stored score is 0 but whose
+ * `formData` has meaningful content. Old snapshots from before scoring was
+ * finalised got persisted with 0/100; this restores the correct value.
+ *
+ * Run: `await backfillZeroScoreSessions()` to preview, then `await backfillZeroScoreSessions(false)` to apply.
+ */
+export async function backfillZeroScoreSessions(dryRun: boolean = true): Promise<{
+  dryRun: boolean;
+  sessionsScanned: number;
+  fixed: Array<{ clientSlug: string; sessionId: string; oldScore: number; newScore: number }>;
+}> {
+  const db = getDb();
+  const { computeScores } = await import('@/lib/scoring');
+  const orgId = await resolveCallerOrgId();
+  const clientsSnap = await getDocs(getOrgClientsCollection(orgId));
+
+  const fixed: Array<{ clientSlug: string; sessionId: string; oldScore: number; newScore: number }> = [];
+  let sessionsScanned = 0;
+
+  for (const clientDoc of clientsSnap.docs) {
+    const slug = clientDoc.id;
+    const sessionsRef = collection(db, `organizations/${orgId}/clients/${slug}/sessions`);
+    const sessionsSnap = await getDocs(sessionsRef);
+    sessionsScanned += sessionsSnap.size;
+
+    for (const s of sessionsSnap.docs) {
+      const sd = s.data() as { overallScore?: number; formData?: Record<string, unknown> };
+      const stored = Math.round(sd.overallScore ?? 0);
+      const fdSize = sd.formData ? Object.keys(sd.formData).length : 0;
+      if (stored !== 0 || fdSize <= 10) continue;
+
+      let recomputed = 0;
+      try {
+        recomputed = Math.round(
+          computeScores(sd.formData as unknown as import('@/contexts/FormContext').FormData).overall,
+        );
+      } catch {
+        continue; // formData too malformed to score
+      }
+      if (recomputed <= 0) continue;
+
+      if (!dryRun) {
+        await updateDoc(s.ref, { overallScore: recomputed });
+      }
+      fixed.push({ clientSlug: slug, sessionId: s.id, oldScore: stored, newScore: recomputed });
+    }
+  }
+
+  logger.info(
+    `[backfillZeroScoreSessions] ${dryRun ? 'DRY RUN' : 'APPLIED'} ` +
+    `— sessions=${sessionsScanned} would-fix=${fixed.length}`,
+    JSON.stringify(fixed, null, 2),
+  );
+  return { dryRun, sessionsScanned, fixed };
+}
+
+/**
+ * Strip `formData.postureImages` from sessions where every value is the
+ * `'(base64_removed_for_storage_limit)'` sanitiser placeholder AND there's no
+ * `postureImagesStorage` URL fallback. The placeholder data is unrenderable
+ * cruft from the pre-Storage flow; removing it lets downstream code cleanly
+ * report "no posture captured" instead of attempting broken `<img>` tags.
+ *
+ * Run: `await stripOrphanedPostureImages()` to preview, then `await stripOrphanedPostureImages(false)` to apply.
+ */
+export async function stripOrphanedPostureImages(dryRun: boolean = true): Promise<{
+  dryRun: boolean;
+  sessionsScanned: number;
+  fixed: Array<{ clientSlug: string; sessionId: string; strippedViews: string[] }>;
+}> {
+  const db = getDb();
+  const orgId = await resolveCallerOrgId();
+  const clientsSnap = await getDocs(getOrgClientsCollection(orgId));
+
+  const fixed: Array<{ clientSlug: string; sessionId: string; strippedViews: string[] }> = [];
+  let sessionsScanned = 0;
+
+  for (const clientDoc of clientsSnap.docs) {
+    const slug = clientDoc.id;
+    const sessionsRef = collection(db, `organizations/${orgId}/clients/${slug}/sessions`);
+    const sessionsSnap = await getDocs(sessionsRef);
+    sessionsScanned += sessionsSnap.size;
+
+    for (const s of sessionsSnap.docs) {
+      const sd = s.data() as { formData?: { postureImages?: Record<string, string>; postureImagesStorage?: Record<string, string> } };
+      const pi = sd.formData?.postureImages;
+      const pis = sd.formData?.postureImagesStorage;
+      if (!pi || Object.keys(pi).length === 0) continue; // empty object — nothing to strip
+
+      const allPlaceholders = Object.values(pi).every((v) => typeof v === 'string' && v.startsWith('(base64_removed'));
+      const noStorageFallback = !pis || Object.keys(pis).length === 0;
+
+      if (!allPlaceholders || !noStorageFallback) continue;
+
+      if (!dryRun) {
+        await updateDoc(s.ref, { 'formData.postureImages': deleteField() });
+      }
+      fixed.push({ clientSlug: slug, sessionId: s.id, strippedViews: Object.keys(pi) });
+    }
+  }
+
+  logger.info(
+    `[stripOrphanedPostureImages] ${dryRun ? 'DRY RUN' : 'APPLIED'} ` +
+    `— sessions=${sessionsScanned} would-fix=${fixed.length}`,
+    JSON.stringify(fixed, null, 2),
+  );
+  return { dryRun, sessionsScanned, fixed };
+}
+
+/**
+ * Sync `current/state.formData.fullName` to the summary doc's `clientName` for
+ * every client where the two have drifted. Caused by client renames that
+ * updated the summary but left the embedded `formData.fullName` stale.
+ *
+ * Run: `await syncFormDataFullName()` to preview, then `await syncFormDataFullName(false)` to apply.
+ */
+export async function syncFormDataFullName(dryRun: boolean = true): Promise<{
+  dryRun: boolean;
+  clientsScanned: number;
+  fixed: Array<{ slug: string; oldFullName: string; newFullName: string }>;
+}> {
+  const db = getDb();
+  const orgId = await resolveCallerOrgId();
+  const clientsSnap = await getDocs(getOrgClientsCollection(orgId));
+
+  const fixed: Array<{ slug: string; oldFullName: string; newFullName: string }> = [];
+
+  for (const clientDoc of clientsSnap.docs) {
+    const slug = clientDoc.id;
+    const summary = clientDoc.data() as { clientName?: string };
+    const canonical = summary.clientName;
+    if (!canonical) continue;
+
+    const currentRef = doc(db, `organizations/${orgId}/clients/${slug}/current/state`);
+    let currentSnap;
+    try {
+      currentSnap = await getDoc(currentRef);
+    } catch {
+      continue; // rules deny — skip silently
+    }
+    if (!currentSnap.exists()) continue;
+
+    const cd = currentSnap.data() as { formData?: { fullName?: string } };
+    const stored = cd.formData?.fullName;
+    if (!stored || stored.trim() === canonical.trim()) continue;
+
+    if (!dryRun) {
+      await updateDoc(currentRef, { 'formData.fullName': canonical });
+    }
+    fixed.push({ slug, oldFullName: stored, newFullName: canonical });
+  }
+
+  logger.info(
+    `[syncFormDataFullName] ${dryRun ? 'DRY RUN' : 'APPLIED'} ` +
+    `— clients=${clientsSnap.size} would-fix=${fixed.length}`,
+    JSON.stringify(fixed, null, 2),
+  );
+  return { dryRun, clientsScanned: clientsSnap.size, fixed };
+}
+
+/**
+ * Hard-delete a single client and all their subcollections (current/state,
+ * sessions, draft, roadmap, coachNotes, achievements) plus the summary doc.
+ * Irreversible. Use when an audit identifies an orphan / test-artifact client.
+ *
+ * Run: `await deleteClientCompletely('michael-test')` to preview, then
+ * `await deleteClientCompletely('michael-test', false)` to apply.
+ */
+export async function deleteClientCompletely(slug: string, dryRun: boolean = true): Promise<{
+  dryRun: boolean;
+  slug: string;
+  deletions: Array<{ path: string }>;
+}> {
+  const db = getDb();
+  const orgId = await resolveCallerOrgId();
+  const deletions: Array<{ path: string }> = [];
+
+  const subcollections = ['sessions', 'achievements'];
+  for (const sub of subcollections) {
+    try {
+      const subSnap = await getDocs(collection(db, `organizations/${orgId}/clients/${slug}/${sub}`));
+      for (const d of subSnap.docs) {
+        if (!dryRun) await deleteDoc(d.ref);
+        deletions.push({ path: d.ref.path });
+      }
+    } catch {
+      // subcollection may not exist or be readable — skip
+    }
+  }
+
+  // Single-doc subcollections
+  const singletonPaths = [
+    `organizations/${orgId}/clients/${slug}/current/state`,
+    `organizations/${orgId}/clients/${slug}/roadmap/plan`,
+    `organizations/${orgId}/clients/${slug}/assessmentDrafts/draft`,
+    `organizations/${orgId}/clients/${slug}/coachNotes/notes`,
+  ];
+  for (const path of singletonPaths) {
+    try {
+      const ref = doc(db, path);
+      const snap = await getDoc(ref);
+      if (snap.exists()) {
+        if (!dryRun) await deleteDoc(ref);
+        deletions.push({ path });
+      }
+    } catch {
+      // skip
+    }
+  }
+
+  // Finally the summary doc itself
+  const summaryRef = doc(db, `organizations/${orgId}/clients/${slug}`);
+  const summarySnap = await getDoc(summaryRef);
+  if (summarySnap.exists()) {
+    if (!dryRun) await deleteDoc(summaryRef);
+    deletions.push({ path: summaryRef.path });
+  }
+
+  logger.info(
+    `[deleteClientCompletely] ${dryRun ? 'DRY RUN' : 'APPLIED'} ` +
+    `— slug=${slug} docs=${deletions.length}`,
+    JSON.stringify(deletions, null, 2),
+  );
+  return { dryRun, slug, deletions };
+}
+
+// ---------------------------------------------------------------------------
 // Phase 4: Delete v1 Firestore paths (run ONLY after importPlatformData confirms success)
 // ---------------------------------------------------------------------------
 
@@ -1716,6 +2559,16 @@ export async function deleteV1Paths(): Promise<void> {
 
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   const win = window as unknown as {
+    auditDataIntegrity?: typeof auditDataIntegrity;
+    inspectClient?: typeof inspectClient;
+    inspectSnapshotPosture?: typeof inspectSnapshotPosture;
+    inspectClientCurrentPosture?: typeof inspectClientCurrentPosture;
+    inspectClientSummaryPosture?: typeof inspectClientSummaryPosture;
+    backfillClientNameLower?: typeof backfillClientNameLower;
+    backfillZeroScoreSessions?: typeof backfillZeroScoreSessions;
+    stripOrphanedPostureImages?: typeof stripOrphanedPostureImages;
+    syncFormDataFullName?: typeof syncFormDataFullName;
+    deleteClientCompletely?: typeof deleteClientCompletely;
     auditCanonicalData?: typeof auditCanonicalData;
     exportPlatformData?: typeof exportPlatformData;
     importPlatformData?: typeof importPlatformData;
@@ -1744,6 +2597,16 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     seedAIConfig?: typeof seedAIConfig;
     verifyPlatformCutover?: typeof verifyPlatformCutover;
   };
+  win.auditDataIntegrity = auditDataIntegrity;
+  win.inspectClient = inspectClient;
+  win.inspectSnapshotPosture = inspectSnapshotPosture;
+  win.inspectClientCurrentPosture = inspectClientCurrentPosture;
+  win.inspectClientSummaryPosture = inspectClientSummaryPosture;
+  win.backfillClientNameLower = backfillClientNameLower;
+  win.backfillZeroScoreSessions = backfillZeroScoreSessions;
+  win.stripOrphanedPostureImages = stripOrphanedPostureImages;
+  win.syncFormDataFullName = syncFormDataFullName;
+  win.deleteClientCompletely = deleteClientCompletely;
   win.auditCanonicalData = auditCanonicalData;
   win.exportPlatformData = exportPlatformData;
   win.importPlatformData = importPlatformData;
@@ -1771,5 +2634,5 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   win.reconcilePlatformData = reconcilePlatformData;
   win.seedAIConfig = seedAIConfig;
   win.verifyPlatformCutover = verifyPlatformCutover;
-  logger.info('[PlatformDataReconciler] Ready: exportPlatformData, importPlatformData, backfillAchievements, diagnoseCurrentState, and more.');
+  logger.info('[PlatformDataReconciler] Ready: auditDataIntegrity, exportPlatformData, importPlatformData, backfillAchievements, diagnoseCurrentState, and more.');
 }

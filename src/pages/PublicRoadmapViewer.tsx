@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import AppShell from '@/components/layout/AppShell';
 import { getRoadmapByShareToken } from '@/services/roadmaps';
 import RoadmapClientView from '@/components/roadmap/RoadmapClientView';
+import { ClientPortalShell } from '@/components/client/ClientPortalShell';
 import { RoadmapLoadDiagnostics } from '@/components/roadmap/RoadmapLoadDiagnostics';
 import {
   type AppShellOuterProps,
   PublicRoadmapViewerLoading,
   PublicRoadmapViewerMissing,
 } from '@/components/roadmap/PublicRoadmapViewerStates';
+import { ArcTabEmptyState } from '@/components/roadmap/ArcTabEmptyState';
 import { logger } from '@/lib/utils/logger';
 import { PUBLIC_CLIENT_URL_QUERY, ROUTES } from '@/constants/routes';
 
@@ -95,6 +97,16 @@ const PublicRoadmapViewer = () => {
   }
 
   if (error || !roadmap) {
+    const reportNavToken = reportToken?.trim() || token?.trim();
+    if (reportNavToken && !showRoadmapLoadDebug) {
+      return (
+        <AppShell {...shellProps}>
+          <ClientPortalShell token={reportNavToken} activeTab="arc">
+            <ArcTabEmptyState reportToken={reportNavToken} />
+          </ClientPortalShell>
+        </AppShell>
+      );
+    }
     return (
       <PublicRoadmapViewerMissing
         shellProps={shellProps}
@@ -106,36 +118,47 @@ const PublicRoadmapViewer = () => {
     );
   }
 
+  const portalToken = effectiveShareToken ?? token?.trim();
+  const body = (
+    <div className="max-w-2xl mx-auto px-4 py-6">
+      {reportToken ? (
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0" asChild>
+            <Link to={`/r/${reportToken}`} aria-label="Back to report">
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
+        </div>
+      ) : (
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0" asChild>
+            <Link to={ROUTES.HOME} aria-label="Go to One Assess home">
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
+        </div>
+      )}
+      <RoadmapClientView
+        embedded
+        clientName={roadmap.clientName}
+        summary={roadmap.summary}
+        items={roadmap.items}
+        activePhase={roadmap.activePhase}
+        clientGoals={roadmap.clientGoals}
+      />
+      {showRoadmapLoadDebug && <RoadmapLoadDiagnostics variant="success" />}
+    </div>
+  );
+
   return (
     <AppShell {...shellProps}>
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        {reportToken ? (
-          <div className="mb-4">
-            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0" asChild>
-              <Link to={`/r/${reportToken}`} aria-label="Back to report">
-                <ArrowLeft className="h-4 w-4" aria-hidden />
-              </Link>
-            </Button>
-          </div>
-        ) : (
-          <div className="mb-4">
-            <Button variant="ghost" size="sm" className="h-9 w-9 p-0 shrink-0" asChild>
-              <Link to={ROUTES.HOME} aria-label="Go to One Assess home">
-                <ArrowLeft className="h-4 w-4" aria-hidden />
-              </Link>
-            </Button>
-          </div>
-        )}
-        <RoadmapClientView
-          embedded
-          clientName={roadmap.clientName}
-          summary={roadmap.summary}
-          items={roadmap.items}
-          activePhase={roadmap.activePhase}
-          clientGoals={roadmap.clientGoals}
-        />
-        {showRoadmapLoadDebug && <RoadmapLoadDiagnostics variant="success" />}
-      </div>
+      {portalToken ? (
+        <ClientPortalShell token={portalToken} activeTab="arc">
+          {body}
+        </ClientPortalShell>
+      ) : (
+        body
+      )}
     </AppShell>
   );
 };

@@ -38,10 +38,12 @@ const Achievements = lazy(() => import("./pages/Achievements"));
 const Companion = lazy(() => import("./pages/Companion"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const ClientDetailLayout = lazy(() => import("./pages/client/ClientDetailLayout"));
+const ClientTimelineTab = lazy(() => import("./pages/client/ClientTimelineTab"));
 const ClientOverview = lazy(() => import("./pages/client/ClientOverview"));
 const ClientHistory = lazy(() => import("./pages/client/ClientHistory"));
 const ClientRoadmapTab = lazy(() => import("./pages/client/ClientRoadmapTab"));
 const ClientReportTab = lazy(() => import("./pages/client/ClientReportTab"));
+const ClientConsultationTab = lazy(() => import("./pages/client/ClientConsultationTab"));
 const ClientCoachNotesTab = lazy(() => import("./pages/client/ClientCoachNotesTab"));
 const ClientAchievementsTab = lazy(() => import("./pages/client/ClientAchievementsTab"));
 const ClientSettings = lazy(() => import("./pages/client/ClientSettings"));
@@ -59,6 +61,7 @@ const ClientRoadmap = lazy(() => import("./pages/ClientRoadmap"));
 const PublicRoadmapViewer = lazy(() => import("./pages/PublicRoadmapViewer"));
 const PublicLifestyleCheckin = lazy(() => import("./pages/PublicLifestyleCheckin"));
 const PublicRemoteAssessment = lazy(() => import("./pages/PublicRemoteAssessment"));
+const RemoteIntakeEntry = lazy(() => import("./pages/RemoteIntakeEntry"));
 
 const RequestErasure = lazy(() => import("./pages/RequestErasure"));
 const SandboxTrial = lazy(() => import("./pages/SandboxTrial"));
@@ -147,13 +150,6 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <ReloadPrompt />
-      <Suspense
-        fallback={
-          <div className="min-h-0 shrink-0" aria-hidden />
-        }
-      >
-        <InstallPrompt />
-      </Suspense>
           <AuthProvider>
             <ThemeManager>
               <BrowserRouter
@@ -165,6 +161,13 @@ const App = () => (
               <ErrorBoundary>
               <MaintenanceBanner />
               <ImpersonationBanner />
+              <Suspense
+                fallback={
+                  <div className="min-h-0 shrink-0" aria-hidden />
+                }
+              >
+                <InstallPrompt />
+              </Suspense>
               <Suspense
                 fallback={
                   <div
@@ -224,6 +227,7 @@ const App = () => (
                       path="/r/:token/lifestyle"
                       element={<PublicLifestyleCheckin />}
                     />
+                    <Route path="/remote" element={<RemoteIntakeEntry />} />
                     <Route path="/remote/:token" element={<PublicRemoteAssessment />} />
                     <Route
                       path="/r/:token/erasure"
@@ -247,12 +251,15 @@ const App = () => (
                       <Route path="clients" element={<DashboardClients />} />
                       <Route path="clients/:clientName" element={<ClientDetailLayout />}>
                         <Route index element={<ClientOverview />} />
+                        <Route path="overview" element={<Navigate to="." replace />} />
+                        <Route path="consultation" element={<ClientConsultationTab />} />
                         <Route path="report" element={<ClientReportTab />} />
                         <Route path="roadmap" element={<ClientRoadmapTab />} />
-                        <Route path="coach-notes" element={<ClientCoachNotesTab />} />
+                        <Route path="coach-notes" element={<Navigate to="../timeline#notes" replace />} />
                         <Route path="achievements" element={<ClientAchievementsTab />} />
                         <Route path="coaches-report" element={<Navigate to=".." replace />} />
-                        <Route path="history" element={<ClientHistory />} />
+                        <Route path="history" element={<Navigate to="../timeline" replace />} />
+                        <Route path="timeline" element={<ClientTimelineTab />} />
                         <Route path="settings" element={<ClientSettings />} />
                       </Route>
                       <Route path="assistant" element={<Navigate to={ROUTES.DASHBOARD} replace />} />

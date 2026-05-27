@@ -102,11 +102,17 @@ export default defineConfig(({ mode }) => ({
         // Only precache critical shell assets (CSS, HTML, fonts) -- NOT JS chunks.
         // JS is cached lazily via runtimeCaching to avoid a 4+ MB precache storm on mobile.
         globPatterns: ['**/*.{css,html,woff2}'],
-        globIgnores: ['**/heic2any-*', '**/generateCategoricalChart-*', '**/pose-*'],
+        globIgnores: ['**/heic2any-*', '**/heic-to-*', '**/generateCategoricalChart-*', '**/pose-*'],
         maximumFileSizeToCacheInBytes: 300_000, // 300 KB safety cap
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/, /^\/companion\//, /^\/r($|\/)/],
         runtimeCaching: [
+          {
+            // Firestore long-polling Listen channel — must never be cached; failures here
+            // are usually aborted/reconnecting streams (noisy in console, SDK retries).
+            urlPattern: /^https:\/\/firestore\.googleapis\.com\//,
+            handler: 'NetworkOnly',
+          },
           {
             // Some Storage URLs use storage.googleapis.com (not only *.googleapis.com subdomain shape).
             urlPattern: /^https:\/\/storage\.googleapis\.com\//,
@@ -115,8 +121,6 @@ export default defineConfig(({ mode }) => ({
           {
             // Never intercept ANY googleapis.com request -- Firestore streaming,
             // Auth tokens, and Storage uploads must bypass the service worker entirely.
-            // The Cache.put() NetworkError on mobile is caused by Workbox attempting
-            // to cache opaque streaming responses from Firestore WebChannel.
             urlPattern: /^https:\/\/.*\.googleapis\.com\//,
             handler: 'NetworkOnly',
           },

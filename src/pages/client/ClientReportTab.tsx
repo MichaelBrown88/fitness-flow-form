@@ -36,7 +36,6 @@ export default function ClientReportTab() {
   const {
     formData,
     scores,
-    plan,
     previousScores,
     previousFormData,
     loading,
@@ -109,7 +108,6 @@ export default function ClientReportTab() {
           scores={scores}
           goals={goals}
           formData={formData}
-          plan={plan ?? undefined}
           previousScores={previousScores ?? undefined}
           previousFormData={previousFormData ?? undefined}
           standalone={true}

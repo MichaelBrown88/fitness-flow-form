@@ -80,7 +80,21 @@ export function useAssessmentLogic(assessmentId: string | undefined, clientNameO
         // 2. Posture Data Enrichment (Logic from original component)
         const hasPostureImages = fd.postureImages && typeof fd.postureImages === 'object' && Object.keys(fd.postureImages).length > 0;
         const hasPostureStorage = fd.postureImagesStorage && typeof fd.postureImagesStorage === 'object' && Object.keys(fd.postureImagesStorage).length > 0;
-        const hasPostureAnalysis = fd.postureAiResults && typeof fd.postureAiResults === 'object' && Object.keys(fd.postureAiResults).length > 0;
+        // Require at least one view to carry actual structuredFindings — not just
+        // having the keys present. The summary doc's embedded formData can hold
+        // stale view keys with empty findings when a partial-posture save updated
+        // current/state but didn't re-merge formData onto the summary. In that
+        // case the keys-exist check passes, enrichment is skipped, and the report
+        // shows "Well aligned" despite real findings sitting in current/state.
+        const hasPostureAnalysis = !!(
+          fd.postureAiResults &&
+          typeof fd.postureAiResults === 'object' &&
+          Object.keys(fd.postureAiResults).length > 0 &&
+          Object.values(fd.postureAiResults).some((v) => {
+            const sf = (v as { structuredFindings?: unknown[] } | null | undefined)?.structuredFindings;
+            return Array.isArray(sf) && sf.length > 0;
+          })
+        );
         
         if ((!hasPostureImages && !hasPostureStorage) || !hasPostureAnalysis) {
           const clientNameForLookup = clientNameQuery || fd.fullName;
@@ -89,12 +103,11 @@ export function useAssessmentLogic(assessmentId: string | undefined, clientNameO
               // Try current assessment
               const { getCurrentAssessment } = await import('@/services/assessmentHistory');
               const current = await getCurrentAssessment(user.uid, clientNameForLookup, profile?.organizationId);
-              
               if (current?.formData) {
                 // ... (Logic to merge posture data - simplified for hook)
                  const currentPostureImages = current.formData.postureImagesStorage || current.formData.postureImages;
                  const currentPostureAnalysis = current.formData.postureAiResults;
-                 
+
                   if ((!hasPostureImages && !hasPostureStorage) && currentPostureImages && typeof currentPostureImages === 'object') {
                     fd = { ...fd, postureImagesStorage: currentPostureImages };
                   }
@@ -144,13 +157,30 @@ export function useAssessmentLogic(assessmentId: string | undefined, clientNameO
                 const { getSnapshots } = await import('@/services/assessmentHistory');
                 const snapshots = await getSnapshots(user.uid, clientNameForLookup, 50, profile?.organizationId);
                 
-                let mapped: SnapshotInput[] = snapshots.map(s => ({
-                  id: s.id ?? '',
-                  score: s.overallScore,
-                  date: s.timestamp.toDate(),
-                  type: s.type,
-                  formData: s.formData,
-                }));
+                // Each snapshot displays its own historical formData — no
+                // posture overlay. Re-analyses update current/state but not
+                // the immutable session docs, so historical snapshots show
+                // the analyzer output as it existed at that point in time.
+                let mapped: SnapshotInput[] = snapshots.map(s => {
+                  const stored = s.overallScore;
+                  const score =
+                    stored && stored > 0
+                      ? stored
+                      : (() => {
+                          try {
+                            return Math.round(computeScores(s.formData).overall);
+                          } catch {
+                            return 0;
+                          }
+                        })();
+                  return {
+                    id: s.id ?? '',
+                    score,
+                    date: s.timestamp.toDate(),
+                    type: s.type,
+                    formData: s.formData,
+                  };
+                });
 
                 if (mapped.length === 0) {
                   mapped = [{

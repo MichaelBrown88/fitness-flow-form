@@ -8,14 +8,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Trophy,
-  Camera,
-  Heart,
-  Scale,
-  ChevronDown,
-  Settings,
-} from 'lucide-react';
+import { Heart, ChevronDown, Settings } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,46 +65,12 @@ export function ClientProfileDropdown({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
 
-        {/* ARC™ milestones (public achievements route) */}
-        <DropdownMenuItem
-          className="flex items-center gap-2"
-          onClick={() => navigate(`/r/${shareToken}/achievements`)}
-        >
-          <Trophy className="h-4 w-4" />
-          ARC™ milestones
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
-
-        {/* Self-service partials (informational — future feature) */}
-        <DropdownMenuItem
-          disabled
-          className="flex items-center justify-between"
-        >
-          <span className="flex items-center gap-2">
-            <Camera className="h-4 w-4" />
-            Posture Scan
-          </span>
-          <span className="text-[10px] font-medium text-muted-foreground">Coming soon</span>
-        </DropdownMenuItem>
-
         <DropdownMenuItem
           className="flex items-center gap-2"
           onClick={() => navigate(`/r/${shareToken}/lifestyle`)}
         >
           <Heart className="h-4 w-4" />
-          Lifestyle Check-in
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          disabled
-          className="flex items-center justify-between"
-        >
-          <span className="flex items-center gap-2">
-            <Scale className="h-4 w-4" />
-            Body Comp Scan
-          </span>
-          <span className="text-[10px] font-medium text-muted-foreground">Coming soon</span>
+          Lifestyle check-in
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

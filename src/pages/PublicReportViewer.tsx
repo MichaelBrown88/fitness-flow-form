@@ -36,6 +36,8 @@ import {
 import { ShareResultsDrawer } from '@/components/client/ShareResultsDrawer';
 import { buildPillarCards } from '@/lib/share/pillarCardData';
 import { Share2, Target, Trophy } from 'lucide-react';
+import { ClientPortalShell } from '@/components/client/ClientPortalShell';
+import { filterPublicAchievementList } from '@/lib/achievements/publicAchievementsView';
 
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 const RoadmapClientView = lazy(() => import('@/components/roadmap/RoadmapClientView'));
@@ -153,6 +155,7 @@ const PublicReportViewer = () => {
       } catch {
         /* storage quota — non-critical */
       }
+      window.dispatchEvent(new CustomEvent('oneassess-show-install-prompt'));
     }
   }, [token, formData, error]);
 
@@ -463,15 +466,6 @@ const PublicReportViewer = () => {
   return (
     <>
       {helmet}
-      {/* Consent gate — full-screen, shown once per device. Renders before AppShell loads. */}
-      {consentLoaded && showGate && token && (
-        <ClientConsentGate
-          token={token}
-          coachName={orgDetails?.name ?? null}
-          coachLogoUrl={orgDetails?.logoUrl ?? null}
-          onDismissed={dismissConsent}
-        />
-      )}
       <AppShell
       title={`${clientName}'s Report`}
       mode="public"
@@ -481,10 +475,11 @@ const PublicReportViewer = () => {
       shareToken={token ?? undefined}
       clientName={clientName}
     >
-
+      <ClientPortalShell token={token!} activeTab="axis">
       {snapshotSummaries.length >= 2 && (
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-10 pt-4">
           <AssessmentVersionSelector
+            variant="client"
             snapshots={versionSnapshots}
             selectedIndex={selectedVersionIndex}
             totalCount={snapshotSummaries.length}
@@ -537,10 +532,11 @@ const PublicReportViewer = () => {
             goals={Array.isArray(displayFormData.clientGoals) ? displayFormData.clientGoals : []}
             bodyComp={bodyComp ? { timeframeWeeks: bodyComp.timeframeWeeks } : undefined}
             formData={displayFormData}
-            plan={plan}
             previousScores={displayPrevScores}
             previousFormData={displayPrevFormData}
             standalone={true}
+            reportShareToken={token}
+            showBaselineNarrative={!changeNarrative && snapshotSummaries.length <= 1}
           />
         </Suspense>
       </div>
@@ -587,13 +583,14 @@ const PublicReportViewer = () => {
 
       {/* Inline ARC Roadmap section */}
       {roadmapData && roadmapData.items.length > 0 && (
-        <div className="max-w-2xl mx-auto px-3 sm:px-4 md:px-6 py-8" id="roadmap">
+        <div className="hidden md:block max-w-2xl mx-auto px-3 sm:px-4 md:px-6 py-8" id="roadmap">
           <div className="flex items-center gap-2 mb-4">
             <Target className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-bold text-foreground">Your ARC™ Plan</h2>
           </div>
           <Suspense fallback={<Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />}>
             <RoadmapClientView
+              clientName={clientName}
               items={roadmapData.items}
               summary={roadmapData.summary}
               activePhase={roadmapData.activePhase}
@@ -622,11 +619,11 @@ const PublicReportViewer = () => {
                   streaks={achievements.streaks}
                 />
               )}
-              {achievements.trophies.length > 0 && (
-                <TrophyGrid trophies={achievements.trophies} />
+              {filterPublicAchievementList(achievements.trophies).length > 0 && (
+                <TrophyGrid trophies={filterPublicAchievementList(achievements.trophies)} />
               )}
-              {achievements.milestones.length > 0 && (
-                <MilestoneProgress milestones={achievements.milestones} />
+              {filterPublicAchievementList(achievements.milestones).length > 0 && (
+                <MilestoneProgress milestones={filterPublicAchievementList(achievements.milestones)} />
               )}
             </Suspense>
           </div>
@@ -641,6 +638,7 @@ const PublicReportViewer = () => {
             size="lg"
             onClick={() => void handleExportData()}
             disabled={exporting}
+            aria-describedby="gdpr-export-hint"
             className="min-h-11 h-auto py-3 px-4 text-sm text-muted-foreground hover:text-foreground gap-2"
           >
             {exporting ? (
@@ -648,17 +646,38 @@ const PublicReportViewer = () => {
             ) : (
               <Download className="h-4 w-4 shrink-0" aria-hidden />
             )}
-            Download my data (GDPR Article 20)
+            Download my data
           </Button>
+          <p id="gdpr-export-hint" className="sr-only">
+            GDPR Article 20 — export a copy of your assessment data
+          </p>
           {exportError ? (
             <p className="text-sm text-destructive text-center max-w-md" role="alert">
               {exportError}
             </p>
           ) : null}
-          <Button variant="ghost" size="lg" className="min-h-11 h-auto py-3 px-4 text-sm" asChild>
-            <Link to={`/r/${token}/erasure`}>Request data deletion (GDPR Article 17)</Link>
+          <Button
+            variant="ghost"
+            size="lg"
+            className="min-h-11 h-auto py-3 px-4 text-sm"
+            asChild
+            aria-describedby="gdpr-erasure-hint"
+          >
+            <Link to={`/r/${token}/erasure`}>Request deletion</Link>
           </Button>
+          <p id="gdpr-erasure-hint" className="text-[11px] text-muted-foreground text-center max-w-sm">
+            GDPR Article 17 — ask your coach to remove your data from One Assess
+          </p>
         </div>
+      )}
+      </ClientPortalShell>
+      {consentLoaded && showGate && token && (
+        <ClientConsentGate
+          token={token}
+          coachName={orgDetails?.name ?? null}
+          coachLogoUrl={orgDetails?.logoUrl ?? null}
+          onDismissed={dismissConsent}
+        />
       )}
     </AppShell>
     </>

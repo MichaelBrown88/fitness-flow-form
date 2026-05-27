@@ -14,7 +14,8 @@ import { ClientActionsDropdown } from './ClientActionsDropdown';
 import { ClientTableBulkActions } from './unifiedClientTableBulk';
 import { PauseClientDialog } from '@/components/client/PauseClientDialog';
 import { generateClientSlug } from '@/services/clientProfiles';
-import { MiniBloom } from '@/components/client/console/MiniBloom';
+import { MiniPillarRadar } from '@/components/reports/MiniPillarRadar';
+import { PILLAR_SCORE_ORDER } from '@/lib/reports/radarData';
 import type { ClientGroup } from '@/hooks/dashboard/types';
 import type { UserProfile } from '@/types/auth';
 import type { PartialAssessmentCategory } from '@/types/client';
@@ -82,15 +83,11 @@ function axisTone(score: number): 'green' | 'amber' | 'red' | 'muted' {
   return 'red';
 }
 
-// MiniBloom expects canonical pillar order: [Body, Strength, Cardio, Movement, Lifestyle]
-const PILLAR_ORDER_FOR_BLOOM = ['bodyComp', 'strength', 'cardio', 'movementQuality', 'lifestyle'] as const;
-
-function bloomScoresForClient(client: ClientGroup): number[] | null {
+function pillarRadarScoresForClient(client: ClientGroup): number[] | null {
   const summary = client.assessments[0]?.scoresSummary;
   if (!summary?.categories?.length) return null;
   const byId = new Map(summary.categories.map((c) => [c.id, c.score]));
-  const scores = PILLAR_ORDER_FOR_BLOOM.map((id) => byId.get(id) ?? 0);
-  // Skip rendering when nothing meaningful — all-zero arrays look broken.
+  const scores = PILLAR_SCORE_ORDER.map((id) => byId.get(id) ?? 0);
   if (scores.every((s) => s === 0)) return null;
   return scores;
 }
@@ -428,6 +425,12 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                             {isPaused && <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Paused</span>}
                             {isArchived && <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Archived</span>}
                             {isDeleted && <span className="text-[10px] font-bold uppercase tracking-wider text-destructive">Deleted</span>}
+                            {client.remoteIntakePending && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                                Intake pending
+                              </span>
+                            )}
                             {client.remoteIntakeAwaitingStudio && (
                               <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-amber-fg">
                                 <span className="h-1.5 w-1.5 rounded-full bg-score-amber shrink-0" />
@@ -461,8 +464,8 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                     <td className="px-3 py-3 sm:px-4 md:px-6">
                       <div className="flex items-center gap-2.5">
                         {(() => {
-                          const bs = bloomScoresForClient(client);
-                          return bs ? <MiniBloom scores={bs} size={36} /> : null;
+                          const bs = pillarRadarScoresForClient(client);
+                          return bs ? <MiniPillarRadar scores={bs} size={36} /> : null;
                         })()}
                         <AxisScorePill score={client.latestScore} />
                       </div>
@@ -582,15 +585,21 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                   </div>
                 )}
 
-                {/* Line 2: bloom thumb, score, trend, coach, date, next due */}
+                {/* Line 2: pillar radar thumb, score, trend, coach, date, next due */}
                 <div className="flex items-center gap-2 mt-2 flex-wrap">
                   {(() => {
-                    const bs = bloomScoresForClient(client);
-                    return bs ? <MiniBloom scores={bs} size={32} /> : null;
+                    const bs = pillarRadarScoresForClient(client);
+                    return bs ? <MiniPillarRadar scores={bs} size={32} /> : null;
                   })()}
                   <AxisScorePill score={client.latestScore} />
                   <ClientStatusPill status={attentionMap?.get(client.name)} />
                   <TrendIndicator trend={client.scoreChange} />
+                  {client.remoteIntakePending && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                      Intake pending
+                    </span>
+                  )}
                   {client.remoteIntakeAwaitingStudio && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-amber-fg">
                       <span className="h-1.5 w-1.5 rounded-full bg-score-amber shrink-0" />

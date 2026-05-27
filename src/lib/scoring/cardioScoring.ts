@@ -18,7 +18,21 @@ export function scoreCardio(form: FormData, age: number, gender: string): ScoreC
   const hrr = hasPeakHr && hasHr60 && peakHr > 0 && hr60 > 0 ? peakHr - hr60 : 0;
   const hasHrr = hrr > 0;
 
-  const hrrScore = hasHrr ? clamp((hrr - 5) * 2.8) : 0;
+  const hrrScore = hasHrr
+    ? clamp(
+        hrr >= 30
+          ? 95
+          : hrr >= 25
+            ? 88
+            : hrr >= 20
+              ? 78
+              : hrr >= 15
+                ? 65
+                : hrr >= 12
+                  ? 48
+                  : 30,
+      )
+    : 0;
 
   const recoveryScore = hasHr60 && !hasHrr
     ? lookupNormativeScore('Recovery HR', gender, age, hr60)
@@ -84,10 +98,10 @@ export function scoreCardio(form: FormData, age: number, gender: string): ScoreC
     { label: hasHrr ? 'Heart Rate Recovery (HRR)' : 'Heart Rate Recovery', score: hasHrr ? hrrScore : recoveryScore }
   ].sort((a, b) => a.score - b.score);
 
-  items.forEach(item => {
+  items.forEach((item) => {
     if (item.score < 60) {
       weaknesses.push(`${item.label} identified as a limiting factor`);
-    } else {
+    } else if (item.score < 75) {
       weaknesses.push(`Further refinement of ${item.label} for better recovery`);
     }
   });

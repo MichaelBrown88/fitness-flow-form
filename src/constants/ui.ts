@@ -58,6 +58,7 @@ export const UI_TOASTS = {
     IMAGES_UPLOADED: 'Images uploaded successfully',
     IMAGE_CAPTURED: 'Image Captured',
     REPORT_EMAILED: 'Report emailed',
+    INTAKE_LINK_EMAILED: 'Intake link sent',
     LINK_COPIED: 'Live Link Copied',
     LINK_COPIED_DESC: 'Anyone with this link can view the interactive report.',
     DIAGNOSTICS_COPIED: 'Diagnostics copied',
@@ -105,6 +106,8 @@ export const UI_TOASTS = {
     UNABLE_TO_SHARE_WHATSAPP_DESC: 'Copy the link instead.',
     CLIENT_EMAIL_MISSING: 'Client email missing',
     CLIENT_EMAIL_MISSING_DESC: 'Add an email to the intake before emailing a report.',
+    INTAKE_EMAIL_NOT_SENT: 'Intake email not sent',
+    INTAKE_EMAIL_NOT_SENT_DESC: 'Copy the link and send it manually, or try again in a moment.',
     CURRENT_DATA_NOT_LOADED: 'Current data not loaded',
     NO_PHASES_AVAILABLE: 'No Phases Available',
   },
@@ -218,6 +221,14 @@ export const UI_CLIENT_DETAIL = {
   HEADER_ACTIONS_MENU_ARIA: 'Client actions',
   /** Collapsible section title — distinct from the Overview nav tab */
   OVERVIEW_SECTION_TITLE: 'Snapshot',
+  TAB_SUMMARY: 'Summary',
+  TAB_CONSULTATION: 'Consultation',
+  TAB_REPORT: 'Report',
+  TAB_TIMELINE: 'Timeline',
+  INTAKE_READY_PILL: 'Intake ready — review consultation, then studio',
+  INTAKE_REVIEW_CTA: 'Review intake & consultation',
+  INTAKE_PENDING_PILL: 'Waiting for client intake',
+  INTAKE_PENDING_DESC: 'Link sent — they have not submitted their pre-visit form yet.',
 } as const;
 
 /** Command palette page shortcuts */

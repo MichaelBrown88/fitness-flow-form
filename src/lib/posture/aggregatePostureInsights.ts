@@ -40,12 +40,15 @@ export function aggregatePostureFindings(
 }
 
 export function computePostureScore(findings: PostureFindingRecord[]): number {
+  // Multiplicative decay so the score never floors at 0 even with many
+  // findings, but compounds appropriately as severity stacks up.
+  // Each significant finding ≈ 18% reduction, moderate ≈ 10%, mild ≈ 4%.
   let s = 100;
   for (const f of findings) {
-    if (f.severity === 'mild') s -= 6;
-    else if (f.severity === 'moderate') s -= 14;
-    else if (f.severity === 'significant') s -= 24;
-    if (f.priority === 'high') s -= 2;
+    if (f.severity === 'mild') s *= 0.96;
+    else if (f.severity === 'moderate') s *= 0.90;
+    else if (f.severity === 'significant') s *= 0.82;
+    if (f.priority === 'high') s *= 0.98;
   }
   return Math.max(0, Math.round(s));
 }

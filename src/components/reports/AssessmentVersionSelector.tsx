@@ -13,6 +13,8 @@ export interface VersionSelectorSnapshot {
 }
 
 export interface AssessmentVersionSelectorProps {
+  /** Coach: full grid. Client: latest/previous only. */
+  variant?: 'coach' | 'client';
   snapshots: VersionSelectorSnapshot[];
   selectedIndex: number;
   totalCount: number;
@@ -27,6 +29,7 @@ export interface AssessmentVersionSelectorProps {
 }
 
 const AssessmentVersionSelector: React.FC<AssessmentVersionSelectorProps> = ({
+  variant = 'coach',
   snapshots,
   selectedIndex,
   totalCount,
@@ -40,10 +43,65 @@ const AssessmentVersionSelector: React.FC<AssessmentVersionSelectorProps> = ({
   getTrend,
 }) => {
   const [open, setOpen] = useState(false);
+  const [showAllAssessments, setShowAllAssessments] = useState(false);
   const current = snapshots.find((_, i) => currentPage * pageSize + i === selectedIndex) ?? snapshots[0] ?? null;
   const currentTrend = current ? getTrend(selectedIndex) : 'neutral';
+  const isClient = variant === 'client';
+  const latestIndex = totalCount - 1;
+  const previousIndex = totalCount >= 2 ? totalCount - 2 : -1;
 
   if (totalCount < 1) return null;
+
+  if (isClient && totalCount >= 2 && !showAllAssessments) {
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <VersionSelectorBar
+          current={current}
+          onPrev={() => onSelect(selectedIndex - 1)}
+          onNext={() => onSelect(selectedIndex + 1)}
+          gridTrigger={
+            <div className="flex items-center gap-1 px-1">
+              <button
+                type="button"
+                onClick={() => onSelect(latestIndex)}
+                className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                  selectedIndex === latestIndex
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                Latest
+              </button>
+              {previousIndex >= 0 ? (
+                <button
+                  type="button"
+                  onClick={() => onSelect(previousIndex)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                    selectedIndex === previousIndex
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  Previous
+                </button>
+              ) : null}
+            </div>
+          }
+          hasPrev={selectedIndex > 0}
+          hasNext={selectedIndex < totalCount - 1}
+        />
+        {totalCount > 2 ? (
+          <button
+            type="button"
+            onClick={() => setShowAllAssessments(true)}
+            className="text-xs font-medium text-primary hover:underline"
+          >
+            All assessments
+          </button>
+        ) : null}
+      </div>
+    );
+  }
 
   const handleGridSelect = (index: number) => {
     onSelect(index);

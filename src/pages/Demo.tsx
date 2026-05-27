@@ -69,7 +69,6 @@ export default function Demo() {
               scores={DEMO_SCORES}
               goals={DEMO_GOALS}
               formData={DEMO_FORM_DATA as unknown as FormData}
-              plan={DEMO_PLAN}
               bodyComp={{ timeframeWeeks: '8-12' }}
               standalone={false}
             />

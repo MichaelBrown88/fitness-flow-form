@@ -22,6 +22,7 @@ import { PhaseFormPhaseHeader } from '@/components/assessment/phaseForm/PhaseFor
 import { PhaseFormViewResultsCta } from '@/components/assessment/phaseForm/PhaseFormViewResultsCta';
 import { PhaseFormResultsPanel } from '@/components/assessment/phaseForm/PhaseFormResultsPanel';
 import { PhaseFormConfidentialFooter } from '@/components/assessment/phaseForm/PhaseFormConfidentialFooter';
+import { IntakePrefillBanner } from '@/components/assessment/IntakePrefillBanner';
 import { PhaseFormSingleFieldFlow } from '@/components/assessment/phaseForm/PhaseFormSingleFieldFlow';
 import { computeScores, buildRoadmap } from '@/lib/scoring';
 import type { ScoreSummary } from '@/lib/scoring/types';
@@ -350,6 +351,8 @@ export const PhaseFormContent = ({
           activePhaseId={activePhase.id}
           coachGuidanceOn={coachGuidanceOn}
         />
+
+        <IntakePrefillBanner />
 
         <section className="space-y-6">
           <PhaseFormSingleFieldFlow

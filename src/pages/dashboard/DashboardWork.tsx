@@ -14,7 +14,8 @@ import {
 } from 'lucide-react';
 import { WorkspaceBreadcrumb } from '@/components/dashboard/WorkspaceBreadcrumb';
 import { WorkspaceKpiCard } from '@/components/dashboard/WorkspaceKpiCard';
-import { MiniBloom } from '@/components/client/console/MiniBloom';
+import { MiniPillarRadar } from '@/components/reports/MiniPillarRadar';
+import { PILLAR_SCORE_ORDER } from '@/lib/reports/radarData';
 import type { ClientGroup } from '@/hooks/dashboard/types';
 import { useAuth } from '@/hooks/useAuth';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
@@ -42,14 +43,11 @@ function formatToday(): string {
 const isInactive = (c: { clientStatus?: string }) =>
   c.clientStatus === 'deleted' || c.clientStatus === 'archived' || c.clientStatus === 'paused';
 
-// MiniBloom expects canonical pillar order: [Body, Strength, Cardio, Movement, Lifestyle]
-const PILLAR_ORDER_FOR_BLOOM = ['bodyComp', 'strength', 'cardio', 'movementQuality', 'lifestyle'] as const;
-
-function bloomScoresForClient(client: ClientGroup): number[] | null {
+function pillarRadarScoresForClient(client: ClientGroup): number[] | null {
   const summary = client.assessments[0]?.scoresSummary;
   if (!summary?.categories?.length) return null;
   const byId = new Map(summary.categories.map((c) => [c.id, c.score]));
-  const scores = PILLAR_ORDER_FOR_BLOOM.map((id) => byId.get(id) ?? 0);
+  const scores = PILLAR_SCORE_ORDER.map((id) => byId.get(id) ?? 0);
   if (scores.every((s) => s === 0)) return null;
   return scores;
 }
@@ -61,6 +59,11 @@ export default function DashboardWork() {
   const coachFirst = user ? staffPreferredFirstName(profile, user) : 'Coach';
 
   // ─── Lists driving the page ──────────────────────────────────────────
+  const intakePendingClients = useMemo(
+    () => (ctx.clientGroups ?? []).filter((c) => c.remoteIntakePending && !isInactive(c)),
+    [ctx.clientGroups],
+  );
+
   const remoteReadyClients = useMemo(
     () => (ctx.clientGroups ?? []).filter((c) => c.remoteIntakeAwaitingStudio && !isInactive(c)),
     [ctx.clientGroups],
@@ -126,14 +129,25 @@ export default function DashboardWork() {
     title: string;
     meta: string;
     action?: { label: string; onClick: () => void };
-    /** When present, the SignalRow renders the client's MiniBloom in
-     *  place of the generic icon tile — ties signals back to the AXIS
-     *  bloom brand and gives coaches an at-a-glance visual fingerprint. */
-    bloomScores?: number[];
+    /** When present, SignalRow shows a compact pillar radar instead of the generic icon. */
+    pillarRadarScores?: number[];
   };
 
   const signalItems = useMemo<SignalItem[]>(() => {
     const items: SignalItem[] = [];
+    for (const c of intakePendingClients.slice(0, 3)) {
+      items.push({
+        id: `pending-${c.id}`,
+        icon: Sparkles,
+        tone: 'amber',
+        title: `${formatClientDisplayName(c.name)} · intake pending`,
+        meta: 'Link sent — waiting for their pre-visit form',
+        action: {
+          label: 'View client',
+          onClick: () => navigate(`/dashboard/clients/${encodeURIComponent(c.name)}`),
+        },
+      });
+    }
     for (const c of remoteReadyClients.slice(0, 3)) {
       items.push({
         id: `ready-${c.id}`,
@@ -142,7 +156,7 @@ export default function DashboardWork() {
         title: `${formatClientDisplayName(c.name)} ready for studio`,
         meta: 'Remote intake complete · answers will pre-fill',
         action: { label: 'Continue', onClick: () => ctx.handleNewAssessmentForClient(c.name) },
-        bloomScores: bloomScoresForClient(c) ?? undefined,
+        pillarRadarScores: pillarRadarScoresForClient(c) ?? undefined,
       });
     }
     for (const c of scoreAlerts.slice(0, 3)) {
@@ -152,8 +166,11 @@ export default function DashboardWork() {
         tone: 'red',
         title: `${formatClientDisplayName(c.name)} · score dropped`,
         meta: `From ${c.latestScore - (c.scoreChange ?? 0)} to ${c.latestScore} · review and reach out`,
-        action: { label: 'Open', onClick: () => navigate(`/client/${encodeURIComponent(c.name)}`) },
-        bloomScores: bloomScoresForClient(c) ?? undefined,
+        action: {
+          label: 'Open report',
+          onClick: () => navigate(`/dashboard/clients/${encodeURIComponent(c.name)}/report`),
+        },
+        pillarRadarScores: pillarRadarScoresForClient(c) ?? undefined,
       });
     }
     for (const c of unsharableClients.slice(0, 3)) {
@@ -165,13 +182,14 @@ export default function DashboardWork() {
         meta: `${c.assessments.length} assessment${c.assessments.length !== 1 ? 's' : ''} pending delivery`,
         action: {
           label: 'Share',
-          onClick: () => navigate(`/client/${encodeURIComponent(c.name)}/report?share=1`),
+          onClick: () =>
+            navigate(`/dashboard/clients/${encodeURIComponent(c.name)}/report?share=1`),
         },
-        bloomScores: bloomScoresForClient(c) ?? undefined,
+        pillarRadarScores: pillarRadarScoresForClient(c) ?? undefined,
       });
     }
-    return items;
-  }, [remoteReadyClients, scoreAlerts, unsharableClients, ctx, navigate]);
+    return items.slice(0, 2);
+  }, [intakePendingClients, remoteReadyClients, scoreAlerts, unsharableClients, ctx, navigate]);
 
   // ─── Calendar sheet (Schedule button opens slide-in) ─────────────────
   const [calendarSheetOpen, setCalendarSheetOpen] = useState(false);
@@ -211,79 +229,75 @@ export default function DashboardWork() {
         </div>
       </header>
 
-      {/* ─── KPI row ──────────────────────────────────────────── */}
-      {/* Kit stat-row: 4 cols, 12px gap */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <WorkspaceKpiCard label="Active clients" value={totalClients > 0 ? String(totalClients) : '—'} />
-        <WorkspaceKpiCard
-          label="Assessments · 30d"
-          value={assessments30d > 0 ? String(assessments30d) : '—'}
-        />
-        <WorkspaceKpiCard
-          label="Needs attention"
-          value={attentionCount === 0 && totalClients === 0 ? '—' : String(attentionCount)}
-          trend={
-            attentionCount === 0 && totalClients > 0
-              ? { dir: 'up', label: 'all on track' }
-              : overdueCount > 0
-              ? { dir: 'down', label: `${overdueCount} overdue` }
-              : undefined
+      {/* ─── Action queue (primary) ─────────────────────────── */}
+      <Panel
+        title="Action queue"
+        link={
+          attentionCount > 0
+            ? { label: 'See all clients', onClick: () => navigate('/dashboard/clients') }
+            : undefined
+        }
+      >
+        <ClientAttentionList
+          queue={ctx.reassessmentQueue.queue}
+          search={ctx.search}
+          onOpenClient={(name) =>
+            navigate(`/dashboard/clients/${encodeURIComponent(name)}/report`)
           }
+          onStartAssessment={(name, pillars) => ctx.handleNewAssessmentForClient(name, pillars)}
         />
-        <WorkspaceKpiCard
-          label="Reports shared"
-          value={reportsSharedPct === null ? '—' : `${reportsSharedPct}%`}
-        />
-      </div>
+      </Panel>
 
-      {/* ─── Two-column body ──────────────────────────────────── */}
-      {/* Kit content-grid: 1.5fr / 1fr, gap 16px, items start */}
-      <div className="grid min-h-0 flex-1 items-start gap-4 lg:grid-cols-[1.5fr_1fr]">
-        {/* LEFT: Clients needing attention */}
-        <section className="min-w-0 space-y-6">
-          <Panel
-            title="Clients needing attention"
-            link={
-              attentionCount > 0 ? { label: 'See all clients', onClick: () => navigate('/dashboard/clients') } : undefined
-            }
-          >
-            <ClientAttentionList
-              queue={ctx.reassessmentQueue.queue}
-              search={ctx.search}
-              onOpenClient={(name) => navigate(`/client/${encodeURIComponent(name)}`)}
-              onStartAssessment={(name, pillars) => ctx.handleNewAssessmentForClient(name, pillars)}
+      <div className="grid min-h-0 flex-1 items-start gap-4 lg:grid-cols-2">
+        <Panel title="Coach brief" label="Today">
+          {signalItems.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <CircleCheck className="h-6 w-6 text-score-green" />
+              <p className="text-sm font-semibold text-foreground">All clear</p>
+              <p className="max-w-[260px] text-xs text-muted-foreground">
+                No urgent studio, share, or score alerts right now.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {signalItems.map((item) => (
+                <SignalRow key={item.id} item={item} />
+              ))}
+            </ul>
+          )}
+        </Panel>
+
+        <details className="group rounded-[20px] border border-border bg-card">
+          <summary className="cursor-pointer list-none px-5 py-[18px] text-sm font-semibold text-foreground marker:content-none">
+            <span className="flex items-center justify-between gap-2">
+              Activity summary
+              <span className="text-xs font-medium text-muted-foreground group-open:hidden">Show</span>
+              <span className="text-xs font-medium text-muted-foreground hidden group-open:inline">Hide</span>
+            </span>
+          </summary>
+          <div className="grid grid-cols-2 gap-3 px-5 pb-5">
+            <WorkspaceKpiCard label="Active clients" value={totalClients > 0 ? String(totalClients) : '—'} />
+            <WorkspaceKpiCard
+              label="Assessments · 30d"
+              value={assessments30d > 0 ? String(assessments30d) : '—'}
             />
-          </Panel>
-        </section>
-
-        {/* RIGHT: SIGNAL feed */}
-        <aside className="min-w-0">
-          <Panel
-            title={
-              <span>
-                <span className="font-semibold">SIGNAL</span>
-                <span className="text-xs text-muted-foreground">™ · Coach priorities</span>
-              </span>
-            }
-            label="Today"
-          >
-            {signalItems.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-8 text-center">
-                <CircleCheck className="h-6 w-6 text-score-green" />
-                <p className="text-sm font-semibold text-foreground">All clear</p>
-                <p className="max-w-[260px] text-xs text-muted-foreground">
-                  No drops, unshared reports, or studio-ready clients right now. Nicely done.
-                </p>
-              </div>
-            ) : (
-              <ul className="divide-y divide-border/60">
-                {signalItems.map((item) => (
-                  <SignalRow key={item.id} item={item} />
-                ))}
-              </ul>
-            )}
-          </Panel>
-        </aside>
+            <WorkspaceKpiCard
+              label="Needs attention"
+              value={attentionCount === 0 && totalClients === 0 ? '—' : String(attentionCount)}
+              trend={
+                attentionCount === 0 && totalClients > 0
+                  ? { dir: 'up', label: 'all on track' }
+                  : overdueCount > 0
+                    ? { dir: 'down', label: `${overdueCount} overdue` }
+                    : undefined
+              }
+            />
+            <WorkspaceKpiCard
+              label="Reports shared"
+              value={reportsSharedPct === null ? '—' : `${reportsSharedPct}%`}
+            />
+          </div>
+        </details>
       </div>
 
       {/* ─── Calendar sheet (Schedule button opens this) ──────── */}
@@ -514,7 +528,7 @@ interface SignalRowProps {
     title: string;
     meta: string;
     action?: { label: string; onClick: () => void };
-    bloomScores?: number[];
+    pillarRadarScores?: number[];
   };
 }
 
@@ -523,9 +537,9 @@ function SignalRow({ item }: SignalRowProps) {
   const tone = SIGNAL_TONE_TILE[item.tone];
   return (
     <li className="flex items-start gap-3 px-3 py-3">
-      {item.bloomScores ? (
+      {item.pillarRadarScores ? (
         <div className="shrink-0">
-          <MiniBloom scores={item.bloomScores} size={36} />
+          <MiniPillarRadar scores={item.pillarRadarScores} size={36} />
         </div>
       ) : (
         <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', tone.tile)} aria-hidden>

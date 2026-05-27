@@ -5,6 +5,15 @@
 
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import type { PartialCategory } from '@/lib/assessmentCompleteness';
+import type { StudioSessionStep } from '@/lib/assessment/studioSessionSteps';
+import {
+  clearBaselineSessionFlags,
+  markBaselineAssessmentSession,
+  markReturningSessionPlan,
+  type BaselineIntakeMode,
+} from '@/lib/assessment/baselineSession';
+
+export { markReturningSessionPlan } from '@/lib/assessment/baselineSession';
 
 function safeParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -355,6 +364,7 @@ export function clearAssessmentEntryBleedKeys(): void {
   removeEditAssessment();
   removeAssessmentSetupConfirmed();
   removeDraftAssessment();
+  clearBaselineSessionFlags();
 }
 
 /** Client-detail "new assessment": clears demo/prefill/edit without wiping draft or setup flag. */
@@ -374,13 +384,19 @@ export interface BaselineAssessmentPrefill {
  * Bypasses AssessmentSetupStep and AssessmentPlanWizard. Accepts either the
  * client name as a string (legacy) or a prefill payload.
  */
-export function startBaselineAssessmentSession(input: string | BaselineAssessmentPrefill): void {
+export function startBaselineAssessmentSession(
+  input: string | BaselineAssessmentPrefill,
+  options?: { intakeMode?: BaselineIntakeMode; remoteIntakeResume?: boolean },
+): void {
   clearAssessmentEntryBleedKeys();
   const payload: BaselineAssessmentPrefill =
     typeof input === 'string' ? { fullName: input } : input;
   writePrefillClientPayload({
     fullName: payload.fullName,
     ...(payload.email ? { email: payload.email } : {}),
+  });
+  markBaselineAssessmentSession(options?.intakeMode ?? 'studio', {
+    remoteIntakeResume: options?.remoteIntakeResume,
   });
   safeSetItem(STORAGE_KEYS.ASSESSMENT_SETUP_CONFIRMED, '1');
 }
@@ -392,6 +408,40 @@ export function confirmAssessmentSetup(): void {
 
 export function shouldSuppressLocalDraftRecovery(): boolean {
   return hasEditAssessmentInSession() || hasPrefillClientInSession();
+}
+
+// --- Studio baseline steps ---
+
+export function readStudioSessionStep(): StudioSessionStep | null {
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEYS.STUDIO_SESSION_STEP);
+    if (raw === 'intake-review' || raw === 'consultation' || raw === 'phase') return raw;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+export function writeStudioSessionStep(step: StudioSessionStep): void {
+  safeSetItem(STORAGE_KEYS.STUDIO_SESSION_STEP, step);
+}
+
+export function isConsultationCompleteInSession(): boolean {
+  try {
+    return sessionStorage.getItem(STORAGE_KEYS.CONSULTATION_COMPLETE) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markConsultationCompleteInSession(): void {
+  safeSetItem(STORAGE_KEYS.CONSULTATION_COMPLETE, '1');
+  writeStudioSessionStep('phase');
+}
+
+export function clearStudioSessionStepFlags(): void {
+  safeRemoveItem(STORAGE_KEYS.STUDIO_SESSION_STEP);
+  safeRemoveItem(STORAGE_KEYS.CONSULTATION_COMPLETE);
 }
 
 /** Setup step: best-effort client name from partial → prefill → edit. */

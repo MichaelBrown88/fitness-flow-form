@@ -2,30 +2,35 @@
  * Simplified Client Report — layout orchestration; section config and chrome live under ./client/.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
-import type { CoachPlan } from '@/lib/recommendations';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { AxisSummaryCard } from './client/sub-components/AxisSummaryCard';
 import { useClientReportData } from './client/useClientReportData';
 import { useScrollRevealSections } from '@/hooks/useScrollRevealSections';
 import { SECTION_IDS, DEFAULT_OPEN } from './client/clientReportSections';
 import { type ClientReportSectionContext } from './client/renderClientReportSection';
-import { ClientReportCoachPane } from './client/ClientReportCoachPane';
-import { ClientReportDesktopAccordion } from './client/ClientReportDesktopAccordion';
-import { ClientReportMobileLayout } from './client/ClientReportMobileLayout';
+import {
+  ClientReportScrollLayout,
+  getActiveReportSectionIds,
+} from './client/ClientReportScrollLayout';
+import { ReportPillarJumpRow } from './client/sub-components/ReportPillarJumpRow';
+import { buildClientOverallSummary } from './client/sub-components/clientPillarSummary';
+import { buildProjectedOutlook } from '@/lib/goals/projectedOutlook';
+import { ASSESSMENT_OPTIONS } from '@/constants/assessment';
+import { CLIENT_REPORT_COPY } from '@/constants/clientReport';
 
 export default function ClientReport({
   scores,
   goals,
   formData,
-  plan,
   bodyComp: _bodyComp,
   previousScores,
   previousFormData,
   standalone = true,
+  reportShareToken,
   roadmapShareToken,
+  showBaselineNarrative = false,
   organizationId,
   coachActions,
   reportMeta,
@@ -33,26 +38,20 @@ export default function ClientReport({
   scores: ScoreSummary;
   goals?: string[];
   formData?: FormData;
-  plan?: CoachPlan;
   bodyComp?: { timeframeWeeks: string };
   previousScores?: ScoreSummary | null;
   previousFormData?: FormData;
   standalone?: boolean;
-  /** When provided, shows a link to the client's published ARC™ */
+  /** Public report token for `/r/:token/roadmap` links. */
+  reportShareToken?: string;
   roadmapShareToken?: string;
-  /** Passed from coach pages to enable re-analysis; omitted on public views. */
+  showBaselineNarrative?: boolean;
   organizationId?: string;
-  /**
-   * Coach-side action handlers for the AXIS Summary hero. Pass from
-   * AssessmentReport (the coach review surface) — leave undefined from
-   * PublicReportViewer so /r/:token is read-only.
-   */
   coachActions?: {
     onShare?: () => void;
     onSendToClient?: () => void;
     onDownloadPdf?: () => void;
   };
-  /** Optional metadata for the AXIS Summary hero (org · coach · #N). */
   reportMeta?: {
     orgName?: string;
     coachName?: string;
@@ -73,19 +72,7 @@ export default function ClientReport({
     reportDate,
   } = useClientReportData({ scores, goals, formData, previousScores, previousFormData });
 
-  const isMobile = useIsMobile();
-  const [activeView, setActiveView] = useState<'client' | 'coach'>(standalone ? 'client' : 'client');
-
-  useEffect(() => {
-    if (standalone && activeView === 'coach') {
-      setActiveView('client');
-    }
-  }, [standalone, activeView]);
-
-  const { isOpen: isSectionOpen, toggle: toggleSection, setRef: setSectionRef } = useScrollRevealSections(
-    SECTION_IDS,
-    DEFAULT_OPEN,
-  );
+  const { setRef: setSectionRef } = useScrollRevealSections(SECTION_IDS, DEFAULT_OPEN);
 
   const sectionCtx: ClientReportSectionContext = useMemo(
     () => ({
@@ -126,6 +113,48 @@ export default function ClientReport({
     ],
   );
 
+  const activeSectionIds = useMemo(
+    () => getActiveReportSectionIds(sectionCtx),
+    [sectionCtx],
+  );
+
+  const overallNarrative = useMemo(
+    () => buildClientOverallSummary(safeScores, previousScores?.overall ?? null),
+    [safeScores, previousScores?.overall],
+  );
+
+  const priorityStrengths = useMemo(
+    () => strengths.map((s) => ({ text: s.strength })),
+    [strengths],
+  );
+
+  const priorityFocusAreas = useMemo(
+    () => areasForImprovement.map((a) => ({ text: a.weakness })),
+    [areasForImprovement],
+  );
+
+  const projectedOutlook = useMemo(
+    () => buildProjectedOutlook(formData, safeScores, goals),
+    [formData, safeScores, goals],
+  );
+
+  const goalChipLabels = useMemo(() => {
+    const ids = goals?.length ? goals : formData?.clientGoals ?? [];
+    return ids
+      .map((id) => ASSESSMENT_OPTIONS.clientGoals.find((g) => g.value === id)?.label ?? id)
+      .filter(Boolean)
+      .slice(0, 4);
+  }, [goals, formData?.clientGoals]);
+
+  const arcNavToken = reportShareToken ?? roadmapShareToken;
+
+  const scrollToPillar = useCallback((sectionId: string) => {
+    const el = document.querySelector(`[data-section-id="${sectionId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
+
   if (!scores || !scores.categories || scores.categories.length === 0 || !hasAnyData) {
     return (
       <div className="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
@@ -146,51 +175,72 @@ export default function ClientReport({
   return (
     <div className={containerClass}>
       <div className={`${contentClass} overflow-x-hidden`}>
-        {/* Headline hero — name, vitals, AXIS Score, archetype, Bloom, and
-            five-pillar trend bars. Replaces the prior ReportHeader +
-            ClientInfoBar strip; the page chrome above (breadcrumb, banner,
-            tabs) is owned by ClientReportTab. */}
-        {activeView === 'client' && safeScores.categories?.length > 0 && (
-          <AxisSummaryCard
-            clientName={clientName}
-            reportDate={reportDate}
-            scores={safeScores}
-            previousOverallScore={previousScores?.overall ?? null}
-            archetype={archetype}
-            radarData={overallRadarData}
-            previousRadarData={previousRadarData}
-            orgName={reportMeta?.orgName}
-            coachName={reportMeta?.coachName}
-            assessmentNumber={reportMeta?.assessmentNumber}
-            formData={formData}
-            showActions={Boolean(coachActions)}
-            onShare={coachActions?.onShare}
-            onSendToClient={coachActions?.onSendToClient}
-            onDownloadPdf={coachActions?.onDownloadPdf}
-          />
+        {safeScores.categories?.length > 0 && (
+          <>
+            <AxisSummaryCard
+              clientName={clientName}
+              reportDate={reportDate}
+              scores={safeScores}
+              previousOverallScore={previousScores?.overall ?? null}
+              narrative={overallNarrative}
+              archetype={archetype}
+              radarData={overallRadarData}
+              previousRadarData={previousRadarData}
+              priorityStrengths={priorityStrengths}
+              priorityFocusAreas={priorityFocusAreas}
+              outlookHeadline={projectedOutlook?.headline}
+              outlookBullets={projectedOutlook?.bullets}
+              outlookHorizons={projectedOutlook?.horizons}
+              onPillarSelect={scrollToPillar}
+              orgName={reportMeta?.orgName}
+              coachName={reportMeta?.coachName}
+              assessmentNumber={reportMeta?.assessmentNumber}
+              formData={formData}
+              goalLabels={standalone ? goalChipLabels : []}
+              baselineNarrative={
+                standalone && showBaselineNarrative ? CLIENT_REPORT_COPY.baselineNarrative : undefined
+              }
+              clientFacingRadar={standalone}
+              showActions={Boolean(coachActions)}
+              onShare={coachActions?.onShare}
+              onSendToClient={coachActions?.onSendToClient}
+              onDownloadPdf={coachActions?.onDownloadPdf}
+            />
+            <ReportPillarJumpRow activeSectionIds={activeSectionIds} />
+          </>
         )}
 
-        {activeView === 'coach' ? (
-          <ClientReportCoachPane plan={plan} scores={scores} formData={formData} />
-        ) : isMobile ? (
-          <ClientReportMobileLayout sectionCtx={sectionCtx} />
-        ) : (
-          <ClientReportDesktopAccordion
-            isSectionOpen={isSectionOpen}
-            toggleSection={toggleSection}
-            setSectionRef={setSectionRef}
-            sectionCtx={sectionCtx}
-          />
+        <ClientReportScrollLayout
+          sectionCtx={sectionCtx}
+          setSectionRef={setSectionRef}
+          showPartialAssessmentBanner={standalone}
+        />
+
+        {standalone && arcNavToken && (
+          <div className="md:hidden flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3">
+            <div className="min-w-0 pr-3">
+              <p className="text-sm font-semibold text-foreground">{CLIENT_REPORT_COPY.arcTeaserTitle}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{CLIENT_REPORT_COPY.arcTeaserBody}</p>
+            </div>
+            <a
+              href={`/r/${arcNavToken}/roadmap`}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:opacity-90"
+            >
+              {CLIENT_REPORT_COPY.arcTeaserCta}
+            </a>
+          </div>
         )}
 
-        {standalone && roadmapShareToken && activeView === 'client' && (
+        {standalone && arcNavToken && (
           <div className="hidden md:flex items-center justify-between rounded-xl border border-border bg-muted/40 px-5 py-4">
             <div>
               <p className="text-sm font-semibold text-foreground">Your ARC™ is ready</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Your coach has published your personalised journey plan.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Your coach has published your personalised journey plan.
+              </p>
             </div>
             <a
-              href={`/roadmap/${roadmapShareToken}`}
+              href={`/r/${arcNavToken}/roadmap`}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90 shrink-0"
             >
               View ARC™

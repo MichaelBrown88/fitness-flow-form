@@ -139,6 +139,7 @@ export const CONFIG = {
     FUNCTIONS: {
       REQUEST_REPORT_SHARE: "requestReportShare",
       EMAIL_REPORT: "emailReport",
+      EMAIL_REMOTE_INTAKE: "emailRemoteIntakeLink",
     },
   },
 

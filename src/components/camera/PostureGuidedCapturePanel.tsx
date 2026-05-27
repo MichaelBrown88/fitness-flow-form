@@ -23,6 +23,8 @@ import { primeWebAudioContextRef } from '@/lib/utils/primeWebAudioContextOnUserG
 import { playCompanionLevelStableChime } from '@/lib/utils/companionLevelStableChime';
 import { playCompanionShutterClick } from '@/lib/utils/companionShutterClick';
 import type { UserProfile } from '@/types/auth';
+import type { RemotePostureView } from '@/lib/types/remoteAssessment';
+import { getRemotePostureUploadSlot, uploadBlobToSignedUrl } from '@/services/remoteAssessmentClient';
 
 const VIEWS = CONFIG.POSTURE_VIEWS;
 
@@ -35,19 +37,38 @@ type FlowState =
   | 'processing'
   | 'complete';
 
-export interface PostureGuidedCapturePanelProps {
-  sessionId: string;
-  organizationId: string;
-  profile: UserProfile;
-  onClose: () => void;
-}
+export type PostureGuidedCapturePanelProps =
+  | {
+      mode: 'coachSession';
+      sessionId: string;
+      organizationId: string;
+      profile: UserProfile;
+      onClose: () => void;
+    }
+  | {
+      mode: 'remoteIntake';
+      token: string;
+      onClose: () => void;
+      onComplete: (paths: Partial<Record<RemotePostureView, string>>) => void;
+    };
 
-export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps> = ({
-  sessionId,
-  organizationId,
-  profile,
-  onClose,
-}) => {
+export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps> = (props) => {
+  const isRemote = props.mode === 'remoteIntake';
+  const sessionId = isRemote ? '' : props.sessionId;
+  const organizationId = isRemote ? '' : props.organizationId;
+  const profile = isRemote ? null : props.profile;
+  const onClose = props.onClose;
+  const remotePathsRef = useRef<Partial<Record<RemotePostureView, string>>>({});
+
+  const companionLog = useCallback(
+    (message: string, level: 'info' | 'warn' | 'error' = 'info') => {
+      if (!isRemote && sessionId) {
+        void logCompanionMessage(sessionId, message, level);
+      }
+    },
+    [isRemote, sessionId],
+  );
+
   const geminiEnabled = CONFIG.ENABLE_GEMINI_LIVE;
 
   const legacyTtsGateRef = useRef<LegacyTtsGateRefValue>({
@@ -103,7 +124,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
   }, [sessionId]);
 
   useEffect(() => {
-    if (!sessionId || flowState === 'complete') return;
+    if (isRemote || !sessionId || flowState === 'complete') return;
     void updateHeartbeat(sessionId);
     const heartbeatInterval = setInterval(() => {
       void updateHeartbeat(sessionId).catch((err) => {
@@ -113,7 +134,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     return () => {
       clearInterval(heartbeatInterval);
     };
-  }, [sessionId, flowState]);
+  }, [isRemote, sessionId, flowState]);
 
   const { speak, requestPermission: requestAudioPermission, hasPermission: hasAudioPermission } =
     useAudioFeedback({ legacyTtsGateRef, disableSpeechSynthesis: true });
@@ -146,10 +167,13 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     requestPermission: requestOrientationPermission,
   } = useOrientationDetection(true, 'posture');
 
-  const hasPermission = hasAudioPermission && hasOrientationPermission;
-
   const relaxPostureUpright = CONFIG.COMPANION.ORIENTATION.POSTURE_RELAX_UPRIGHT;
+  const hasPermission = isRemote
+    ? hasAudioPermission && (hasOrientationPermission || relaxPostureUpright || orientationPermissionDenied)
+    : hasAudioPermission && hasOrientationPermission;
+
   const gateVertical = relaxPostureUpright || isVertical;
+  const requireVoiceGuideForStart = !isRemote;
 
   const {
     startLiveSessionFromUserGesture,
@@ -166,7 +190,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     getVideoElement: () => webcamRef.current?.video ?? null,
     mirrored: facingMode === 'user',
     onWarmupComplete: () => {
-      void logCompanionMessage(sessionId, 'Flow: waiting_pose -> ready (Gemini warmup)', 'info');
+      companionLog('Flow: waiting_pose -> ready (Gemini warmup)', 'info');
       postureWarmupPendingAutoStartRef.current = true;
       setFlowState('ready');
     },
@@ -178,7 +202,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     poseLiveMetricsRef,
     allowDistanceInjectionsRef: allowGeminiDistanceInjectionsRef,
     onConnectionDiagnostics: (message, level = 'info') => {
-      void logCompanionMessage(sessionId, message, level);
+      companionLog(message, level);
     },
   });
 
@@ -261,12 +285,11 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
 
     if (flowState === 'waiting_level') {
       if (gateVertical) {
-        void logCompanionMessage(
-          sessionId,
+        companionLog(
           relaxPostureUpright
             ? 'Flow: waiting_level -> waiting_pose (upright gate relaxed)'
             : 'Flow: waiting_level -> waiting_pose (phone is vertical)',
-          'info'
+          'info',
         );
         setFlowState('waiting_pose');
       }
@@ -276,7 +299,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     if (flowState === 'waiting_pose') {
       const { isReady } = poseDetectionResult.poseValidation;
       if (isReady) {
-        void logCompanionMessage(sessionId, 'Flow: waiting_pose -> ready (client in position)', 'info');
+        companionLog('Flow: waiting_pose -> ready (client in position)', 'info');
         postureWarmupPendingAutoStartRef.current = true;
         setFlowState('ready');
       }
@@ -335,22 +358,43 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
       }
       setIsUploading(true);
       try {
-        await logCompanionMessage(sessionId, 'Capturing ' + viewData.label, 'info');
-        await updatePostureImage(sessionId, viewData.id, imageSrc, undefined, 'this-device', organizationId, profile);
-        await logCompanionMessage(sessionId, viewData.label + ' captured successfully', 'info');
+        companionLog('Capturing ' + viewData.label, 'info');
+        if (isRemote && props.mode === 'remoteIntake') {
+          const viewId = viewData.id as RemotePostureView;
+          const blob = await (await fetch(imageSrc)).blob();
+          const contentType = blob.type === 'image/png' ? 'image/png' : 'image/jpeg';
+          const { uploadUrl, storagePath } = await getRemotePostureUploadSlot(
+            props.token,
+            viewId,
+            contentType,
+          );
+          await uploadBlobToSignedUrl(uploadUrl, blob, contentType);
+          remotePathsRef.current = { ...remotePathsRef.current, [viewId]: storagePath };
+        } else if (!isRemote && profile) {
+          await updatePostureImage(
+            sessionId,
+            viewData.id,
+            imageSrc,
+            undefined,
+            'this-device',
+            organizationId,
+            profile,
+          );
+        }
+        companionLog(viewData.label + ' captured successfully', 'info');
       } catch (err) {
-        await logCompanionMessage(
-          sessionId,
+        companionLog(
           'Error capturing ' + viewData.label + ': ' + (err instanceof Error ? err.message : String(err)),
-          'error'
+          'error',
         );
         logger.error('[POSTURE_GUIDED] Capture error:', err);
+        return false;
       } finally {
         setIsUploading(false);
       }
       return true;
     },
-    [sessionId, organizationId, profile]
+    [companionLog, isRemote, organizationId, profile, props, sessionId],
   );
 
   const captureImageRef = useRef(captureImage);
@@ -410,13 +454,16 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
               }, CONFIG.COMPANION.CAPTURE.POSTURE_GEMINI_NEXT_VIEW_MS);
             } else {
               setFlowState('complete');
+              if (props.mode === 'remoteIntake') {
+                props.onComplete({ ...remotePathsRef.current });
+              }
               throttledSpeak("That's all the photos done. Great job!", true);
             }
           });
         }
       }, 1000);
     },
-    [captureImage, speak, throttledSpeak]
+    [captureImage, props, speak, throttledSpeak],
   );
 
   const beginViewCapture = useCallback(
@@ -424,6 +471,9 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
       if (isSequenceCancelledRef.current) return;
       if (viewIdx >= VIEWS.length) {
         setFlowState('complete');
+        if (props.mode === 'remoteIntake') {
+          props.onComplete({ ...remotePathsRef.current });
+        }
         throttledSpeak("That's all the photos done. Great job!", true);
         return;
       }
@@ -500,9 +550,12 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         }, CONFIG.COMPANION.CAPTURE.POSTURE_GEMINI_NEXT_VIEW_MS);
       } else {
         setFlowState('complete');
+        if (props.mode === 'remoteIntake') {
+          props.onComplete({ ...remotePathsRef.current });
+        }
       }
     };
-  }, [geminiEnabled]);
+  }, [geminiEnabled, props]);
 
   const cancelSequence = useCallback(() => {
     postureWarmupPendingAutoStartRef.current = false;
@@ -526,13 +579,13 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     allowGeminiDistanceInjectionsRef.current = true;
     setFlowState('ready');
     setCurrentView(0);
-    void logCompanionMessage(sessionId, 'Sequence cancelled by user', 'warn');
+    companionLog('Sequence cancelled by user', 'warn');
     throttledSpeak("No worries, we can try again whenever you're ready.", true);
-  }, [sessionId, throttledSpeak]);
+  }, [companionLog, throttledSpeak]);
 
   const startSequence = useCallback(() => {
     if (flowState !== 'ready' || currentView >= VIEWS.length) return;
-    if (geminiEnabled && geminiConnectionStatus !== 'open') {
+    if (requireVoiceGuideForStart && geminiEnabled && geminiConnectionStatus !== 'open') {
       logger.warn('[POSTURE_GUIDED] Start Capture blocked: voice guide not connected');
       return;
     }
@@ -544,12 +597,19 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     setFlowState('capturing');
     setCurrentView(0);
     beginViewCapture(0);
-  }, [beginViewCapture, currentView, flowState, geminiConnectionStatus, geminiEnabled]);
+  }, [
+    beginViewCapture,
+    currentView,
+    flowState,
+    geminiConnectionStatus,
+    geminiEnabled,
+    requireVoiceGuideForStart,
+  ]);
 
   useEffect(() => {
     if (flowState !== 'ready' || !postureWarmupPendingAutoStartRef.current) return;
     if (!gateVertical) return;
-    if (geminiEnabled && geminiConnectionStatus !== 'open') return;
+    if (requireVoiceGuideForStart && geminiEnabled && geminiConnectionStatus !== 'open') return;
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
@@ -558,7 +618,14 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     return () => {
       cancelled = true;
     };
-  }, [flowState, gateVertical, geminiConnectionStatus, geminiEnabled, startSequence]);
+  }, [
+    flowState,
+    gateVertical,
+    geminiConnectionStatus,
+    geminiEnabled,
+    requireVoiceGuideForStart,
+    startSequence,
+  ]);
 
   const openedLogRef = useRef(false);
   useEffect(() => {
@@ -569,8 +636,11 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
     }
     if (openedLogRef.current) return;
     openedLogRef.current = true;
-    void logCompanionMessage(sessionId, 'Posture guided capture opened (coach device)', 'info');
-  }, [sessionId, hasPermission]);
+    companionLog(
+      isRemote ? 'Posture guided capture opened (remote intake)' : 'Posture guided capture opened (coach device)',
+      'info',
+    );
+  }, [companionLog, hasPermission, isRemote]);
 
   useEffect(() => {
     return () => {
@@ -597,14 +667,16 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         </div>
         <h1 className="mb-2 text-2xl font-bold">All views captured</h1>
         <p className="mb-8 max-w-sm text-sm text-white/60">
-          Images and analysis sync to this session. Close to return to the posture modal.
+          {isRemote
+            ? 'Your posture photos are saved. Continue to finish your intake.'
+            : 'Images and analysis sync to this session. Close to return to the posture modal.'}
         </p>
         <Button
           type="button"
           onClick={onClose}
           className="rounded-2xl bg-emerald-600 px-8 py-6 text-white hover:bg-emerald-500"
         >
-          Done
+          {isRemote ? 'Continue' : 'Done'}
         </Button>
       </div>
     );
@@ -671,6 +743,7 @@ export const PostureGuidedCapturePanel: React.FC<PostureGuidedCapturePanelProps>
         onRetryGemini={geminiEnabled ? retryGeminiLive : undefined}
         voiceGuideStarted={geminiEnabled ? voiceGuideStarted : false}
         orientationDenied={orientationPermissionDenied}
+        requireVoiceGuideForStart={requireVoiceGuideForStart}
       />
     </div>
   );

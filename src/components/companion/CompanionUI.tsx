@@ -67,6 +67,11 @@ interface CompanionUIProps {
   voiceGuideStarted?: boolean;
   /** iOS: user explicitly denied motion/orientation permission. */
   orientationDenied?: boolean;
+  /**
+   * When false, Start Capture is allowed without Gemini Live (pose-only fallback).
+   * Used for client remote intake where voice may fail on mobile browsers.
+   */
+  requireVoiceGuideForStart?: boolean;
 }
 
 export function CompanionUI({
@@ -99,7 +104,13 @@ export function CompanionUI({
   onRetryGemini,
   voiceGuideStarted: _voiceGuideStarted = false,
   orientationDenied = false,
+  requireVoiceGuideForStart = true,
 }: CompanionUIProps) {
+  const voiceBlocksStart =
+    requireVoiceGuideForStart &&
+    mode === 'posture' &&
+    geminiConnectionStatus !== undefined &&
+    geminiConnectionStatus !== 'open';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -385,9 +396,18 @@ export function CompanionUI({
                   Retry voice guide
                 </button>
               ) : mode === 'posture' && geminiConnectionStatus && geminiConnectionStatus !== 'open' ? (
-                <div className="flex items-center gap-1.5 text-white/70">
-                  <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
-                  <span className="text-[11px] font-medium">Voice guide connecting…</span>
+                <div className="flex flex-col items-center gap-1 text-center">
+                  {geminiConnectionStatus === 'connecting' ? (
+                    <div className="flex items-center gap-1.5 text-white/70">
+                      <Loader2 className="h-3 w-3 shrink-0 animate-spin" aria-hidden />
+                      <span className="text-[11px] font-medium">Voice guide connecting…</span>
+                    </div>
+                  ) : null}
+                  {!requireVoiceGuideForStart && geminiConnectionStatus !== 'open' ? (
+                    <p className="text-[11px] font-medium leading-snug text-white/75 px-1">
+                      Voice coach unavailable — on-screen guidance still works.
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
               {blockStartCaptureUntilVertical && !isVertical ? (
@@ -403,12 +423,7 @@ export function CompanionUI({
                     onStartSequence();
                   }
                 }}
-                disabled={
-                  (blockStartCaptureUntilVertical && !isVertical) ||
-                  (mode === 'posture' &&
-                    geminiConnectionStatus !== undefined &&
-                    geminiConnectionStatus !== 'open')
-                }
+                disabled={(blockStartCaptureUntilVertical && !isVertical) || voiceBlocksStart}
                 className="bg-emerald-500 hover:bg-emerald-600 h-16 px-10 rounded-xl text-base font-semibold shadow-lg text-white w-full disabled:opacity-40 disabled:pointer-events-none"
               >
                 Start Capture

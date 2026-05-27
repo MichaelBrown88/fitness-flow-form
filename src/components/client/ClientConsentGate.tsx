@@ -50,6 +50,8 @@ export function ClientConsentGate({
   onDismissed,
 }: ClientConsentGateProps) {
   const [saving, setSaving] = useState(false);
+  const [monthlyEmail, setMonthlyEmail] = useState(true);
+  const [socialSharing, setSocialSharing] = useState(true);
 
   // If they've already answered on this device, skip immediately.
   useEffect(() => {
@@ -58,16 +60,12 @@ export function ClientConsentGate({
     }
   }, [token, onDismissed]);
 
-  const handleResponse = useCallback(
-    async (accept: boolean) => {
+  const persistAndDismiss = useCallback(
+    async (prefs: { monthlyEmailConsented: boolean; socialSharingConsented: boolean }) => {
       setSaving(true);
       try {
-        await writeClientConsent(token, {
-          socialSharingConsented: accept,
-          monthlyEmailConsented: accept,
-        });
+        await writeClientConsent(token, prefs);
       } catch (e) {
-        // Non-fatal — dismiss anyway, consent can be retried later
         logger.warn('[ClientConsentGate] Failed to write consent', e);
       } finally {
         markAnswered(token);
@@ -81,11 +79,11 @@ export function ClientConsentGate({
   return (
     <div
       role="dialog"
-      aria-modal="true"
+      aria-modal="false"
       aria-labelledby="consent-title"
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm px-6"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-[60] flex justify-center px-3 pb-2"
     >
-      <div className="w-full max-w-sm space-y-6 text-center">
+      <div className="pointer-events-auto w-full max-w-md space-y-4 rounded-2xl border border-border bg-card p-5 shadow-xl">
         {/* Coach logo or fallback */}
         {coachLogoUrl ? (
           <img
@@ -101,72 +99,91 @@ export function ClientConsentGate({
           </div>
         )}
 
-        <div className="space-y-2">
-          <h1 id="consent-title" className="text-xl font-bold text-foreground">
-            Before we show your report
-          </h1>
+        <div className="space-y-1 text-left">
+          <h2 id="consent-title" className="text-base font-bold text-foreground">
+            Stay in the loop?
+          </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {coachName ? (
               <>
-                <span className="font-medium text-foreground">{coachName}</span> would
-                like to:
+                Optional updates from{' '}
+                <span className="font-medium text-foreground">{coachName}</span>. Your report
+                stays visible while you choose.
               </>
             ) : (
-              'Your coach would like to:'
+              'Optional updates from your coach. Your report stays visible while you choose.'
             )}
           </p>
         </div>
 
-        <ul className="space-y-3 text-left">
-          <li className="flex items-start gap-3 text-sm text-foreground">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-              1
-            </span>
+        <div className="space-y-3 text-left">
+          <label className="flex cursor-pointer items-start gap-3 text-sm text-foreground">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-border"
+              checked={monthlyEmail}
+              onChange={(e) => setMonthlyEmail(e.target.checked)}
+            />
             <span>
-              Send you a <span className="font-medium">monthly progress summary</span> by
-              email celebrating your wins
+              <span className="font-medium">Monthly progress email</span>
+              <span className="block text-xs text-muted-foreground">
+                A short summary celebrating wins
+              </span>
             </span>
-          </li>
-          <li className="flex items-start gap-3 text-sm text-foreground">
-            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-              2
-            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-3 text-sm text-foreground">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-border"
+              checked={socialSharing}
+              onChange={(e) => setSocialSharing(e.target.checked)}
+            />
             <span>
-              Help you{' '}
-              <span className="font-medium">share your results on social media</span> —
-              your name and scores may appear in shared content
+              <span className="font-medium">Share-friendly cards</span>
+              <span className="block text-xs text-muted-foreground">
+                Your name and scores may appear when you share
+              </span>
             </span>
-          </li>
-        </ul>
+          </label>
+        </div>
 
-        <p className="text-xs text-muted-foreground">
-          You can change this at any time from your report settings.
+        <p className="text-xs text-muted-foreground text-left">
+          Change anytime from your profile → Privacy &amp; sharing.
         </p>
 
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-2">
           <Button
             className="w-full"
-            onClick={() => void handleResponse(true)}
+            onClick={() =>
+              void persistAndDismiss({
+                monthlyEmailConsented: monthlyEmail,
+                socialSharingConsented: socialSharing,
+              })
+            }
             disabled={saving}
           >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
             ) : null}
-            Accept
+            Save preferences
           </Button>
           <Button
             variant="ghost"
             className="w-full text-muted-foreground"
-            onClick={() => void handleResponse(false)}
+            onClick={() =>
+              void persistAndDismiss({
+                monthlyEmailConsented: false,
+                socialSharingConsented: false,
+              })
+            }
             disabled={saving}
           >
-            Not now
+            Just show my report
           </Button>
         </div>
 
-        <p className="text-[10px] text-muted-foreground/60">
-          Powered by {PRODUCT_DISPLAY_NAME}. Your data is private and shared only with
-          your coach.
+        <p className="text-[10px] text-muted-foreground/60 text-center">
+          Powered by {PRODUCT_DISPLAY_NAME}
         </p>
       </div>
     </div>

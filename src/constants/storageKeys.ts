@@ -30,6 +30,22 @@ export const STORAGE_KEYS = {
   /** Session flag: coach confirmed AssessmentSetupStep (draft + client); suppress capture-phase draft banners */
   ASSESSMENT_SETUP_CONFIRMED: 'assessmentSetupConfirmed',
 
+  /** `1` = first-time full baseline session (skip modular plan wizard). */
+  BASELINE_ASSESSMENT_SESSION: 'baselineAssessmentSession',
+  /** JSON-serialized full AssessmentPlan for baseline sessions. */
+  BASELINE_ASSESSMENT_PLAN: 'baselineAssessmentPlan',
+  /** `studio` | `send_link_first` during baseline intake chooser. */
+  BASELINE_INTAKE_MODE: 'baselineIntakeMode',
+  /** `1` = resuming after client completed remote intake (show prefill banner). */
+  REMOTE_INTAKE_RESUME: 'remoteIntakeResume',
+
+  /** Studio baseline: `intake-review` | `consultation` | `phase` */
+  STUDIO_SESSION_STEP: 'studioSessionStep',
+  /** `1` = consultation step completed this session */
+  CONSULTATION_COMPLETE: 'consultationComplete',
+  /** `1` = returning client modular session plan (not first baseline). */
+  RETURNING_SESSION_PLAN: 'returningSessionPlan',
+
   /** '1' = show extra coach guidance during assessments; '0' = hide */
   COACH_GUIDANCE_IN_ASSESSMENT: 'coachGuidanceInAssessment',
 

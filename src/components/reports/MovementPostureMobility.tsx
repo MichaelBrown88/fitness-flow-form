@@ -11,6 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PostureClientPostureSection } from './posture/PostureClientPostureSection';
 import { PostureTrainerPostureSection } from './posture/PostureTrainerPostureSection';
+import { MuscleMap } from './MuscleMap';
+import { combineMuscleImplications } from '@/lib/posture/findingMuscleMap';
+import { deriveMovementMuscleSets } from '@/lib/scoring/movementMuscleMap';
 import { Activity, AlertCircle, CheckCircle2, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/utils/logger';
@@ -24,9 +27,15 @@ interface MovementPostureMobilityProps {
   previousFormData?: FormData;
   /** Org ID passed by coach pages for re-analysis; omitted on public/standalone views. */
   organizationId?: string;
+  /**
+   * 'both' (default): legacy combined render — muscle map (movement+mobility+posture) and posture analysis card.
+   * 'movement': only the movement/mobility muscle map.
+   * 'posture': only the posture view grid + expanded sheet + (coach-only) trainer detail.
+   */
+  mode?: 'both' | 'movement' | 'posture';
 }
 
-export function MovementPostureMobility({ formData, scores, standalone = false, hideHeader, previousFormData, organizationId }: MovementPostureMobilityProps) {
+export function MovementPostureMobility({ formData, scores, standalone = false, hideHeader, previousFormData, organizationId, mode = 'both' }: MovementPostureMobilityProps) {
   const { toast } = useToast();
   const [isReanalyzing, setIsReanalyzing] = useState(false);
 
@@ -421,7 +430,39 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
   // Limit to reasonable number for display (up to 3 items each) to ensure both positives and negatives are shown
   const finalMobilityStrengths = mobilityStrengths.slice(0, 3);
   const finalMobilityFocusAreas = mobilityFocusAreas.slice(0, 3);
-  
+
+  // Muscle-map implications. We compute movement+mobility and posture
+  // separately so 'movement' and 'posture' modes can render distinct maps.
+  const postureFindingIds: string[] = [];
+  if (formData.postureAiResults && typeof formData.postureAiResults === 'object') {
+    for (const v of Object.values(formData.postureAiResults)) {
+      const sf = (v as { structuredFindings?: Array<{ id: string; severity: string }> } | null | undefined)
+        ?.structuredFindings;
+      if (Array.isArray(sf)) {
+        for (const f of sf) {
+          if (f.severity !== 'aligned') postureFindingIds.push(f.id);
+        }
+      }
+    }
+  }
+  const postureMuscles = combineMuscleImplications(postureFindingIds);
+  const movementMuscles = deriveMovementMuscleSets([...allFocusAreas, ...mobilityFocusAreas]);
+
+  // For 'movement' mode: only movement+mobility implications.
+  const movementOnlyTight = movementMuscles.tight;
+  const movementOnlyWeak = movementMuscles.weak.filter((m) => !movementOnlyTight.includes(m));
+
+  // For 'both' (legacy): union of all sources.
+  const unifiedTight = Array.from(new Set([...postureMuscles.tight, ...movementMuscles.tight]));
+  const unifiedWeakRaw = Array.from(new Set([...postureMuscles.weak, ...movementMuscles.weak]));
+  const unifiedWeak = unifiedWeakRaw.filter((m) => !unifiedTight.includes(m));
+
+  const showMovementMap = mode === 'both' || mode === 'movement';
+  const showPostureGrid = mode === 'both' || mode === 'posture';
+
+  const mapTight = mode === 'movement' ? movementOnlyTight : unifiedTight;
+  const mapWeak = mode === 'movement' ? movementOnlyWeak : unifiedWeak;
+
   return (
     <section className="space-y-6">
       {!hideHeader && (
@@ -434,247 +475,79 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
           </h3>
         </div>
       )}
-      
-      {/* Posture Analysis - Full Width */}
-            {hasPostureImages && hasPostureAnalysis && (
-              <Card className="p-4 sm:p-5 md:p-6 border-none bg-card ring-1 ring-border">
-                <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
-                  <h4 className="text-xs sm:text-sm font-bold text-foreground">Posture Analysis</h4>
-                  {!standalone ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleReanalyze}
-                      disabled={isReanalyzing}
-                      className="text-xs h-9 sm:h-8"
-                    >
-                      <RefreshCw className={`w-3 h-3 mr-1 sm:mr-1.5 ${isReanalyzing ? 'animate-spin' : ''}`} />
-                      {isReanalyzing ? 'Re-analysing...' : 'Re-analyse'}
-                    </Button>
-                  ) : (
-                    <span className="w-4 shrink-0" aria-hidden />
-                  )}
-                </div>
-                <PostureClientPostureSection
+
+      {showMovementMap && (mapTight.length > 0 || mapWeak.length > 0) && (
+        <MuscleMap
+          tight={mapTight}
+          weak={mapWeak}
+          title="Muscle groups in focus"
+        />
+      )}
+
+      {showPostureGrid && hasPostureImages && hasPostureAnalysis && (
+        <div>
+          {mode === 'posture' && !standalone ? (
+            <div className="mb-3 flex items-center justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReanalyze}
+                disabled={isReanalyzing}
+                className="text-xs h-8"
+              >
+                <RefreshCw className={`w-3 h-3 mr-1.5 ${isReanalyzing ? 'animate-spin' : ''}`} />
+                {isReanalyzing ? 'Re-analysing...' : 'Re-analyse'}
+              </Button>
+            </div>
+          ) : null}
+          {mode === 'both' ? (
+            <Card className="p-4 sm:p-5 md:p-6 border-none bg-card ring-1 ring-border">
+              <div className="flex items-center justify-between mb-4 sm:mb-5 md:mb-6">
+                <h4 className="text-xs sm:text-sm font-bold text-foreground">Posture Analysis</h4>
+                {!standalone ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleReanalyze}
+                    disabled={isReanalyzing}
+                    className="text-xs h-9 sm:h-8"
+                  >
+                    <RefreshCw className={`w-3 h-3 mr-1 sm:mr-1.5 ${isReanalyzing ? 'animate-spin' : ''}`} />
+                    {isReanalyzing ? 'Re-analysing...' : 'Re-analyse'}
+                  </Button>
+                ) : (
+                  <span className="w-4 shrink-0" aria-hidden />
+                )}
+              </div>
+              <PostureClientPostureSection
+                postureResults={formData.postureAiResults || {}}
+                postureImages={postureImages}
+              />
+              {!standalone && (
+                <PostureTrainerPostureSection
                   postureResults={formData.postureAiResults || {}}
                   postureImages={postureImages}
                 />
-                {!standalone && (
+              )}
+            </Card>
+          ) : (
+            <>
+              <PostureClientPostureSection
+                postureResults={formData.postureAiResults || {}}
+                postureImages={postureImages}
+              />
+              {!standalone && (
+                <div className="mt-4">
                   <PostureTrainerPostureSection
                     postureResults={formData.postureAiResults || {}}
                     postureImages={postureImages}
                   />
-                )}
-              </Card>
-            )}
-      
-      {/* Movement & Mobility -- merged card on mobile, 2 columns on desktop */}
-
-      {/* Mobile: single merged card */}
-      <Card className="md:hidden p-4 border-none bg-card ring-1 ring-border relative">
-        <CardInfoDrawer title="Movement & Mobility">
-          <p><strong>Movement quality</strong> is assessed via Overhead Squat, Hinge, and Lunge tests. These measure how well your body moves through fundamental patterns.</p>
-          <p><strong>Joint mobility</strong> is assessed at the hip, shoulder, and ankle. Good mobility means your joints move freely through their full range without compensation.</p>
-        </CardInfoDrawer>
-        {/* Movement Quality */}
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-foreground-secondary" />
-            Movement Quality
-            {movementDelta && (
-              <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${movementDelta.direction === 'up' ? 'text-score-green-fg' : 'text-score-red-fg'}`}>
-                {movementDelta.direction === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                {movementDelta.direction === 'up' ? '+' : '-'}{movementDelta.value}
-              </span>
-            )}
-          </h4>
-          <Badge className="glass-button-active text-[10px]">
-            {movementWeaknesses.length === 0 ? 'Good' : 'Needs Work'}
-          </Badge>
-        </div>
-        <div className="space-y-3">
-          {movementStrengths.length > 0 && (
-            <div>
-              <p className="text-[10px] font-black text-foreground-secondary uppercase tracking-[0.15em] mb-1.5">Strengths</p>
-              <ul className="space-y-1.5">
-                {movementStrengths.map((s, i) => (
-                  <li key={i} className="text-xs sm:text-sm text-foreground-secondary flex items-start gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-foreground-secondary mt-0.5 shrink-0" />
-                    <span>{s}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {movementWeaknesses.length > 0 && (
-            <div>
-              <p className="text-[10px] font-black text-score-amber-fg uppercase tracking-[0.15em] mb-1.5">Focus Areas</p>
-              <ul className="space-y-1.5">
-                {movementWeaknesses.map((w, i) => (
-                  <li key={i} className="text-xs sm:text-sm text-foreground-secondary flex items-start gap-2">
-                    <AlertCircle className="w-3.5 h-3.5 text-score-amber mt-0.5 shrink-0" />
-                    <span>{w}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {movementStrengths.length === 0 && movementWeaknesses.length === 0 && (
-            <p className="text-xs text-muted-foreground italic">Complete movement assessments to see feedback.</p>
-          )}
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-border my-4" />
-
-        {/* Mobility */}
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Activity className="w-4 h-4 text-foreground-secondary" />
-            Mobility
-          </h4>
-          <Badge className="glass-button-active text-[10px]">
-            {finalMobilityFocusAreas.length === 0 ? 'Good' : 'Needs Work'}
-          </Badge>
-        </div>
-        <div className="space-y-3">
-          {finalMobilityStrengths.length > 0 && (
-            <div>
-              <p className="text-[10px] font-black text-foreground-secondary uppercase tracking-[0.15em] mb-1.5">Strengths</p>
-              <ul className="space-y-1.5">
-                {finalMobilityStrengths.map((s, i) => (
-                  <li key={i} className="text-xs sm:text-sm text-foreground-secondary flex items-start gap-2">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-foreground-secondary mt-0.5 shrink-0" />
-                    <span>{s}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {finalMobilityFocusAreas.length > 0 && (
-            <div>
-              <p className="text-[10px] font-black text-score-amber-fg uppercase tracking-[0.15em] mb-1.5">Focus Areas</p>
-              <ul className="space-y-1.5">
-                {finalMobilityFocusAreas.map((f, i) => (
-                  <li key={i} className="text-xs sm:text-sm text-foreground-secondary flex items-start gap-2">
-                    <AlertCircle className="w-3.5 h-3.5 text-score-amber mt-0.5 shrink-0" />
-                    <span className="leading-relaxed">{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {finalMobilityStrengths.length === 0 && finalMobilityFocusAreas.length === 0 && (
-            <p className="text-xs text-muted-foreground italic">Complete mobility assessments to see feedback.</p>
-          )}
-        </div>
-      </Card>
-
-      {/* Desktop: two separate cards */}
-      <div className="hidden md:grid md:grid-cols-2 gap-5 md:gap-6">
-        <Card className="p-5 md:p-6 border-none bg-card ring-1 ring-border relative min-w-0">
-          <CardInfoDrawer title="Movement Quality">
-            <p>Movement quality is assessed via Overhead Squat, Hinge, and Lunge tests. These measure how well your body moves through fundamental patterns that are essential for safe and effective training.</p>
-          </CardInfoDrawer>
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-foreground-secondary" />
-              Movement Quality
-              {movementDelta && (
-                <span className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${movementDelta.direction === 'up' ? 'text-score-green-fg' : 'text-score-red-fg'}`}>
-                  {movementDelta.direction === 'up' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                  {movementDelta.direction === 'up' ? '+' : '-'}{movementDelta.value}
-                </span>
+                </div>
               )}
-            </h4>
-            <Badge className="glass-button-active mr-5">
-              {movementWeaknesses.length === 0 ? 'Good' : 'Needs Work'}
-            </Badge>
-          </div>
-          <div className="space-y-4">
-            {movementStrengths.length > 0 && (
-              <div>
-                <p className="text-[10px] font-black text-foreground-secondary uppercase tracking-[0.15em] mb-2">Strengths</p>
-                <ul className="space-y-2">
-                  {movementStrengths.map((s, i) => (
-                    <li key={i} className="text-sm text-foreground-secondary flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-foreground-secondary mt-0.5 shrink-0" />
-                      <span>{s}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {movementWeaknesses.length > 0 && (
-              <div>
-                <p className="text-[10px] font-black text-score-amber-fg uppercase tracking-[0.15em] mb-2">Focus Areas</p>
-                <ul className="space-y-2">
-                  {movementWeaknesses.map((w, i) => (
-                    <li key={i} className="text-sm text-foreground-secondary flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-score-amber mt-0.5 shrink-0" />
-                      <span>{w}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {movementStrengths.length === 0 && movementWeaknesses.length === 0 && (
-              <div className="text-sm text-muted-foreground italic">
-                Complete movement pattern assessments (Overhead Squat, Hinge, Lunge) to see detailed feedback.
-              </div>
-            )}
-          </div>
-        </Card>
-
-        <Card className="p-5 md:p-6 border-none bg-card ring-1 ring-border relative min-w-0">
-          <CardInfoDrawer title="Mobility">
-            <p>Joint mobility is assessed at the hip, shoulder, and ankle. Good mobility means your joints can move freely through their full range of motion without compensation or pain.</p>
-            <p>Limited mobility increases injury risk and reduces the effectiveness of your training.</p>
-          </CardInfoDrawer>
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
-              <Activity className="w-4 h-4 text-foreground-secondary" />
-              Mobility
-            </h4>
-            <Badge className="glass-button-active mr-5">
-              {finalMobilityFocusAreas.length === 0 ? 'Good' : 'Needs Work'}
-            </Badge>
-          </div>
-          <div className="space-y-4">
-            {finalMobilityStrengths.length > 0 && (
-              <div>
-                <p className="text-[10px] font-black text-foreground-secondary uppercase tracking-[0.15em] mb-2">Strengths</p>
-                <ul className="space-y-2">
-                  {finalMobilityStrengths.map((s, i) => (
-                    <li key={i} className="text-sm text-foreground-secondary flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-foreground-secondary mt-0.5 shrink-0" />
-                      <span>{s}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {finalMobilityFocusAreas.length > 0 && (
-              <div>
-                <p className="text-[10px] font-black text-score-amber-fg uppercase tracking-[0.15em] mb-2">Focus Areas</p>
-                <ul className="space-y-2">
-                  {finalMobilityFocusAreas.map((f, i) => (
-                    <li key={i} className="text-sm text-foreground-secondary flex items-start gap-2">
-                      <AlertCircle className="w-4 h-4 text-score-amber mt-0.5 shrink-0" />
-                      <span className="leading-relaxed">{f}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {finalMobilityStrengths.length === 0 && finalMobilityFocusAreas.length === 0 && (
-              <div className="text-sm text-muted-foreground italic">
-                Complete mobility assessments (Hip, Shoulder, Ankle) to see detailed feedback.
-              </div>
-            )}
-          </div>
-        </Card>
-      </div>
+            </>
+          )}
+        </div>
+      )}
     </section>
   );
 }

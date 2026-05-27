@@ -13,6 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserPlus, Users, Search } from 'lucide-react';
 import { writePrefillClientPayload } from '@/lib/assessment/assessmentSessionStorage';
+import {
+  clientHasFullBaseline,
+  markBaselineAssessmentSession,
+  markReturningSessionPlan,
+} from '@/lib/assessment/baselineSession';
 import { ROUTES } from '@/constants/routes';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { logger } from '@/lib/utils/logger';
@@ -52,8 +57,24 @@ export function AssessmentClientStep({
 
   const handleSelectClient = (name: string) => {
     updateFormData({ fullName: name });
+    const item = items.find((i) => i.clientName?.trim() === name);
     try {
       writePrefillClientPayload({ fullName: name });
+      if (
+        item &&
+        !clientHasFullBaseline({
+          clientDoc: {
+            assessmentType: item.assessmentType,
+            isPartial: item.isPartial,
+          },
+        })
+      ) {
+        markBaselineAssessmentSession('studio', {
+          remoteIntakeResume: item.remoteIntakeAwaitingStudio === true,
+        });
+      } else if (item) {
+        markReturningSessionPlan();
+      }
     } catch (err) {
       logger.warn('prefill_client_storage_failed', {
         error: err instanceof Error ? err.message : String(err),

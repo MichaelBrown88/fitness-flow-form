@@ -17,6 +17,12 @@ import {
   readSavedAssessmentPhaseIndex,
   readPartialAssessmentRecord,
 } from '@/lib/assessment/assessmentSessionStorage';
+import { hasActiveBaselineSession, hasRemoteIntakeResumeSession } from '@/lib/assessment/baselineSession';
+import {
+  filterPhasesForStudioBaseline,
+  hasRemotePostureCaptureComplete,
+  sortStudioPhaseIds,
+} from '@/lib/assessment/studioSessionSteps';
 
 interface UseAssessmentNavigationProps {
   formData: FormData;
@@ -85,7 +91,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
     const assessmentToSectionMap: Record<string, string[]> = {
       parq: ['parq'],
       bodycomp: ['body-comp'],
-      fitness: ['fitness-assessment'],
+      fitness: ['resting-hr', 'fitness-assessment'],
       posture: ['posture'],
       overheadSquat: ['overhead-squat'],
       hinge: ['hinge-assessment'],
@@ -101,7 +107,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
     // Filter phases and sections by granular assessment toggles
     if (modules) {
       phases = phaseDefinitions.map(phase => {
-        if (phase.id === 'P0' || phase.id === 'P6' || phase.id === 'P7') {
+        if (phase.id === 'P0' || phase.id === 'P7') {
           return phase;
         }
 
@@ -131,6 +137,31 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
       phases = phases.filter((p) => allowed.has(p.id));
     }
 
+    if (
+      hasActiveBaselineSession() &&
+      !isPartialAssessment &&
+      planIds?.length
+    ) {
+      const filteredIds = filterPhasesForStudioBaseline(
+        planIds,
+        formData,
+        hasRemoteIntakeResumeSession(),
+      );
+      const allowed = new Set(filteredIds);
+      phases = phases
+        .filter((p) => allowed.has(p.id))
+        .sort((a, b) => sortStudioPhaseIds([a.id, b.id]).indexOf(a.id) - sortStudioPhaseIds([a.id, b.id]).indexOf(b.id));
+    }
+
+    if (hasRemotePostureCaptureComplete(formData)) {
+      phases = phases.map((phase) => {
+        if (phase.id !== 'P4' || !phase.sections) return phase;
+        const filteredSections = phase.sections.filter((s) => s.id !== 'posture');
+        if (filteredSections.length === 0) return null;
+        return { ...phase, sections: filteredSections };
+      }).filter((p): p is NonNullable<typeof p> => p !== null);
+    }
+
     // Filter further if in partial assessment mode
     if (!isPartialAssessment || !partialCategory) {
       return phases;
@@ -147,7 +178,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
       },
       'fitness': { 
         phaseIds: ['P0', 'P3', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'fitness-assessment'] 
+        sectionIds: ['basic-client-info', 'parq', 'resting-hr', 'fitness-assessment'] 
       },
       'strength': { 
         phaseIds: ['P0', 'P5', 'P7'], 

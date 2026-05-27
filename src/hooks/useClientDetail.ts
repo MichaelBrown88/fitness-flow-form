@@ -33,7 +33,12 @@ import {
   removePartialAssessment,
   writePrefillClientPayload,
   writeSessionDraftAssessmentBundle,
+  markReturningSessionPlan,
 } from '@/lib/assessment/assessmentSessionStorage';
+import {
+  clientHasFullBaseline,
+  markBaselineAssessmentSession,
+} from '@/lib/assessment/baselineSession';
 import { ROUTES } from '@/constants/routes';
 import type { Timestamp } from 'firebase/firestore';
 
@@ -310,12 +315,32 @@ export function useClientDetail(): UseClientDetailResult {
       Object.assign(prefill, profile.formData);
       prefill.fullName = clientName;
     }
+
+    if (categories.length === 0) {
+      const hasBaseline = clientHasFullBaseline({
+        snapshots,
+        clientDoc: assessments[0]
+          ? {
+              assessmentType: assessments[0].assessmentType,
+              isPartial: assessments[0].isPartial,
+            }
+          : undefined,
+      });
+      if (hasBaseline) {
+        markReturningSessionPlan();
+      } else {
+        markBaselineAssessmentSession('studio', {
+          remoteIntakeResume: Boolean(profile?.remoteIntakeAwaitingStudio),
+        });
+      }
+    }
+
     writePrefillClientPayload(prefill);
     // Coach already chose this client + pillar — skip the confirmation step
     confirmAssessmentSetup();
 
     navigate('/assessment');
-  }, [user, clientName, assessments, navigate, readOrgId, userProfile]);
+  }, [user, clientName, assessments, snapshots, profile, navigate, readOrgId, userProfile]);
 
   // Delete assessment
   const handleDeleteAssessment = useCallback(async (id: string) => {

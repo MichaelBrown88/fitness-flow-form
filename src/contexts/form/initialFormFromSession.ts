@@ -5,6 +5,7 @@ import {
   readDraftAssessmentRaw,
   consumePrefillClientAsPartial,
 } from '@/lib/assessment/assessmentSessionStorage';
+import { readBaselineFormPatch } from '@/lib/assessment/baselineSession';
 
 /**
  * Hydrate assessment form state from sessionStorage (edit, draft, prefill).
@@ -31,7 +32,17 @@ export function getInitialFormDataFromSession<T extends object>(base: T): T {
 
     const prefillPartial = consumePrefillClientAsPartial<T>();
     if (prefillPartial) {
-      return { ...base, ...prefillPartial };
+      const baselinePatch = readBaselineFormPatch();
+      return {
+        ...base,
+        ...prefillPartial,
+        ...(baselinePatch ?? {}),
+      };
+    }
+
+    const baselineOnly = readBaselineFormPatch();
+    if (baselineOnly) {
+      return { ...base, ...baselineOnly };
     }
   } catch (e) {
     logger.warn('Failed to parse prefill/edit data:', e);

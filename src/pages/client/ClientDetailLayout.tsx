@@ -17,16 +17,11 @@ import { getRoadmapForClient } from '@/services/roadmaps';
 import type { RoadmapItem } from '@/lib/roadmap/types';
 import {
   ArrowLeft,
-  Eye,
   UserPlus,
   MoreVertical,
-  History,
-  Map,
   Settings as SettingsIcon,
   Trash2,
   Loader2,
-  ChevronDown,
-  Trophy,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -260,7 +255,15 @@ export default function ClientDetailLayout() {
             `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
-          Overview
+          {UI_CLIENT_DETAIL.TAB_SUMMARY}
+        </NavLink>
+        <NavLink
+          to={buildClientPath(clientName, 'consultation')}
+          className={({ isActive }) =>
+            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
+          }
+        >
+          {UI_CLIENT_DETAIL.TAB_CONSULTATION}
         </NavLink>
         <NavLink
           to={buildClientPath(clientName, 'report')}
@@ -268,54 +271,16 @@ export default function ClientDetailLayout() {
             `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
-          Report
+          {UI_CLIENT_DETAIL.TAB_REPORT}
         </NavLink>
         <NavLink
-          to={buildClientPath(clientName, 'history')}
+          to={buildClientPath(clientName, 'timeline')}
           className={({ isActive }) =>
             `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
           }
         >
-          History
+          {UI_CLIENT_DETAIL.TAB_TIMELINE}
         </NavLink>
-
-        {/* Secondary pages: accessible but not primary workflow tabs */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className={`px-3 py-2 text-sm font-bold rounded-lg ${
-                location.pathname.includes('/roadmap') || location.pathname.includes('/achievements') || location.pathname.includes('/settings')
-                  ? 'bg-card text-foreground'
-                  : 'text-muted-foreground hover:text-foreground-secondary'
-              }`}
-            >
-              <span className="flex items-center gap-1">More <ChevronDown className="h-3 w-3" /></span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48 rounded-lg">
-            <DropdownMenuItem asChild>
-              <Link to={buildClientPath(clientName, 'roadmap')} className="py-2.5 text-sm font-medium">
-                <Map className="mr-2 h-4 w-4" /> ARC™
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to={buildClientPath(clientName, 'coach-notes')} className="py-2.5 text-sm font-medium">
-                <Eye className="mr-2 h-4 w-4" /> Coach Notes
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to={buildClientPath(clientName, 'achievements')} className="py-2.5 text-sm font-medium">
-                <Trophy className="mr-2 h-4 w-4" /> Milestones
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to={buildClientPath(clientName, 'settings')} className="py-2.5 text-sm font-medium">
-                <SettingsIcon className="mr-2 h-4 w-4" /> Settings
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
         </nav>
 
         <div className="flex items-center gap-2">

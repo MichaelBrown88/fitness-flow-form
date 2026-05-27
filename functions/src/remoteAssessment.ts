@@ -44,6 +44,19 @@ function normalizeName(name: string): string {
   return (name || '').trim().replace(/\s+/g, ' ');
 }
 
+/** Normalize token from URL/callable payload for `remote-tokens/{id}` lookup. */
+export function parseRemoteIntakeToken(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const token = raw.trim();
+  if (!token) return null;
+  if (/^[a-fA-F0-9]{32}$/.test(token)) return token.toLowerCase();
+  const uuidRe =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+  if (uuidRe.test(token)) return token;
+  if (/^[a-zA-Z0-9_-]{16,128}$/.test(token)) return token;
+  return null;
+}
+
 function generateClientSlugFromName(clientName: string): string {
   const safeName = normalizeName(clientName) || 'unnamed-client';
   return safeName.toLowerCase().replace(/\s+/g, '-');
@@ -54,12 +67,11 @@ function allowedKeysForScope(scope: RemoteAssessmentScope): string[] {
   if (scope === 'lifestyle') return Array.from(LIFESTYLE_KEYS);
   if (scope === 'posture') return posturePathKeys;
   if (scope === 'lifestyle_posture') return [...Array.from(LIFESTYLE_KEYS), ...posturePathKeys];
-  // 'full': all non-physical fields
+  // 'full': remote intake — no body comp (measured in studio on coach equipment)
   return [
     ...BASIC_INFO_KEYS,
     ...Array.from(LIFESTYLE_KEYS),
     ...PARQ_KEYS,
-    ...BODY_COMP_KEYS,
     ...posturePathKeys,
   ];
 }
@@ -70,24 +82,94 @@ function parseScope(raw: unknown): RemoteAssessmentScope {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const GENDER_VALUES = new Set(['male', 'female']);
 
-interface ParsedIntake {
-  email?: string;
+type BasicInfoKey = (typeof BASIC_INFO_KEYS)[number];
+export type RemoteSessionPrefill = Partial<Record<BasicInfoKey, string>>;
+
+interface ParsedIntake extends RemoteSessionPrefill {}
+
+function pickBasicPrefill(source: Record<string, unknown> | undefined): RemoteSessionPrefill {
+  if (!source) return {};
+  const out: RemoteSessionPrefill = {};
+  for (const key of BASIC_INFO_KEYS) {
+    const raw = source[key];
+    if (typeof raw === 'string') {
+      const trimmed = raw.trim();
+      if (trimmed) out[key] = trimmed;
+    } else if (key === 'heightCm' && typeof raw === 'number' && Number.isFinite(raw)) {
+      out.heightCm = String(raw);
+    }
+  }
+  return out;
+}
+
+function mergeBasicPrefill(...sources: RemoteSessionPrefill[]): RemoteSessionPrefill {
+  const out: RemoteSessionPrefill = {};
+  for (const source of sources) {
+    for (const key of BASIC_INFO_KEYS) {
+      const v = source[key]?.trim();
+      if (v && !out[key]) out[key] = v;
+    }
+  }
+  return out;
+}
+
+function hasBasicPrefill(prefill: RemoteSessionPrefill): boolean {
+  return BASIC_INFO_KEYS.some((key) => Boolean(prefill[key]?.trim()));
+}
+
+function parseOptionalString(
+  raw: unknown,
+  maxLen: number,
+): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const trimmed = raw.trim();
+  if (!trimmed || trimmed.length > maxLen) return undefined;
+  return trimmed;
 }
 
 /**
- * Validate optional intake fields captured at NewClientModal creation time.
- * Anything malformed is silently dropped — the caller's primary action
- * (token creation) shouldn't fail because metadata was wonky.
+ * Validate optional intake fields captured when the coach creates the link.
+ * Anything malformed is silently dropped — token creation must not fail.
  */
 function parseIntake(raw: unknown): ParsedIntake {
   if (!raw || typeof raw !== 'object') return {};
   const r = raw as Record<string, unknown>;
   const out: ParsedIntake = {};
-  if (typeof r.email === 'string') {
-    const email = r.email.trim();
-    if (email.length > 0 && email.length <= 254 && EMAIL_RE.test(email)) out.email = email;
+
+  const email = parseOptionalString(r.email, 254);
+  if (email && EMAIL_RE.test(email)) out.email = email;
+
+  const fullName = parseOptionalString(r.fullName, 120);
+  if (fullName && fullName.length >= 2) out.fullName = fullName;
+
+  const phone = parseOptionalString(r.phone, 32);
+  if (phone) out.phone = phone;
+
+  const dateOfBirth = parseOptionalString(r.dateOfBirth, 32);
+  if (dateOfBirth) out.dateOfBirth = dateOfBirth;
+
+  const gender = parseOptionalString(r.gender, 16);
+  if (gender && GENDER_VALUES.has(gender)) out.gender = gender;
+
+  const heightRaw =
+    typeof r.heightCm === 'number' && Number.isFinite(r.heightCm)
+      ? String(r.heightCm)
+      : typeof r.heightCm === 'string'
+        ? r.heightCm.trim()
+        : '';
+  if (heightRaw) {
+    const n = Number(heightRaw);
+    if (Number.isFinite(n) && n >= 50 && n <= 280) out.heightCm = String(Math.round(n));
   }
+
+  const trainingHistory = parseOptionalString(r.trainingHistory, 64);
+  if (trainingHistory) out.trainingHistory = trainingHistory;
+
+  const recentActivity = parseOptionalString(r.recentActivity, 64);
+  if (recentActivity) out.recentActivity = recentActivity;
+
   return out;
 }
 
@@ -126,6 +208,17 @@ export async function handleCreateRemoteAssessmentToken(
   const slug = generateClientSlugFromName(clientName);
   const clientRef = db.doc(`organizations/${organizationId}/clients/${slug}`);
   const clientSnap = await clientRef.get();
+  const existingFormData = clientSnap.exists
+    ? ((clientSnap.data() as { formData?: Record<string, unknown> } | undefined)?.formData ?? {})
+    : {};
+
+  const intakeFromRequest = pickBasicPrefill(intake as Record<string, unknown>);
+  const intakeFromClientDoc = pickBasicPrefill(existingFormData);
+  const intakePrefill = mergeBasicPrefill(intakeFromRequest, intakeFromClientDoc);
+  const normalizedClientName = normalizeName(clientName);
+  if (normalizedClientName && !intakePrefill.fullName) intakePrefill.fullName = normalizedClientName;
+  if (intake.email && !intakePrefill.email) intakePrefill.email = intake.email;
+
   if (!clientSnap.exists) {
     // Auto-create a pending client record so remote intake data has a place to land.
     // Write clientName/clientNameLower alongside `name` so dashboard lookups and the
@@ -142,6 +235,7 @@ export async function handleCreateRemoteAssessmentToken(
       remoteIntakePending: true,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       ...(intake.email ? { email: intake.email } : {}),
+      ...(hasBasicPrefill(intakePrefill) ? { formData: intakePrefill } : {}),
     });
   } else {
     const coachUid = (clientSnap.data() as { coachUid?: string } | undefined)?.coachUid;
@@ -151,8 +245,18 @@ export async function handleCreateRemoteAssessmentToken(
     // Coach is regenerating an intake link for an existing client and may
     // have supplied an updated email. Patch only what was given — never
     // blank existing fields.
-    if (intake.email) {
-      await clientRef.update({ email: intake.email });
+    const clientPatch: Record<string, unknown> = {};
+    if (intake.email) clientPatch.email = intake.email;
+    if (hasBasicPrefill(intakePrefill)) {
+      clientPatch.formData = mergeBasicPrefill(
+        pickBasicPrefill(
+          (clientSnap.data() as { formData?: Record<string, unknown> } | undefined)?.formData,
+        ),
+        intakePrefill,
+      );
+    }
+    if (Object.keys(clientPatch).length > 0) {
+      await clientRef.update(clientPatch);
     }
   }
 
@@ -162,6 +266,9 @@ export async function handleCreateRemoteAssessmentToken(
   await db.doc(`remote-tokens/${token}`).set({
     organizationId,
     clientSlug: slug,
+    clientDisplayName: normalizedClientName,
+    intakeEmail: intakePrefill.email ?? intake.email ?? '',
+    ...(hasBasicPrefill(intakePrefill) ? { intakePrefill } : {}),
     coachUid: uid,
     expiresAt,
     scope: remoteScope,
@@ -181,39 +288,89 @@ export type RemoteSessionOk = {
   ok: true;
   scope: RemoteAssessmentScope;
   allowedKeys: string[];
+  prefill?: RemoteSessionPrefill;
 };
+
+export type RemoteSessionFailReason = 'invalid' | 'expired' | 'disabled';
 
 export async function handleGetRemoteAssessmentSession(
   request: CallableRequest<{ token?: string }>,
-): Promise<RemoteSessionOk | { ok: false }> {
+): Promise<RemoteSessionOk | { ok: false; reason: RemoteSessionFailReason }> {
   if (!REMOTE_ASSESSMENT_MVP) {
-    throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
+    return { ok: false, reason: 'disabled' };
   }
-  const token = typeof request.data?.token === 'string' ? request.data.token.trim() : '';
-  if (!token || !/^[a-f0-9]{32}$/.test(token)) {
-    return { ok: false };
+  const token = parseRemoteIntakeToken(request.data?.token);
+  if (!token) {
+    return { ok: false, reason: 'invalid' };
   }
 
   const db = admin.firestore();
   const snap = await db.doc(`remote-tokens/${token}`).get();
   if (!snap.exists) {
-    return { ok: false };
+    return { ok: false, reason: 'invalid' };
   }
   const data = snap.data() as {
     expiresAt?: admin.firestore.Timestamp;
     scope?: RemoteAssessmentScope;
     allowedKeys?: string[];
+    clientDisplayName?: string;
+    intakeEmail?: string;
+    intakePrefill?: Record<string, unknown>;
+    clientSlug?: string;
+    organizationId?: string;
   };
   const exp = data?.expiresAt;
   if (!exp || exp.toMillis() < Date.now()) {
-    return { ok: false };
+    return { ok: false, reason: 'expired' };
   }
 
   const scope = parseScope(data.scope);
   const allowedKeys =
     data.allowedKeys?.length ? data.allowedKeys : allowedKeysForScope(scope);
 
-  return { ok: true, scope, allowedKeys };
+  const tokenName = typeof data.clientDisplayName === 'string' ? data.clientDisplayName.trim() : '';
+  const tokenEmail = typeof data.intakeEmail === 'string' ? data.intakeEmail.trim() : '';
+  const tokenSnapshot = pickBasicPrefill(
+    data.intakePrefill && typeof data.intakePrefill === 'object'
+      ? (data.intakePrefill as Record<string, unknown>)
+      : undefined,
+  );
+
+  let clientDocPrefill: RemoteSessionPrefill = {};
+  if (data.organizationId && data.clientSlug) {
+    const clientSnap = await db
+      .doc(`organizations/${data.organizationId}/clients/${data.clientSlug}`)
+      .get();
+    if (clientSnap.exists) {
+      const client = clientSnap.data() as {
+        email?: string;
+        clientName?: string;
+        name?: string;
+        formData?: Record<string, unknown>;
+      };
+      clientDocPrefill = pickBasicPrefill(client.formData);
+      const docEmail = typeof client.email === 'string' ? client.email.trim() : '';
+      const docName =
+        (typeof client.clientName === 'string' && client.clientName.trim()) ||
+        (typeof client.name === 'string' && client.name.trim()) ||
+        '';
+      if (docEmail && !clientDocPrefill.email) clientDocPrefill.email = docEmail;
+      if (docName && !clientDocPrefill.fullName) clientDocPrefill.fullName = docName;
+    }
+  }
+
+  const legacyTokenPrefill: RemoteSessionPrefill = {};
+  if (tokenName) legacyTokenPrefill.fullName = tokenName;
+  if (tokenEmail) legacyTokenPrefill.email = tokenEmail;
+
+  const prefill = mergeBasicPrefill(legacyTokenPrefill, tokenSnapshot, clientDocPrefill);
+
+  return {
+    ok: true,
+    scope,
+    allowedKeys,
+    ...(hasBasicPrefill(prefill) ? { prefill } : {}),
+  };
 }
 
 function validateRemoteStoragePath(
@@ -254,9 +411,9 @@ export async function handleSubmitRemoteAssessmentFields(
   if (!REMOTE_ASSESSMENT_MVP) {
     throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
   }
-  const token = typeof request.data?.token === 'string' ? request.data.token.trim() : '';
+  const token = parseRemoteIntakeToken(request.data?.token);
   const fields = request.data?.fields;
-  if (!token || !/^[a-f0-9]{32}$/.test(token) || !fields || typeof fields !== 'object') {
+  if (!token || !fields || typeof fields !== 'object') {
     throw new HttpsError('invalid-argument', 'Invalid payload.');
   }
 
@@ -355,6 +512,7 @@ export async function handleSubmitRemoteAssessmentFields(
 
     tx.update(clientRef, {
       formData: nextForm,
+      remoteIntakePending: false,
       remoteIntakeAwaitingStudio: true,
       remoteIntakeLastAt: admin.firestore.FieldValue.serverTimestamp(),
       ...nameUpdate,
@@ -375,12 +533,12 @@ export async function handleGetRemotePostureUploadUrl(
   if (!REMOTE_ASSESSMENT_MVP) {
     throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
   }
-  const token = typeof request.data?.token === 'string' ? request.data.token.trim() : '';
+  const token = parseRemoteIntakeToken(request.data?.token);
   const view = typeof request.data?.view === 'string' ? request.data.view.trim() : '';
   const contentType =
     typeof request.data?.contentType === 'string' ? request.data.contentType.trim() : 'image/jpeg';
 
-  if (!token || !/^[a-f0-9]{32}$/.test(token)) {
+  if (!token) {
     throw new HttpsError('invalid-argument', 'Invalid token.');
   }
   if (!REMOTE_POSTURE_VIEWS.includes(view as RemotePostureView)) {
@@ -436,11 +594,11 @@ export async function handleGetRemoteBodyCompUploadUrl(
   if (!REMOTE_ASSESSMENT_MVP) {
     throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
   }
-  const token = typeof request.data?.token === 'string' ? request.data.token.trim() : '';
+  const token = parseRemoteIntakeToken(request.data?.token);
   const contentType =
     typeof request.data?.contentType === 'string' ? request.data.contentType.trim() : 'image/jpeg';
 
-  if (!token || !/^[a-f0-9]{32}$/.test(token)) {
+  if (!token) {
     throw new HttpsError('invalid-argument', 'Invalid token.');
   }
   if (contentType !== 'image/jpeg' && contentType !== 'image/png') {
@@ -515,10 +673,10 @@ export async function handleExtractRemoteBodyCompOcr(
     throw new HttpsError('failed-precondition', 'Remote assessment MVP is not enabled.');
   }
 
-  const token = typeof request.data?.token === 'string' ? request.data.token.trim() : '';
+  const token = parseRemoteIntakeToken(request.data?.token);
   const storagePathInput = typeof request.data?.storagePath === 'string' ? request.data.storagePath.trim() : '';
 
-  if (!token || !/^[a-f0-9]{32}$/.test(token)) {
+  if (!token) {
     throw new HttpsError('invalid-argument', 'Invalid token.');
   }
 

@@ -1,4 +1,17 @@
-import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, query, where, limit, getDocs, onSnapshot } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp,
+  Timestamp,
+  collection,
+  addDoc,
+  query,
+  where,
+  limit,
+  getDocs,
+  onSnapshot,
+} from 'firebase/firestore';
 import type { Timestamp, Unsubscribe } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { getDb, getFirebaseAuth } from '@/services/firebase';
@@ -172,10 +185,11 @@ export async function publishPublicReport(params: {
       const existingSummaries: SnapshotSummary[] = snapshot.exists()
         ? (snapshot.data()?.snapshotSummaries ?? [])
         : [];
+      // Firestore rejects serverTimestamp() inside array elements — use client Timestamp.now().
       const newSummary: SnapshotSummary = {
         id: snapshotId,
         score: overallScore,
-        date: serverTimestamp() as unknown as Timestamp,
+        date: Timestamp.now(),
         type: snapshotType,
       };
       const updatedSummaries = [newSummary, ...existingSummaries].slice(0, 50);

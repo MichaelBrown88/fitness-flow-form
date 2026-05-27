@@ -118,7 +118,8 @@ export function AssessmentSetupStep({
     onComplete();
   }, [onComplete]);
 
-  const planHintVisible = !shouldSkipSessionPlanWizard() && formData.assessmentPlan == null;
+  const planHintVisible =
+    !shouldSkipSessionPlanWizard(formData.assessmentPlan) && formData.assessmentPlan == null;
 
   if (isResolvingClient) {
     return (

@@ -1,7 +1,19 @@
 import { httpsCallable } from 'firebase/functions';
+import { CONFIG } from '@/config';
 import { getFirebaseFunctions } from '@/services/firebase';
 import { logger } from '@/lib/utils/logger';
-import type { RemoteAssessmentScope, RemotePostureView, RemoteSessionResult } from '@/lib/types/remoteAssessment';
+import {
+  pickRemoteBasicPrefill,
+  hasRemoteBasicPrefill,
+  type RemoteBasicInfoPrefill,
+} from '@/lib/remote/remoteIntakePrefill';
+import type {
+  RemoteAssessmentScope,
+  RemotePostureView,
+  RemoteSessionFailReason,
+  RemoteSessionResult,
+} from '@/lib/types/remoteAssessment';
+import { FirebaseError } from 'firebase/app';
 
 function fns() {
   return getFirebaseFunctions();
@@ -11,22 +23,38 @@ export async function fetchRemoteAssessmentSession(token: string): Promise<Remot
   try {
     const fn = httpsCallable<
       { token: string },
-      { ok: true; scope: RemoteAssessmentScope; allowedKeys: string[] } | { ok: false }
+      | { ok: true; scope: RemoteAssessmentScope; allowedKeys: string[]; prefill?: Record<string, unknown> }
+      | { ok: false; reason?: RemoteSessionFailReason }
     >(fns(), 'getRemoteAssessmentSession');
     const res = await fn({ token });
     const d = res.data;
-    if (!d || typeof d !== 'object') return { ok: false };
+    if (!d || typeof d !== 'object') return { ok: false, reason: 'network' };
     if (d.ok === true && 'scope' in d) {
+      const prefill =
+        d.prefill && typeof d.prefill === 'object'
+          ? pickRemoteBasicPrefill(d.prefill)
+          : undefined;
       return {
         ok: true,
         scope: d.scope,
         allowedKeys: Array.isArray(d.allowedKeys) ? d.allowedKeys : [],
+        ...(prefill && hasRemoteBasicPrefill(prefill) ? { prefill } : {}),
       };
     }
-    return { ok: false };
+    const reason =
+      d.ok === false && d.reason && ['invalid', 'expired', 'disabled'].includes(d.reason)
+        ? d.reason
+        : 'invalid';
+    return { ok: false, reason };
   } catch (e) {
     logger.warn('[RemoteAssessment] session fetch failed', e);
-    return { ok: false };
+    if (e instanceof FirebaseError && e.code === 'functions/failed-precondition') {
+      return { ok: false, reason: 'disabled' };
+    }
+    if (e instanceof FirebaseError && e.code === 'functions/not-found') {
+      return { ok: false, reason: 'invalid' };
+    }
+    return { ok: false, reason: 'network' };
   }
 }
 
@@ -53,9 +81,7 @@ export async function submitRemoteAssessmentFields(
  * (coaching focus, starting notes) belong post-assessment when there's
  * actual signal to act on.
  */
-export interface RemoteAssessmentClientIntake {
-  email?: string;
-}
+export interface RemoteAssessmentClientIntake extends RemoteBasicInfoPrefill {}
 
 export async function createRemoteAssessmentTokenForClient(
   organizationId: string,
@@ -78,6 +104,29 @@ export async function createRemoteAssessmentTokenForClient(
     ...(options?.intake && Object.keys(options.intake).length > 0 ? { intake: options.intake } : {}),
   });
   return res.data;
+}
+
+export async function sendRemoteIntakeLinkEmail(params: {
+  organizationId: string;
+  token: string;
+  to: string;
+  clientName: string;
+}): Promise<void> {
+  const fn = httpsCallable<
+    {
+      organizationId: string;
+      token: string;
+      to: string;
+      clientName: string;
+    },
+    { ok: true }
+  >(fns(), CONFIG.AI.FUNCTIONS.EMAIL_REMOTE_INTAKE);
+  await fn({
+    organizationId: params.organizationId,
+    token: params.token,
+    to: params.to.trim(),
+    clientName: params.clientName.trim(),
+  });
 }
 
 export async function getRemotePostureUploadSlot(

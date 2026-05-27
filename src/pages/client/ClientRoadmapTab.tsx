@@ -48,10 +48,8 @@ import {
   generateRoadmapBlocks,
   getAllPossibleBlocksForClient,
 } from '@/lib/roadmap/generateBlocks';
-import {
-  PillarPetalBadge,
-  type PillarKey,
-} from '@/components/reports/client/sub-components/PillarPetalBadge';
+import { PillarScoreBadge } from '@/components/reports/PillarScoreBadge';
+import type { PillarKey } from '@/lib/reports/radarData';
 import { groupPhaseItemsByPillar, CATEGORY_ORDER } from '@/lib/roadmap/sortPhaseItems';
 import { getPillarLabel } from '@/constants/pillars';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
@@ -61,8 +59,7 @@ import { cn } from '@/lib/utils';
 
 const PHASES: RoadmapPhase[] = ['foundation', 'development', 'performance'];
 
-/** Map roadmap categories to the petal-badge pillar keys. `general`
- *  doesn't have a pillar petal — render the generic Target icon. */
+/** Map roadmap categories to pillar badge keys. `general` uses the Target icon. */
 const CATEGORY_TO_PILLAR: Record<RoadmapCategory, PillarKey | null> = {
   bodyComp: 'bodyComp',
   movementQuality: 'movementQuality',
@@ -563,7 +560,7 @@ function ArcPillarGroup({ category, items }: { category: RoadmapCategory; items:
     <div>
       <div className="mb-2.5 flex items-center gap-2">
         {pillarKey ? (
-          <PillarPetalBadge pillar={pillarKey} score={100} size={28} />
+          <PillarScoreBadge pillar={pillarKey} score={100} size={28} />
         ) : (
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-card-elevated">
             <Icon className="h-3.5 w-3.5 text-foreground-secondary" />

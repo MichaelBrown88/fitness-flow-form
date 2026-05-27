@@ -121,6 +121,8 @@ export type ClientProfile = {
   dueDateOverrides?: Record<string, Timestamp>;
   /** Remote intake submitted by client; awaiting studio physical assessment. */
   remoteIntakeAwaitingStudio?: boolean;
+  /** Coach sent a remote intake link; client has not submitted yet */
+  remoteIntakePending?: boolean;
   /** Raw key-value form data from remote intake submission (pre-assessment prefill). */
   formData?: Record<string, unknown>;
 };
@@ -274,6 +276,8 @@ export interface ClientScheduleData {
   notes?: string;
   /** Public report share token when the client report has been published */
   shareToken?: string;
+  remoteIntakePending?: boolean;
+  remoteIntakeAwaitingStudio?: boolean;
 }
 
 /**
@@ -310,6 +314,8 @@ export async function listClientSchedules(
       lastAssessmentDate: data.lastAssessmentDate?.toDate(),
       notes: data.notes,
       shareToken: typeof data.shareToken === 'string' && data.shareToken.trim() !== '' ? data.shareToken.trim() : undefined,
+      remoteIntakePending: data.remoteIntakePending === true,
+      remoteIntakeAwaitingStudio: data.remoteIntakeAwaitingStudio === true,
     };
 
     if (data.retestSchedule) {
@@ -1208,6 +1214,9 @@ export async function deleteClientPermanently(params: {
     archivedAt: null,
     archivedBy: null,
     archiveReason: null,
+    remoteIntakeAwaitingStudio: false,
+    remoteIntakePending: false,
+    latestConsultationId: null,
     updatedAt: serverTimestamp(),
   });
 }
@@ -1343,6 +1352,12 @@ export async function purgeClientData(params: {
   await deleteSubcollection(ORGANIZATION.clientAchievements.collection(organizationId, clientSlug)).catch(
     (): void => undefined,
   );
+
+  // 4b. Consultation transcripts and coach notes
+  await deleteSubcollection(ORGANIZATION.clients.consultations.collection(organizationId, clientSlug)).catch(
+    (): void => undefined,
+  );
+  await deleteDoc(doc(db, ORGANIZATION.clients.coachNotes(organizationId, clientSlug))).catch((): void => undefined);
 
   // 5. Delete public report share tokens
   try {

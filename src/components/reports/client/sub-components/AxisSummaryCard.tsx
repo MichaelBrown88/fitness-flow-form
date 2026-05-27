@@ -1,53 +1,45 @@
 import React from 'react';
 import { ArrowRight, Download, Share2, Trophy, TrendingDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import OverallRadarChart, {
-  COMPACT_LABELS,
-  pillarColor,
-  pillarHueAt,
-  type RadarData,
-} from '@/components/reports/OverallRadarChart';
+import type { RadarData } from '@/lib/reports/radarData';
+import OverallRadarPolygon from '@/components/reports/OverallRadarPolygon';
+import { ScoreRing } from '@/components/reports/ScoreRing';
 import type { ScoreSummary } from '@/lib/scoring';
 import type { FormData } from '@/contexts/FormContext';
-import { calculateAge } from '@/lib/scoring';
-import { buildOverallSummary } from './coachSummaryText';
 import { cn } from '@/lib/utils';
+import { CLIENT_REPORT_COPY } from '@/constants/clientReport';
+import { PillarCardSection } from './PillarCardSection';
+import { ReportPriorityChips, type ReportPriorityItem } from './ReportPriorityChips';
+import type { GoalHorizonBlock } from '@/lib/goals/goalHorizons';
 
 interface AxisSummaryCardProps {
   clientName: string;
-  /** Pre-formatted date string for the metadata line (e.g. "14 January 2026"). */
   reportDate: string;
   scores: ScoreSummary;
   previousOverallScore?: number | null;
-  /** Optional client-friendly narrative — falls back to archetype description. */
   narrative?: string;
-  /** Client archetype (name + description) — rendered top-right of the card. */
   archetype?: { name: string; description: string };
-  /** Five-pillar data for the AXIS Bloom on the left side of the card. */
   radarData: RadarData[];
-  /** Previous-assessment radar data — used for the per-pillar delta chips. */
   previousRadarData?: RadarData[];
-  /** Org/studio name shown top-left. */
+  priorityStrengths?: ReportPriorityItem[];
+  priorityFocusAreas?: ReportPriorityItem[];
+  outlookHeadline?: string;
+  outlookBullets?: string[];
+  outlookHorizons?: GoalHorizonBlock[];
+  onPillarSelect?: (sectionId: string) => void;
   orgName?: string;
-  /** Coach display name for the byline. */
   coachName?: string;
-  /** "Assessment #N" — pass when known; omitted otherwise. */
   assessmentNumber?: number;
-  /** Vitals row inside the card (gender / age / height / weight / BMI). */
   formData?: FormData;
-  /** When false (client view via /r/:token), action buttons are hidden. */
+  goalLabels?: string[];
+  baselineNarrative?: string;
+  clientFacingRadar?: boolean;
   showActions?: boolean;
   onDownloadPdf?: () => void;
   onShare?: () => void;
   onSendToClient?: () => void;
 }
 
-/**
- * The single AXIS hero. Left column hosts the AXIS Bloom; right column
- * stacks the headline AXIS Score + archetype, then the five-pillar
- * trend bars. Vitals (gender / age / height / weight / BMI) sit inside
- * the card so the Report tab no longer needs a separate header strip.
- */
 export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
   clientName,
   reportDate,
@@ -57,10 +49,15 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
   archetype,
   radarData,
   previousRadarData,
-  orgName,
-  coachName,
-  assessmentNumber,
-  formData,
+  priorityStrengths = [],
+  priorityFocusAreas = [],
+  outlookHeadline,
+  outlookBullets = [],
+  outlookHorizons = [],
+  onPillarSelect,
+  goalLabels = [],
+  baselineNarrative,
+  clientFacingRadar = false,
   showActions = false,
   onDownloadPdf,
   onShare,
@@ -68,171 +65,151 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
 }) => {
   const overall = scores?.overall ?? 0;
   const scoreDiff = previousOverallScore != null ? overall - previousOverallScore : null;
-  const tone: 'green' | 'amber' | 'red' | 'muted' =
-    overall >= 75 ? 'green' : overall >= 50 ? 'amber' : overall > 0 ? 'red' : 'muted';
 
   const firstName = clientName?.trim().split(/\s+/)[0] || 'client';
-
-  const bylineParts: string[] = [];
-  if (assessmentNumber) bylineParts.push(`Assessment #${assessmentNumber}`);
-  if (coachName) bylineParts.push(`Coach: ${coachName}`);
-  const byline = bylineParts.join(' · ');
-
-  const metaParts: string[] = [];
-  if (orgName) metaParts.push(orgName);
-  if (reportDate) metaParts.push(reportDate);
-  const meta = metaParts.join(' · ');
-
   const description = narrative ?? archetype?.description;
-
-  const vitals = buildVitals(formData);
-  const overallSummary = buildOverallSummary(scores, previousOverallScore ?? null);
-
-  // Trend bar rows — match each current pillar to its previous score.
-  const bars = radarData.map((d, i) => {
-    const score = Math.round(d.value);
-    const prev = previousRadarData?.find((p) => p.name === d.name)?.value;
-    const diff = prev != null ? Math.round(score - prev) : null;
-    const hue = pillarHueAt(d.name, d.fullLabel, i);
-    const colour = pillarColor(hue);
-    const label = COMPACT_LABELS[d.fullLabel] ?? d.fullLabel;
-    return { score, diff, colour, label, key: d.name };
-  });
+  const hasPriorities =
+    priorityStrengths.length > 0 || priorityFocusAreas.length > 0;
+  const hasOutlook =
+    Boolean(outlookHeadline) &&
+    (outlookHorizons.length > 0 || outlookBullets.length > 0);
+  const hasRadar = radarData.length > 0;
+  const hasLeftContent = Boolean(description) || hasPriorities || hasOutlook;
 
   return (
-    <section className="rounded-[28px] border border-border bg-card p-7 shadow-[0_1px_2px_rgba(15,15,15,0.04),0_4px_14px_rgba(15,15,15,0.04)] sm:p-8">
-      {/* ─── HEADER ───────────────────────────────────────────────── */}
-      <div className="space-y-2">
-        {meta ? <p className="text-[12px] tracking-[0.02em] text-muted-foreground">{meta}</p> : null}
-        <h2 className="text-3xl font-bold tracking-[-0.020em] text-foreground sm:text-4xl">
-          {clientName || 'Assessment summary'}
-        </h2>
-        {byline ? <p className="text-[12px] text-muted-foreground">{byline}</p> : null}
-        {vitals.length > 0 ? (
-          <div className="flex flex-wrap gap-x-5 gap-y-2 pt-1">
-            {vitals.map((v) => (
-              <span key={v.label} className="inline-flex flex-col gap-0.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.10em] text-muted-foreground">
-                  {v.label}
-                </span>
-                <span className="text-[13px] font-semibold tabular-nums text-foreground-secondary">
-                  {v.value}
-                </span>
-              </span>
-            ))}
+    <section className="rounded-2xl bg-card p-6 ring-1 ring-border/60 sm:p-8">
+      <header className="flex flex-col gap-5 border-b border-border/50 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          {reportDate ? (
+            <p className="text-[12px] text-muted-foreground">{reportDate}</p>
+          ) : null}
+          <h2 className="mt-1 text-2xl font-bold tracking-[-0.02em] text-foreground sm:text-3xl">
+            {clientName || 'Assessment summary'}
+          </h2>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-4 sm:gap-5">
+          <ScoreRing score={overall} size={112} label="" className="shrink-0" />
+          <div className="min-w-0 space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground/80">
+              AXIS Score™
+            </p>
+            {archetype?.name ? (
+              <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-[11px] font-bold leading-snug text-foreground">
+                <Trophy className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span className="truncate">{archetype.name}</span>
+              </div>
+            ) : null}
+            {baselineNarrative ? (
+              <p className="text-[12px] leading-relaxed text-muted-foreground">{baselineNarrative}</p>
+            ) : null}
+            {goalLabels.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {goalLabels.map((label) => (
+                  <span
+                    key={label}
+                    className="inline-flex rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[10px] font-semibold text-foreground"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {scoreDiff !== null && scoreDiff !== 0 ? (
+              <p
+                className={cn(
+                  'inline-flex items-center gap-1 text-[12px] font-semibold tabular-nums',
+                  scoreDiff > 0 ? 'text-score-green-fg' : 'text-score-red-fg',
+                )}
+              >
+                {scoreDiff > 0 ? (
+                  <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+                ) : (
+                  <TrendingDown className="h-3.5 w-3.5 shrink-0" />
+                )}
+                {scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff} vs last time
+              </p>
+            ) : null}
           </div>
+        </div>
+      </header>
+
+      <div
+        className={cn(
+          'mt-5 grid gap-4',
+          hasRadar && hasLeftContent && 'lg:grid-cols-2 lg:items-stretch lg:gap-5',
+        )}
+      >
+        {hasLeftContent ? (
+          <div className="flex min-h-0 flex-col justify-center gap-4">
+            {description ? (
+              <PillarCardSection title={CLIENT_REPORT_COPY.axisSummaryHeading}>
+                <p className="text-sm leading-relaxed text-foreground-secondary">{description}</p>
+              </PillarCardSection>
+            ) : null}
+
+            {hasOutlook ? (
+              <PillarCardSection title={CLIENT_REPORT_COPY.outlookHeading}>
+                <p className="text-sm leading-relaxed text-foreground-secondary">{outlookHeadline}</p>
+                {outlookHorizons.length > 0 ? (
+                  <div className="mt-3 space-y-4">
+                    {outlookHorizons.map((block) => (
+                      <div key={block.months}>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          {block.title}
+                        </p>
+                        <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-foreground-secondary">
+                          {block.bullets.map((bullet) => (
+                            <li key={bullet}>{bullet}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-foreground-secondary">
+                    {outlookBullets.map((bullet) => (
+                      <li key={bullet}>{bullet}</li>
+                    ))}
+                  </ul>
+                )}
+              </PillarCardSection>
+            ) : null}
+
+            {hasPriorities ? (
+              <PillarCardSection title={CLIENT_REPORT_COPY.heroPrioritiesHeading}>
+                <ReportPriorityChips
+                  strengths={priorityStrengths}
+                  focusAreas={priorityFocusAreas}
+                  layout="split"
+                />
+              </PillarCardSection>
+            ) : null}
+          </div>
+        ) : null}
+
+        {hasRadar ? (
+          <PillarCardSection
+            title={CLIENT_REPORT_COPY.pillarsOverviewHeading}
+            className={cn(
+              'flex min-h-[260px] flex-col',
+              hasLeftContent && 'lg:min-h-0',
+            )}
+          >
+            <OverallRadarPolygon
+              data={radarData}
+              previousData={previousRadarData}
+              onPillarSelect={onPillarSelect}
+              compact
+              className="flex-1"
+              clientFacingLabels={clientFacingRadar}
+            />
+          </PillarCardSection>
         ) : null}
       </div>
 
-      {/* ─── BODY: bloom on left, summary + bars on right ─────────── */}
-      <div className="mt-7 grid items-stretch gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-        <div className="flex min-h-[340px] items-center justify-center sm:min-h-[400px]">
-          {radarData?.length > 0 ? (
-            <OverallRadarChart data={radarData} previousData={previousRadarData} />
-          ) : null}
-        </div>
-
-        <div className="flex flex-col gap-5">
-          {/* Summary row: AXIS Score (left) + Archetype (right). */}
-          <div className="grid grid-cols-[1fr_auto] items-start gap-4 border-b border-border pb-5">
-            <div className="flex flex-col gap-1">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                <AxisDiamondMark />
-                AXIS Score™
-              </span>
-              <span className="flex items-baseline gap-1">
-                <span
-                  className={cn(
-                    'text-6xl font-bold leading-none tracking-[-0.025em] tabular-nums',
-                    AXIS_NUMBER_TONE[tone],
-                  )}
-                >
-                  {overall || '—'}
-                </span>
-                {overall ? (
-                  <span className="text-xl font-semibold text-muted-foreground">/ 100</span>
-                ) : null}
-              </span>
-              {scoreDiff !== null && scoreDiff !== 0 ? (
-                <span
-                  className={cn(
-                    'inline-flex items-center gap-1 text-[12px] font-semibold tabular-nums',
-                    scoreDiff > 0 ? 'text-score-green-fg' : 'text-score-red-fg',
-                  )}
-                >
-                  {scoreDiff > 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                  {scoreDiff > 0 ? `+${scoreDiff} since last assessment` : `${scoreDiff} since last assessment`}
-                </span>
-              ) : null}
-            </div>
-
-            {archetype?.name ? (
-              <div className="flex max-w-[200px] flex-col items-end gap-1.5 text-right">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  Archetype
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-sm font-bold leading-tight tracking-[-0.01em] text-foreground">
-                  <Trophy className="h-3.5 w-3.5 flex-none text-foreground" />
-                  {archetype.name}
-                </span>
-              </div>
-            ) : null}
-          </div>
-
-          {/* Trend bars — one per pillar, in pillar-identity colours. */}
-          <div className="flex flex-col gap-3">
-            {bars.map((b) => (
-              <div
-                key={b.key}
-                className="grid items-center gap-4"
-                style={{ gridTemplateColumns: '96px minmax(0,1fr) 44px 60px' }}
-              >
-                <span className="inline-flex items-center gap-2 text-[13px] font-bold tracking-[-0.005em] text-foreground">
-                  <span
-                    className="h-2.5 w-2.5 flex-none rounded-full ring-2 ring-background"
-                    style={{ background: b.colour }}
-                  />
-                  {b.label}
-                </span>
-                <div className="relative h-3 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full transition-[width] duration-700 ease-out"
-                    style={{ width: `${Math.max(0, Math.min(100, b.score))}%`, background: b.colour }}
-                  />
-                </div>
-                <span className="text-[15px] font-bold tabular-nums tracking-[-0.005em] text-foreground">
-                  {b.score}
-                </span>
-                <DeltaChip diff={b.diff} />
-              </div>
-            ))}
-          </div>
-
-          {/* Coach Summary — synthesis copy when present, generated fallback otherwise. */}
-          {overallSummary ? (
-            <div className="rounded-[18px] border border-border bg-gradient-to-b from-card-elevated to-muted/30 px-5 py-4">
-              <p className="mb-1.5 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                <AxisDiamondMark />
-                Coach Summary
-              </p>
-              <p className="text-[14px] font-medium leading-[1.55] tracking-[-0.005em] text-foreground-secondary">
-                {overallSummary}
-              </p>
-            </div>
-          ) : null}
-        </div>
-      </div>
-
-      {/* ─── NARRATIVE under both columns ─────────────────────────── */}
-      {description ? (
-        <p className="mt-7 max-w-[72ch] border-t border-border pt-5 text-sm leading-relaxed text-foreground-secondary">
-          {description}
-        </p>
-      ) : null}
-
-      {/* ─── ACTIONS (coach view only) ────────────────────────────── */}
       {showActions ? (
-        <div className="mt-7 flex flex-wrap items-center justify-end gap-2 border-t border-border pt-5">
+        <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-border/50 pt-5">
           {onDownloadPdf ? (
             <Button variant="outline" onClick={onDownloadPdf} className="h-10 gap-2 rounded-full">
               <Download className="h-4 w-4" />
@@ -255,90 +232,4 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
       ) : null}
     </section>
   );
-};
-
-// ─── Delta chip for the trend bars ──────────────────────────────────
-
-function DeltaChip({ diff }: { diff: number | null }) {
-  if (diff == null) {
-    return (
-      <span className="inline-flex w-fit justify-self-end items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-        new
-      </span>
-    );
-  }
-  if (diff > 0) {
-    return (
-      <span className="inline-flex w-fit justify-self-end items-center gap-0.5 rounded-full bg-score-green-light px-2 py-0.5 text-[11px] font-semibold tabular-nums text-score-green-fg">
-        ▲ +{diff}
-      </span>
-    );
-  }
-  if (diff < 0) {
-    return (
-      <span className="inline-flex w-fit justify-self-end items-center gap-0.5 rounded-full bg-score-red-light px-2 py-0.5 text-[11px] font-semibold tabular-nums text-score-red-fg">
-        ▼ {diff}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex w-fit justify-self-end items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground">
-      —
-    </span>
-  );
-}
-
-// ─── Vitals row helpers ─────────────────────────────────────────────
-
-interface VitalsRow { label: string; value: string; }
-
-function buildVitals(formData?: FormData): VitalsRow[] {
-  if (!formData) return [];
-  const out: VitalsRow[] = [];
-  if (formData.gender) out.push({ label: 'Gender', value: capitalize(formData.gender) });
-  if (formData.dateOfBirth) out.push({ label: 'Age', value: String(calculateAge(formData.dateOfBirth)) });
-  const heightCm = parseFloat(formData.heightCm ?? '');
-  if (heightCm > 0) {
-    out.push({
-      label: 'Height',
-      value: heightCm >= 100 ? `${(heightCm / 100).toFixed(2)} m` : `${formData.heightCm} cm`,
-    });
-  }
-  const weightKg = parseFloat(formData.inbodyWeightKg ?? '');
-  if (weightKg > 0) out.push({ label: 'Weight', value: `${weightKg.toFixed(1)} kg` });
-  const bmi = parseFloat(formData.inbodyBmi ?? '');
-  if (bmi > 0) out.push({ label: 'BMI', value: bmi.toFixed(1) });
-  return out;
-}
-
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-// ─── AXIS diamond brand mark ────────────────────────────────────────
-
-function AxisDiamondMark({ size = 11 }: { size?: number }) {
-  const c = size / 2;
-  const inner = size * 0.32;
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden>
-      <path
-        d={`M ${c} 0 L ${size} ${c} L ${c} ${size} L 0 ${c} Z`}
-        className="fill-foreground"
-        opacity={0.92}
-      />
-      <path
-        d={`M ${c} ${c - inner} L ${c + inner} ${c} L ${c} ${c + inner} L ${c - inner} ${c} Z`}
-        className="fill-background"
-        opacity={0.22}
-      />
-    </svg>
-  );
-}
-
-const AXIS_NUMBER_TONE: Record<'green' | 'amber' | 'red' | 'muted', string> = {
-  green: 'text-score-green',
-  amber: 'text-score-amber',
-  red: 'text-score-red',
-  muted: 'text-foreground',
 };

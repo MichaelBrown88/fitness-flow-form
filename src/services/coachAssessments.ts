@@ -44,6 +44,10 @@ export type CoachAssessmentSummary = {
   coachUid?: string | null;
   /** Client finished remote-friendly steps; coach-only phases may remain */
   remoteIntakeAwaitingStudio?: boolean;
+  /** Client profile account status (from organizations/.../clients doc) */
+  clientStatus?: 'active' | 'inactive' | 'paused' | 'archived' | 'deleted';
+  assessmentType?: 'full' | 'pillar';
+  isPartial?: boolean;
   scoresSummary?: {
     overall: number;
     fullProfileScore: number | null;
@@ -75,6 +79,7 @@ type CoachAssessmentDoc = {
   pillar?: string;
   category?: string;
   scoresSummary?: CoachAssessmentSummary['scoresSummary'];
+  remoteIntakeAwaitingStudio?: boolean;
 };
 
 const orgClientsCollection = (orgId: string) =>
@@ -488,6 +493,9 @@ export async function getClientAssessments(
       previousScore: data.previousScore,
       trend: data.trend,
       assessmentCount: data.assessmentCount,
+      assessmentType: data.assessmentType,
+      isPartial: data.isPartial,
+      remoteIntakeAwaitingStudio: data.remoteIntakeAwaitingStudio === true,
     });
   });
   return items;

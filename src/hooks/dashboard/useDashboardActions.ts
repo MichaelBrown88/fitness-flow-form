@@ -24,7 +24,12 @@ import {
   writeEditAssessmentPayload,
   writePartialAssessment,
   writePrefillClientPayload,
+  markReturningSessionPlan,
 } from '@/lib/assessment/assessmentSessionStorage';
+import {
+  clientHasFullBaseline,
+  markBaselineAssessmentSession,
+} from '@/lib/assessment/baselineSession';
 import { ROUTES } from '@/constants/routes';
 import { UI_TOASTS } from '@/constants/ui';
 import { clearDraft } from '@/hooks/useAssessmentDraft';
@@ -178,6 +183,7 @@ export function useDashboardActions(
 
     // Always include client name; enrich from latest assessment if available
     const prefill: Record<string, unknown> = { fullName: clientName };
+    let remoteIntakeResume = false;
     try {
       const history = await getClientAssessments(user.uid, clientName, readOrgId);
       if (history.length > 0) {
@@ -194,6 +200,7 @@ export function useDashboardActions(
         // exactly where they left off.
         const { getClientProfile } = await import('@/services/clientProfiles');
         const clientProfile = await getClientProfile(user.uid, clientName, readOrgId);
+        remoteIntakeResume = clientProfile?.remoteIntakeAwaitingStudio === true;
         if (clientProfile?.remoteIntakeAwaitingStudio && clientProfile.formData) {
           Object.assign(prefill, clientProfile.formData);
           prefill.fullName = (clientProfile.formData.fullName as string | undefined) || clientName;
@@ -205,6 +212,28 @@ export function useDashboardActions(
     if (pillarCadenceHints?.length) {
       prefill.pillarCadenceHints = pillarCadenceHints;
     }
+
+    if (categories.length === 0) {
+      let snapshots: Awaited<ReturnType<typeof getClientAssessmentHistory>> = [];
+      try {
+        snapshots = await getClientAssessmentHistory(user.uid, clientName, readOrgId, 20);
+      } catch (e) {
+        logger.warn('Failed to load snapshots for baseline check', e);
+      }
+      const history = await getClientAssessments(user.uid, clientName, readOrgId).catch(() => []);
+      const hasBaseline = clientHasFullBaseline({
+        snapshots,
+        clientDoc: history[0]
+          ? { assessmentCount: history[0].assessmentCount }
+          : null,
+      });
+      if (hasBaseline) {
+        markReturningSessionPlan();
+      } else {
+        markBaselineAssessmentSession('studio', { remoteIntakeResume });
+      }
+    }
+
     writePrefillClientPayload(prefill);
     // Coach chose this client + pillar explicitly — skip the confirmation step
     confirmAssessmentSetup();

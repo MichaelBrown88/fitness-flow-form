@@ -1,129 +1,49 @@
 /**
- * Post–client-pick session setup: intake mode (copy) + template or custom phase scope.
+ * Post–client-pick session setup: baseline intake (first full assessment) or modular plan for returning clients.
  */
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useFormContext } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
-import {
-  buildPlanFromFocusToggles,
-  planFromTemplateKey,
-  type SessionFocusTemplateKey,
-  type SessionFocusToggles,
-} from '@/lib/types/assessmentPlan';
-import { readPrefillPillarCadenceHints, type PillarCadenceHint } from '@/lib/assessment/assessmentSessionStorage';
-import { ChevronDown, Copy, Monitor, Smartphone, AlertTriangle, Clock } from 'lucide-react';
-import { logger } from '@/lib/utils/logger';
-import type { RemoteAssessmentScope } from '@/lib/types/remoteAssessment';
-
-const TEMPLATE_ORDER: SessionFocusTemplateKey[] = [
-  'full',
-  'lifestyle',
-  'body_comp',
-  'cardio',
-  'strength',
-  'movement',
-];
-
-const TEMPLATE_LABEL: Record<SessionFocusTemplateKey, string> = {
-  full: ASSESSMENT_COPY.TEMPLATE_FULL,
-  lifestyle: ASSESSMENT_COPY.TEMPLATE_LIFESTYLE,
-  body_comp: ASSESSMENT_COPY.TEMPLATE_BODY_COMP,
-  cardio: ASSESSMENT_COPY.TEMPLATE_CARDIO,
-  strength: ASSESSMENT_COPY.TEMPLATE_STRENGTH,
-  movement: ASSESSMENT_COPY.TEMPLATE_MOVEMENT,
-};
-
-const TEMPLATE_DESC: Record<SessionFocusTemplateKey, string> = {
-  full: ASSESSMENT_COPY.TEMPLATE_FULL_DESC,
-  lifestyle: ASSESSMENT_COPY.TEMPLATE_LIFESTYLE_DESC,
-  body_comp: ASSESSMENT_COPY.TEMPLATE_BODY_COMP_DESC,
-  cardio: ASSESSMENT_COPY.TEMPLATE_CARDIO_DESC,
-  strength: ASSESSMENT_COPY.TEMPLATE_STRENGTH_DESC,
-  movement: ASSESSMENT_COPY.TEMPLATE_MOVEMENT_DESC,
-};
-
-/** Map cadence pillar IDs to toggle keys */
-const CADENCE_TO_TOGGLE: Record<string, keyof SessionFocusToggles> = {
-  lifestyle: 'lifestyle',
-  bodycomp: 'bodyComp',
-  fitness: 'cardio',
-  strength: 'strength',
-  posture: 'movement',
-};
-
-function buildInitialTogglesFromCadence(hints: PillarCadenceHint[]): { toggles: SessionFocusToggles; hasDue: boolean } {
-  const toggles: SessionFocusToggles = {
-    lifestyle: false,
-    bodyComp: false,
-    cardio: false,
-    strength: false,
-    movement: false,
-  };
-  let hasDue = false;
-  for (const hint of hints) {
-    const key = CADENCE_TO_TOGGLE[hint.pillar];
-    if (key && (hint.status === 'overdue' || hint.status === 'due-soon')) {
-      toggles[key] = true;
-      hasDue = true;
-    }
-  }
-  return { toggles, hasDue };
-}
+import { hasReturningSessionPlan } from '@/lib/assessment/baselineSession';
+import { hasPartialAssessmentInSession } from '@/lib/assessment/assessmentSessionStorage';
+import { BaselineIntakeChooser } from './BaselineIntakeChooser';
+import { SessionPlanWizard } from './SessionPlanWizard';
+import { Copy, Monitor, Smartphone } from 'lucide-react';
 
 export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void }) {
+  const isReturningModular =
+    hasPartialAssessmentInSession() || hasReturningSessionPlan();
+
+  if (isReturningModular) {
+    return <ReturningSessionPlanWizard onComplete={onComplete} />;
+  }
+
+  return <BaselineIntakeChooser onComplete={onComplete} />;
+}
+
+function ReturningSessionPlanWizard({ onComplete }: { onComplete: () => void }) {
   const { updateFormData, formData } = useFormContext();
   const { profile } = useAuth();
   const { toast } = useToast();
 
-  const cadenceHints = useMemo(() => readPrefillPillarCadenceHints(), []);
-  const cadenceMap = useMemo(() => {
-    const map = new Map<string, PillarCadenceHint>();
-    for (const h of cadenceHints) {
-      const key = CADENCE_TO_TOGGLE[h.pillar];
-      if (key) map.set(key, h);
-    }
-    return map;
-  }, [cadenceHints]);
-  const initialState = useMemo(() => buildInitialTogglesFromCadence(cadenceHints), [cadenceHints]);
-
   const [intakeMode, setIntakeMode] = useState<'studio' | 'send_link_first' | null>(null);
-  const [templateKey, setTemplateKey] = useState<SessionFocusTemplateKey>(initialState.hasDue ? 'full' : 'full');
-  const [customOpen, setCustomOpen] = useState(initialState.hasDue);
-  const [toggles, setToggles] = useState<SessionFocusToggles>(initialState.hasDue ? initialState.toggles : {
-    lifestyle: false,
-    bodyComp: false,
-    cardio: false,
-    strength: false,
-    movement: false,
-  });
   const [remoteLink, setRemoteLink] = useState<string | null>(null);
   const [remoteBusy, setRemoteBusy] = useState(false);
-  const [remoteLinkScope, setRemoteLinkScope] = useState<RemoteAssessmentScope>('lifestyle');
 
-  const hasCustomModule = Object.values(toggles).some(Boolean);
-
-  const handleContinue = () => {
-    if (!intakeMode) return;
-    const plan = hasCustomModule ? buildPlanFromFocusToggles(toggles) : planFromTemplateKey(templateKey);
-    logger.debug('[Assessment] Session plan selected', {
-      templateId: plan.templateId,
-      includedPhaseIds: plan.includedPhaseIds,
-      intakeMode,
-    });
-    updateFormData({
-      assessmentPlan: plan,
-      assessmentIntakeMode: intakeMode,
-    });
-    onComplete();
+  const handleIntakeChosen = (mode: 'studio' | 'send_link_first') => {
+    setIntakeMode(mode);
+    if (mode === 'studio') {
+      updateFormData({ assessmentIntakeMode: 'studio' });
+    }
   };
 
-  const toggle = (key: keyof SessionFocusToggles) => {
-    setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
+  const handleSessionPlanDone = () => {
+    if (!intakeMode) return;
+    onComplete();
   };
 
   return (
@@ -138,7 +58,7 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => setIntakeMode('studio')}
+            onClick={() => handleIntakeChosen('studio')}
             className={`rounded-lg border p-4 text-left transition-colors min-h-[88px] ${
               intakeMode === 'studio'
                 ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
@@ -151,7 +71,7 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
           </button>
           <button
             type="button"
-            onClick={() => setIntakeMode('send_link_first')}
+            onClick={() => handleIntakeChosen('send_link_first')}
             className={`rounded-lg border p-4 text-left transition-colors min-h-[88px] ${
               intakeMode === 'send_link_first'
                 ? 'border-primary bg-primary/5 ring-2 ring-primary/20'
@@ -165,181 +85,112 @@ export function AssessmentPlanWizard({ onComplete }: { onComplete: () => void })
         </div>
       </section>
 
-      <section className="space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Templates</p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {TEMPLATE_ORDER.map((key) => (
-            <button
-              key={key}
-              type="button"
-              disabled={hasCustomModule}
-              onClick={() => {
-                setTemplateKey(key);
-              }}
-              className={`rounded-lg border px-4 py-3 text-left text-sm transition-colors min-h-[72px] ${
-                !hasCustomModule && templateKey === key
-                  ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
-                  : 'border-border/70 bg-background hover:bg-muted/40 disabled:opacity-40 disabled:cursor-not-allowed'
-              }`}
-            >
-              <span className="font-semibold text-foreground block">{TEMPLATE_LABEL[key]}</span>
-              <span className="text-xs text-muted-foreground mt-1 block">{TEMPLATE_DESC[key]}</span>
-            </button>
-          ))}
-        </div>
-        {hasCustomModule && (
-          <p className="text-xs text-muted-foreground px-1">
-            Templates are paused while custom focus is active. Clear your selections below to use a template.
-          </p>
-        )}
-
-        <Collapsible open={customOpen} onOpenChange={setCustomOpen}>
-          <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted/50 min-h-[44px]">
-            {ASSESSMENT_COPY.CUSTOM_FOCUS_LABEL}
-            <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${customOpen ? 'rotate-180' : ''}`} />
-          </CollapsibleTrigger>
-          <CollapsibleContent className="pt-3 space-y-2">
-            <p className="text-xs text-muted-foreground px-1">{ASSESSMENT_COPY.CUSTOM_FOCUS_HINT}</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {(['lifestyle', 'bodyComp', 'cardio', 'strength', 'movement'] as (keyof SessionFocusToggles)[]).map((key) => {
-                const label =
-                  key === 'lifestyle'
-                    ? ASSESSMENT_COPY.TOGGLE_LIFESTYLE
-                    : key === 'bodyComp'
-                      ? ASSESSMENT_COPY.TOGGLE_BODY_COMP
-                      : key === 'cardio'
-                        ? ASSESSMENT_COPY.TOGGLE_CARDIO
-                        : key === 'strength'
-                          ? ASSESSMENT_COPY.TOGGLE_STRENGTH
-                          : ASSESSMENT_COPY.TOGGLE_MOVEMENT;
-                const hint = cadenceMap.get(key);
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => toggle(key)}
-                    className={`rounded-lg border px-3 py-3 text-left text-sm font-medium min-h-[44px] flex items-center justify-between gap-2 ${
-                      toggles[key] ? 'border-primary bg-primary/10' : 'border-border/70 bg-background'
-                    }`}
-                  >
-                    <span>{label}</span>
-                    {hint?.status === 'overdue' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-score-red-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-red-fg">
-                        <AlertTriangle className="h-2.5 w-2.5" />
-                        Overdue
-                      </span>
-                    )}
-                    {hint?.status === 'due-soon' && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-muted/60 px-2 py-0.5 text-[10px] font-bold text-score-amber-fg">
-                        <Clock className="h-2.5 w-2.5" />
-                        Due soon
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </section>
-
-      {intakeMode === 'send_link_first' && profile?.organizationId && formData.fullName?.trim() ? (
-        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-          <p className="text-sm font-medium text-foreground">Generate a client link</p>
-          <p className="text-xs text-muted-foreground">
-            Choose what the client will complete on their own. You finish any remaining steps together in studio.
-          </p>
-          <div className="grid gap-2 sm:grid-cols-3">
-            {(
-              [
-                { scope: 'lifestyle' as const, label: ASSESSMENT_COPY.REMOTE_LINK_SCOPE_LIFESTYLE },
-                { scope: 'lifestyle_posture' as const, label: ASSESSMENT_COPY.REMOTE_LINK_SCOPE_LIFESTYLE_POSTURE },
-                { scope: 'posture' as const, label: ASSESSMENT_COPY.REMOTE_LINK_SCOPE_POSTURE },
-              ] as const
-            ).map(({ scope, label }) => (
-              <button
-                key={scope}
-                type="button"
-                onClick={() => setRemoteLinkScope(scope)}
-                className={`rounded-lg border px-3 py-2 text-left text-xs font-medium min-h-[44px] ${
-                  remoteLinkScope === scope ? 'border-primary bg-primary/10' : 'border-border/70 bg-background'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 items-start">
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={remoteBusy}
-              className="min-h-[44px] shrink-0"
-              onClick={async () => {
-                setRemoteBusy(true);
-                setRemoteLink(null);
-                try {
-                  const { createRemoteAssessmentTokenForClient } = await import('@/services/remoteAssessmentClient');
-                  const res = await createRemoteAssessmentTokenForClient(
-                    profile.organizationId!,
-                    formData.fullName.trim(),
-                    { remoteScope: remoteLinkScope },
-                  );
-                  setRemoteLink(`${window.location.origin}/remote/${res.token}`);
-                  toast({ title: 'Link created', description: 'Copy and send it to your client.' });
-                } catch (e) {
-                  toast({
-                    title: 'Could not create link',
-                    description: e instanceof Error ? e.message : 'Something went wrong. Please try again.',
-                    variant: 'destructive',
-                  });
-                } finally {
-                  setRemoteBusy(false);
-                }
-              }}
-            >
-              {remoteBusy ? 'Creating…' : 'Generate client link'}
-            </Button>
-            {remoteLink ? (
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <code className="text-xs break-all rounded-lg bg-background border border-border px-3 py-2 flex-1">
-                  {remoteLink}
-                </code>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="shrink-0 h-8 w-8"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(remoteLink);
-                    toast({ title: 'Copied', description: 'Link copied to clipboard.' });
-                  }}
-                  aria-label="Copy link"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
-              </div>
-            ) : null}
-          </div>
-        </div>
+      {intakeMode === 'studio' ? (
+        <SessionPlanWizard intakeMode="studio" onComplete={handleSessionPlanDone} />
       ) : null}
 
-      <div className="space-y-2">
-        <Button
-          type="button"
-          size="lg"
-          className="w-full sm:w-auto min-h-[48px]"
-          disabled={!intakeMode}
-          onClick={handleContinue}
-        >
-          {ASSESSMENT_COPY.CONTINUE_TO_ASSESSMENT}
-        </Button>
-        {!intakeMode && (
-          <p className="text-xs text-muted-foreground">
-            Select how you will run the session above to continue.
-          </p>
-        )}
+      {intakeMode === 'send_link_first' && profile?.organizationId && formData.fullName?.trim() ? (
+        <ReturningRemoteLinkSection
+          remoteBusy={remoteBusy}
+          remoteLink={remoteLink}
+          setRemoteBusy={setRemoteBusy}
+          setRemoteLink={setRemoteLink}
+          onLinkCreated={() => {
+            updateFormData({ assessmentIntakeMode: 'send_link_first' });
+          }}
+          onContinue={handleSessionPlanDone}
+        />
+      ) : null}
+
+      {intakeMode === 'send_link_first' && !formData.fullName?.trim() ? (
+        <p className="text-xs text-muted-foreground">Enter a client name in setup before generating a link.</p>
+      ) : null}
+    </div>
+  );
+}
+
+function ReturningRemoteLinkSection({
+  remoteBusy,
+  remoteLink,
+  setRemoteBusy,
+  setRemoteLink,
+  onLinkCreated,
+  onContinue,
+}: {
+  remoteBusy: boolean;
+  remoteLink: string | null;
+  setRemoteBusy: (v: boolean) => void;
+  setRemoteLink: (v: string | null) => void;
+  onLinkCreated: () => void;
+  onContinue: () => void;
+}) {
+  const { formData } = useFormContext();
+  const { profile } = useAuth();
+  const { toast } = useToast();
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+        <p className="text-sm font-medium text-foreground">Generate a client link (optional)</p>
+        <p className="text-xs text-muted-foreground">
+          For returning clients you can still send a link for lifestyle or posture check-ins before choosing session
+          focus below.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-2 items-start">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={remoteBusy}
+            className="min-h-[44px] shrink-0"
+            onClick={async () => {
+              setRemoteBusy(true);
+              setRemoteLink(null);
+              try {
+                const { createRemoteAssessmentTokenForClient } = await import('@/services/remoteAssessmentClient');
+                const res = await createRemoteAssessmentTokenForClient(
+                  profile!.organizationId!,
+                  formData.fullName!.trim(),
+                  { remoteScope: 'lifestyle' },
+                );
+                setRemoteLink(`${window.location.origin}/remote/${res.token}`);
+                onLinkCreated();
+                toast({ title: 'Link created', description: 'Copy and send it to your client.' });
+              } catch (e) {
+                toast({
+                  title: 'Could not create link',
+                  description: e instanceof Error ? e.message : 'Something went wrong. Please try again.',
+                  variant: 'destructive',
+                });
+              } finally {
+                setRemoteBusy(false);
+              }
+            }}
+          >
+            {remoteBusy ? 'Creating…' : 'Generate client link'}
+          </Button>
+          {remoteLink ? (
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <code className="text-xs break-all rounded-lg bg-background border border-border px-3 py-2 flex-1">
+                {remoteLink}
+              </code>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="shrink-0 h-8 w-8"
+                onClick={() => {
+                  void navigator.clipboard.writeText(remoteLink);
+                  toast({ title: 'Copied', description: 'Link copied to clipboard.' });
+                }}
+                aria-label="Copy link"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : null}
+        </div>
       </div>
+      <SessionPlanWizard intakeMode="send_link_first" onComplete={onContinue} />
     </div>
   );
 }

@@ -49,4 +49,6 @@ export type ClientGroup = {
   shareToken?: string;
   /** Remote lifestyle (etc.) done; coach-only phases may remain */
   remoteIntakeAwaitingStudio?: boolean;
+  /** Link sent; waiting for client to submit remote intake */
+  remoteIntakePending?: boolean;
 };

@@ -1,9 +1,11 @@
 /**
- * Achievable landmarks: effective goal ambition when not collected from the client.
- * Use formData values when present (backwards compatibility); otherwise return system-defined achievable defaults.
+ * Effective goal magnitudes for reports and ARC.
+ * Clients no longer pick ambition tiers in intake — see `systemGoalTargets.ts`.
+ * Legacy goalLevel* fields still override when a coach sets them.
  */
 
 import type { FormData } from '@/contexts/FormContext';
+import { mergeEffectiveGoalLevels } from './systemGoalTargets';
 
 /** Goal value keys matching ASSESSMENT_OPTIONS.clientGoals[].value */
 const GOAL_WEIGHT_LOSS = 'weight-loss';
@@ -21,73 +23,15 @@ export interface EffectiveGoalLevels {
   goalLevelFitness: string;
 }
 
-const DEFAULTS_BY_GOAL: Record<string, EffectiveGoalLevels> = {
-  [GOAL_WEIGHT_LOSS]: {
-    goalLevelWeightLoss: '10',
-    goalLevelMuscle: '6',
-    goalLevelBodyRecomp: 'athletic',
-    goalLevelStrength: '30',
-    goalLevelFitness: 'active',
-  },
-  [GOAL_BUILD_MUSCLE]: {
-    goalLevelWeightLoss: '10',
-    goalLevelMuscle: '6',
-    goalLevelBodyRecomp: 'athletic',
-    goalLevelStrength: '30',
-    goalLevelFitness: 'active',
-  },
-  [GOAL_BODY_RECOMP]: {
-    goalLevelWeightLoss: '10',
-    goalLevelMuscle: '6',
-    goalLevelBodyRecomp: 'athletic',
-    goalLevelStrength: '30',
-    goalLevelFitness: 'active',
-  },
-  [GOAL_BUILD_STRENGTH]: {
-    goalLevelWeightLoss: '10',
-    goalLevelMuscle: '6',
-    goalLevelBodyRecomp: 'athletic',
-    goalLevelStrength: '30',
-    goalLevelFitness: 'active',
-  },
-  [GOAL_IMPROVE_FITNESS]: {
-    goalLevelWeightLoss: '10',
-    goalLevelMuscle: '6',
-    goalLevelBodyRecomp: 'athletic',
-    goalLevelStrength: '30',
-    goalLevelFitness: 'active',
-  },
-  [GOAL_GENERAL_HEALTH]: {
-    goalLevelWeightLoss: '10',
-    goalLevelMuscle: '6',
-    goalLevelBodyRecomp: 'athletic',
-    goalLevelStrength: '30',
-    goalLevelFitness: 'active',
-  },
-};
-
-const DEFAULT_LEVELS: EffectiveGoalLevels = DEFAULTS_BY_GOAL[GOAL_GENERAL_HEALTH];
-
-function getDefaultLevels(primaryGoal: string): EffectiveGoalLevels {
-  return DEFAULTS_BY_GOAL[primaryGoal] ?? DEFAULT_LEVELS;
-}
-
 /**
- * Returns effective goal levels: formData values when non-empty, else achievable defaults for primary goal.
+ * Returns effective goal levels: coach override when set, else system-derived from goals + physiology.
  */
 export function getEffectiveGoalLevels(
   primaryGoal: string,
-  formData?: FormData | null
+  formData?: FormData | null,
 ): EffectiveGoalLevels {
-  const defaults = getDefaultLevels(primaryGoal);
-  if (!formData) return defaults;
-  return {
-    goalLevelWeightLoss: formData.goalLevelWeightLoss?.trim() || defaults.goalLevelWeightLoss,
-    goalLevelMuscle: formData.goalLevelMuscle?.trim() || defaults.goalLevelMuscle,
-    goalLevelBodyRecomp: formData.goalLevelBodyRecomp?.trim() || defaults.goalLevelBodyRecomp,
-    goalLevelStrength: formData.goalLevelStrength?.trim() || defaults.goalLevelStrength,
-    goalLevelFitness: formData.goalLevelFitness?.trim() || defaults.goalLevelFitness,
-  };
+  const goals = formData?.clientGoals?.length ? formData.clientGoals : [primaryGoal];
+  return mergeEffectiveGoalLevels(formData, goals).levels;
 }
 
 /**

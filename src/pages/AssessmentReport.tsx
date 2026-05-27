@@ -91,6 +91,14 @@ const AssessmentReport = () => {
     setSearchParams(next, { replace: true });
   }, [loading, formData, scores, plan, searchParams, setSearchParams]);
 
+  useEffect(() => {
+    if (loading) return;
+    const name = formData?.fullName?.trim();
+    if (!name) return;
+    if (searchParams.get('legacy') === '1') return;
+    navigate(`/dashboard/clients/${encodeURIComponent(name)}/report`, { replace: true });
+  }, [loading, formData?.fullName, navigate, searchParams]);
+
   if (loading) {
     return (
       <AppShell title="Assessment report">
@@ -315,7 +323,6 @@ const AssessmentReport = () => {
                 scores={versionSelector.selectedScores ?? scores}
                 goals={Array.isArray((versionSelector.selectedFormData ?? formData).clientGoals) ? (versionSelector.selectedFormData ?? formData).clientGoals : []}
                 formData={versionSelector.selectedFormData ?? formData}
-                plan={plan}
                 previousScores={versionSelector.previousScores ?? previousScores}
                 previousFormData={(versionSelector.previousFormData ?? previousFormData) ?? undefined}
                 standalone={true}

@@ -73,6 +73,11 @@ export function useClientList(
       const nameKey = item.clientName.toLowerCase();
       const slugKey = nameKey.replace(/\s+/g, '-');
       const schedule = scheduleMap.get(nameKey) ?? scheduleMap.get(slugKey);
+      const clientStatus =
+        item.clientStatus ??
+        schedule?.clientStatus ??
+        'active';
+      const intakeActive = clientStatus !== 'deleted';
 
       return {
         id: item.id,
@@ -87,13 +92,19 @@ export function useClientList(
           : undefined,
         dueDateOverrides: schedule?.dueDateOverrides,
         pillarDates: schedule?.pillarDates,
-        clientStatus: (schedule as Record<string, unknown>)?.clientStatus as ClientGroup['clientStatus'] ?? 'active',
+        clientStatus,
         activePillars: schedule?.activePillars,
         trainingStartDate: schedule?.trainingStartDate,
         lastAssessmentDate: schedule?.lastAssessmentDate,
         notes: schedule?.notes,
         shareToken: schedule?.shareToken,
-        remoteIntakeAwaitingStudio: item.remoteIntakeAwaitingStudio === true,
+        remoteIntakeAwaitingStudio:
+          intakeActive &&
+          (item.remoteIntakeAwaitingStudio === true || schedule?.remoteIntakeAwaitingStudio === true),
+        remoteIntakePending:
+          intakeActive &&
+          schedule?.remoteIntakePending === true &&
+          !(schedule?.remoteIntakeAwaitingStudio || item.remoteIntakeAwaitingStudio),
       };
     });
 

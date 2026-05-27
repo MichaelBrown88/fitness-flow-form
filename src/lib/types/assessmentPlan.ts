@@ -1,7 +1,18 @@
 import type { PhaseId } from '@/lib/phases/types';
 
-/** All coach-assessment phases in default full-assessment order */
-export const DEFAULT_FULL_PHASE_IDS: PhaseId[] = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'];
+/** All coach-assessment phases in default full-assessment order (P6 goals live in consultation). */
+export const DEFAULT_FULL_PHASE_IDS: PhaseId[] = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P7'];
+
+/** Studio baseline included phases — consultation replaces P6. */
+export const STUDIO_BASELINE_INCLUDED_PHASE_IDS: PhaseId[] = [
+  'P0',
+  'P1',
+  'P3',
+  'P2',
+  'P5',
+  'P4',
+  'P7',
+];
 
 /**
  * Scope of a single assessment run. When absent on persisted FormData, treat as full legacy plan.
@@ -63,4 +74,12 @@ export function buildPlanFromFocusToggles(toggles: SessionFocusToggles): Assessm
 export function planFromTemplateKey(key: SessionFocusTemplateKey): AssessmentPlan {
   const t = SESSION_FOCUS_TEMPLATES[key];
   return { templateId: t.templateId, includedPhaseIds: [...t.phaseIds] };
+}
+
+/** First full baseline in studio — goals captured in consultation, not P6. */
+export function buildStudioBaselinePlan(): AssessmentPlan {
+  return {
+    templateId: 'full_holistic',
+    includedPhaseIds: [...STUDIO_BASELINE_INCLUDED_PHASE_IDS],
+  };
 }

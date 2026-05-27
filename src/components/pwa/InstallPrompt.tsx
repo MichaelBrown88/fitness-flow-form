@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Download, X, Share } from 'lucide-react';
 import { PWA_UI_COPY } from '@/constants/pwaUiCopy';
@@ -17,6 +18,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISSED_KEY = 'pwa-install-dismissed';
+const REMOTE_INTAKE_COMPLETE_KEY = 'remote-intake-complete';
 const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 function isStandalone(): boolean {
@@ -36,11 +38,29 @@ function wasDismissedRecently(): boolean {
 }
 
 export function InstallPrompt() {
+  const location = useLocation();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showManualHomeScreenPrompt, setShowManualHomeScreenPrompt] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [forceShow, setForceShow] = useState(false);
+
+  const onRemoteIntakeRoute =
+    /^\/remote\/[^/]+$/i.test(location.pathname) &&
+    sessionStorage.getItem(REMOTE_INTAKE_COMPLETE_KEY) !== '1';
+
+  const onClientPortalRoute = /^\/r(\/|$)/i.test(location.pathname);
+  const promptBottomClass = onClientPortalRoute
+    ? 'bottom-[calc(5rem+env(safe-area-inset-bottom,0px))]'
+    : 'bottom-4';
 
   useEffect(() => {
+    const showAfterIntake = () => setForceShow(true);
+    window.addEventListener('oneassess-show-install-prompt', showAfterIntake);
+    return () => window.removeEventListener('oneassess-show-install-prompt', showAfterIntake);
+  }, []);
+
+  useEffect(() => {
+    if (onRemoteIntakeRoute && !forceShow && !onClientPortalRoute) return;
     if (isStandalone() || wasDismissedRecently()) return;
 
     // Chromium-style install prompt
@@ -60,7 +80,14 @@ export function InstallPrompt() {
     }
 
     return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
+  }, [forceShow, onRemoteIntakeRoute, onClientPortalRoute]);
+
+  useEffect(() => {
+    if (!forceShow || isStandalone() || wasDismissedRecently()) return;
+    if (isAppleMobileWebKitWithoutInstallPrompt()) {
+      setShowManualHomeScreenPrompt(true);
+    }
+  }, [forceShow]);
 
   const handleInstall = useCallback(async () => {
     if (!deferredPrompt) return;
@@ -75,13 +102,20 @@ export function InstallPrompt() {
   const handleDismiss = useCallback(() => {
     setVisible(false);
     setShowManualHomeScreenPrompt(false);
+    setForceShow(false);
     localStorage.setItem(DISMISSED_KEY, Date.now().toString());
   }, []);
 
+  if (onRemoteIntakeRoute && !forceShow && !onClientPortalRoute) {
+    return null;
+  }
+
+  const positionClass = `fixed left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300 ${promptBottomClass}`;
+
   // Install prompt (Chromium family)
-  if (visible && deferredPrompt) {
+  if ((visible && deferredPrompt) || (forceShow && deferredPrompt)) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300">
+      <div className={positionClass}>
         <div className="bg-background dark:bg-foreground rounded-xl shadow-xl p-4 flex items-start gap-3 border border-border dark:border-border/50">
           <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/15 dark:bg-primary/25 flex items-center justify-center">
             <Download className="w-4 h-4 text-primary" />
@@ -121,9 +155,9 @@ export function InstallPrompt() {
     );
   }
 
-  if (showManualHomeScreenPrompt) {
+  if (showManualHomeScreenPrompt || (forceShow && isAppleMobileWebKitWithoutInstallPrompt())) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-[360px] z-[99] animate-in slide-in-from-bottom-4 fade-in duration-300">
+      <div className={positionClass}>
         <div className="bg-background dark:bg-foreground rounded-xl shadow-xl p-4 flex items-start gap-3 border border-border dark:border-border/50">
           <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/15 dark:bg-primary/25 flex items-center justify-center">
             <Share className="w-4 h-4 text-primary" />

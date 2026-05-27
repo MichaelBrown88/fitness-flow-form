@@ -26,6 +26,7 @@ import { UI_TOASTS } from '@/constants/ui';
 import { ORGANIZATION } from '@/lib/database/paths';
 import type { User } from 'firebase/auth';
 import type { Analytics } from './types';
+import { parseClientProfileStatus } from '@/lib/clients/parseClientProfileStatus';
 
 type UseAssessmentListParams = {
   user: User | null;
@@ -93,6 +94,7 @@ export function useAssessmentList({
 
         snapshot.forEach((docSnap) => {
           const docData = docSnap.data();
+          const clientStatus = parseClientProfileStatus(docData.status);
           const score = typeof docData.overallScore === 'number'
             ? docData.overallScore
             : (docData.scores?.overall ?? 0);
@@ -108,7 +110,11 @@ export function useAssessmentList({
             previousScore: docData.previousScore,
             trend: docData.trend,
             assessmentCount: docData.assessmentCount,
-            remoteIntakeAwaitingStudio: docData.remoteIntakeAwaitingStudio === true,
+            clientStatus,
+            remoteIntakeAwaitingStudio:
+              clientStatus !== 'deleted' && docData.remoteIntakeAwaitingStudio === true,
+            assessmentType: docData.assessmentType,
+            isPartial: docData.isPartial,
           });
           lastDocument = docSnap;
         });
@@ -145,6 +151,7 @@ export function useAssessmentList({
                 return;
               }
 
+              const clientStatus = parseClientProfileStatus(docData.status);
               const score = typeof docData.overallScore === 'number'
                 ? docData.overallScore
                 : (docData.scores?.overall ?? 0);
@@ -160,7 +167,11 @@ export function useAssessmentList({
                 previousScore: docData.previousScore,
                 trend: docData.trend,
                 assessmentCount: docData.assessmentCount,
-                remoteIntakeAwaitingStudio: docData.remoteIntakeAwaitingStudio === true,
+                clientStatus,
+                remoteIntakeAwaitingStudio:
+                  clientStatus !== 'deleted' && docData.remoteIntakeAwaitingStudio === true,
+                assessmentType: docData.assessmentType,
+                isPartial: docData.isPartial,
               });
               lastDocument = docSnap;
             });
@@ -216,6 +227,7 @@ export function useAssessmentList({
 
         nextSnapshot.forEach((docSnap) => {
           const docData = docSnap.data() as Record<string, unknown>;
+          const clientStatus = parseClientProfileStatus(docData.status);
           const scores = docData.scores as { overall?: number } | undefined;
           const score = typeof docData.overallScore === 'number'
             ? docData.overallScore
@@ -232,7 +244,11 @@ export function useAssessmentList({
             previousScore: docData.previousScore as number | undefined,
             trend: docData.trend as number | undefined,
             assessmentCount: docData.assessmentCount as number | undefined,
-            remoteIntakeAwaitingStudio: docData.remoteIntakeAwaitingStudio === true,
+            clientStatus,
+            remoteIntakeAwaitingStudio:
+              clientStatus !== 'deleted' && docData.remoteIntakeAwaitingStudio === true,
+            assessmentType: docData.assessmentType as CoachAssessmentSummary['assessmentType'],
+            isPartial: docData.isPartial === true,
           });
           newLastDoc = docSnap;
         });
