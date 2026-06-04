@@ -4,7 +4,7 @@
  * Handles fetching, filtering, and pagination of assessments.
  */
 
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/utils/logger';
 import type { CoachAssessmentSummary } from '@/services/coachAssessments';
@@ -26,7 +26,10 @@ import { UI_TOASTS } from '@/constants/ui';
 import { ORGANIZATION } from '@/lib/database/paths';
 import type { User } from 'firebase/auth';
 import type { Analytics } from './types';
-import { parseClientProfileStatus } from '@/lib/clients/parseClientProfileStatus';
+import {
+  mapOrgClientDocToSummary,
+  mergeClientSummaries,
+} from '@/hooks/dashboard/mapOrgClientDocToSummary';
 
 type UseAssessmentListParams = {
   user: User | null;
@@ -63,143 +66,156 @@ export function useAssessmentList({
   const [loadingMore, setLoadingMore] = useState(false);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const isInitialLoadRef = useRef(true);
+  const mainListRef = useRef<CoachAssessmentSummary[]>([]);
+  const intakeAwaitingRef = useRef<CoachAssessmentSummary[]>([]);
+  const intakePendingRef = useRef<CoachAssessmentSummary[]>([]);
+
+  const publishMergedItems = useCallback(() => {
+    const intakeRows = mergeClientSummaries(intakeAwaitingRef.current, intakePendingRef.current);
+    setItems(mergeClientSummaries(mainListRef.current, intakeRows));
+  }, []);
 
   useEffect(() => {
     if (loading || !user || !readOrgId) return;
 
-    // Client profile docs (one per client); not a separate "assessments" collection.
     const orgClientsColRef = collection(getDb(), ORGANIZATION.clients.collection(readOrgId));
+    const unsubs: Array<() => void> = [];
+    let cancelled = false;
 
-    // When resolvedCoachFilter is null, fetch ALL org clients' profile rows (admin view)
-    const q = resolvedCoachFilter
+    const applyMainSnapshot = (snapshot: { forEach: (fn: (d: QueryDocumentSnapshot<DocumentData>) => void) => void; size: number }, lastDocument: QueryDocumentSnapshot<DocumentData> | null) => {
+      if (cancelled) return;
+      const data: CoachAssessmentSummary[] = [];
+      snapshot.forEach((docSnap) => {
+        data.push(mapOrgClientDocToSummary(docSnap));
+      });
+      mainListRef.current = data;
+      setLastDoc(lastDocument);
+      setHasMore(snapshot.size === 20);
+      publishMergedItems();
+      isInitialLoadRef.current = false;
+      setLoadingData(false);
+    };
+
+    const attachIntakeListeners = () => {
+      const awaitingQ = resolvedCoachFilter
+        ? query(
+            orgClientsColRef,
+            where('coachUid', '==', resolvedCoachFilter),
+            where('remoteIntakeAwaitingStudio', '==', true),
+            limit(30),
+          )
+        : query(orgClientsColRef, where('remoteIntakeAwaitingStudio', '==', true), limit(30));
+
+      const pendingQ = resolvedCoachFilter
+        ? query(
+            orgClientsColRef,
+            where('coachUid', '==', resolvedCoachFilter),
+            where('remoteIntakePending', '==', true),
+            limit(30),
+          )
+        : query(orgClientsColRef, where('remoteIntakePending', '==', true), limit(30));
+
+      unsubs.push(
+        onSnapshot(
+          awaitingQ,
+          (snap) => {
+            if (cancelled) return;
+            const rows: CoachAssessmentSummary[] = [];
+            snap.forEach((docSnap) => rows.push(mapOrgClientDocToSummary(docSnap)));
+            intakeAwaitingRef.current = rows;
+            publishMergedItems();
+          },
+          (err) => logger.warn('[useAssessmentList] intake awaiting listener failed', err),
+        ),
+      );
+      unsubs.push(
+        onSnapshot(
+          pendingQ,
+          (snap) => {
+            if (cancelled) return;
+            const rows: CoachAssessmentSummary[] = [];
+            snap.forEach((docSnap) => rows.push(mapOrgClientDocToSummary(docSnap)));
+            intakePendingRef.current = rows;
+            publishMergedItems();
+          },
+          (err) => logger.warn('[useAssessmentList] intake pending listener failed', err),
+        ),
+      );
+    };
+
+    const mainQ = resolvedCoachFilter
       ? query(
           orgClientsColRef,
           where('coachUid', '==', resolvedCoachFilter),
           orderBy('createdAt', 'desc'),
-          limit(20)
+          limit(20),
         )
-      : query(
-          orgClientsColRef,
-          orderBy('createdAt', 'desc'),
-          limit(20)
-        );
+      : query(orgClientsColRef, orderBy('createdAt', 'desc'), limit(20));
 
-    const unsubscribe = onSnapshot(q, async (snapshot) => {
-      try {
-        if (isInitialLoadRef.current) {
-          setLoadingData(true);
-        }
-        const data: CoachAssessmentSummary[] = [];
-        let lastDocument: QueryDocumentSnapshot<DocumentData> | null = null;
+    if (isInitialLoadRef.current) {
+      setLoadingData(true);
+    }
+    mainListRef.current = [];
+    intakeAwaitingRef.current = [];
+    intakePendingRef.current = [];
 
-        snapshot.forEach((docSnap) => {
-          const docData = docSnap.data();
-          const clientStatus = parseClientProfileStatus(docData.status);
-          const score = typeof docData.overallScore === 'number'
-            ? docData.overallScore
-            : (docData.scores?.overall ?? 0);
-          data.push({
-            id: docSnap.id,
-            clientName: docData.clientName || 'Unnamed client',
-            createdAt: docData.createdAt || null,
-            updatedAt: docData.updatedAt || null,
-            overallScore: score,
-            goals: Array.isArray(docData.goals) ? docData.goals : [],
-            scoresSummary: docData.scoresSummary ?? docData.scores,
-            coachUid: docData.coachUid || null,
-            previousScore: docData.previousScore,
-            trend: docData.trend,
-            assessmentCount: docData.assessmentCount,
-            clientStatus,
-            remoteIntakeAwaitingStudio:
-              clientStatus !== 'deleted' && docData.remoteIntakeAwaitingStudio === true,
-            assessmentType: docData.assessmentType,
-            isPartial: docData.isPartial,
+    unsubs.push(
+      onSnapshot(
+        mainQ,
+        (snapshot) => {
+          let lastDocument: QueryDocumentSnapshot<DocumentData> | null = null;
+          snapshot.forEach((docSnap) => {
+            lastDocument = docSnap;
           });
-          lastDocument = docSnap;
-        });
-
-        setItems(data);
-        setLastDoc(lastDocument);
-        setHasMore(snapshot.size === 20);
-      } finally {
-        isInitialLoadRef.current = false;
-        setLoadingData(false);
-      }
-    }, (error) => {
-      if (error.code === 'failed-precondition' && error.message.includes('index')) {
-        logger.warn('Firestore index not ready, retrying with fallback query:', error);
-        if (unsubscribeRef.current) {
-          unsubscribeRef.current();
-          unsubscribeRef.current = null;
-        }
-        // If coach filter is active we over-fetch to buffer for client-side filtering;
-        // without a filter (admin view) we only need 20.
-        const fallbackLimit = resolvedCoachFilter ? 50 : 20;
-        const fallbackQuery = query(orgClientsColRef, orderBy('createdAt', 'desc'), limit(fallbackLimit));
-        const fallbackUnsubscribe = onSnapshot(fallbackQuery, async (snapshot) => {
-          try {
-            if (isInitialLoadRef.current) {
-              setLoadingData(true);
-            }
-            const data: CoachAssessmentSummary[] = [];
-            let lastDocument: QueryDocumentSnapshot<DocumentData> | null = null;
-
-            snapshot.forEach((docSnap) => {
-              const docData = docSnap.data();
-              if (resolvedCoachFilter && docData.coachUid !== resolvedCoachFilter) {
-                return;
-              }
-
-              const clientStatus = parseClientProfileStatus(docData.status);
-              const score = typeof docData.overallScore === 'number'
-                ? docData.overallScore
-                : (docData.scores?.overall ?? 0);
-              data.push({
-                id: docSnap.id,
-                clientName: docData.clientName || 'Unnamed client',
-                createdAt: docData.createdAt || null,
-                updatedAt: docData.updatedAt || null,
-                overallScore: score,
-                goals: Array.isArray(docData.goals) ? docData.goals : [],
-                scoresSummary: docData.scoresSummary ?? docData.scores,
-                coachUid: docData.coachUid || null,
-                previousScore: docData.previousScore,
-                trend: docData.trend,
-                assessmentCount: docData.assessmentCount,
-                clientStatus,
-                remoteIntakeAwaitingStudio:
-                  clientStatus !== 'deleted' && docData.remoteIntakeAwaitingStudio === true,
-                assessmentType: docData.assessmentType,
-                isPartial: docData.isPartial,
-              });
-              lastDocument = docSnap;
-            });
-
-            setItems(data.slice(0, 20));
-            setLastDoc(lastDocument);
-            setHasMore(data.length > 20);
-          } finally {
-            isInitialLoadRef.current = false;
+          applyMainSnapshot(snapshot, lastDocument);
+        },
+        (error) => {
+          if (error.code === 'failed-precondition' && error.message.includes('index')) {
+            logger.warn('Firestore index not ready, retrying with fallback query:', error);
+            const fallbackLimit = resolvedCoachFilter ? 50 : 20;
+            const fallbackQuery = query(orgClientsColRef, orderBy('createdAt', 'desc'), limit(fallbackLimit));
+            unsubs.push(
+              onSnapshot(fallbackQuery, (snapshot) => {
+                if (cancelled) return;
+                const data: CoachAssessmentSummary[] = [];
+                let lastDocument: QueryDocumentSnapshot<DocumentData> | null = null;
+                snapshot.forEach((docSnap) => {
+                  const docData = docSnap.data();
+                  if (resolvedCoachFilter && docData.coachUid !== resolvedCoachFilter) {
+                    return;
+                  }
+                  data.push(mapOrgClientDocToSummary(docSnap));
+                  lastDocument = docSnap;
+                });
+                mainListRef.current = data.slice(0, 20);
+                setLastDoc(lastDocument);
+                setHasMore(data.length > 20);
+                publishMergedItems();
+                isInitialLoadRef.current = false;
+                setLoadingData(false);
+              }),
+            );
+          } else {
+            logger.error('onSnapshot error:', error);
             setLoadingData(false);
           }
-        });
-        unsubscribeRef.current = fallbackUnsubscribe;
-        setLoadingData(false);
-      } else {
-        logger.error('onSnapshot error:', error);
-        setLoadingData(false);
-      }
-    });
+        },
+      ),
+    );
 
-    unsubscribeRef.current = unsubscribe;
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-        unsubscribeRef.current = null;
-      }
+    attachIntakeListeners();
+
+    unsubscribeRef.current = () => {
+      cancelled = true;
+      for (const unsub of unsubs) unsub();
     };
-  }, [user, readOrgId, loading, resolvedCoachFilter]);
+
+    return () => {
+      cancelled = true;
+      for (const unsub of unsubs) unsub();
+      unsubscribeRef.current = null;
+    };
+  }, [user, readOrgId, loading, resolvedCoachFilter, publishMergedItems]);
 
   const loadMoreAssessments = async () => {
     if (hasMore && lastDoc && user && readOrgId) {
@@ -226,30 +242,7 @@ export function useAssessmentList({
         let newLastDoc: QueryDocumentSnapshot<DocumentData> | null = null;
 
         nextSnapshot.forEach((docSnap) => {
-          const docData = docSnap.data() as Record<string, unknown>;
-          const clientStatus = parseClientProfileStatus(docData.status);
-          const scores = docData.scores as { overall?: number } | undefined;
-          const score = typeof docData.overallScore === 'number'
-            ? docData.overallScore
-            : (scores?.overall ?? 0);
-          newData.push({
-            id: docSnap.id,
-            clientName: (typeof docData.clientName === 'string' ? docData.clientName : 'Unnamed client'),
-            createdAt: (docData.createdAt instanceof Timestamp ? docData.createdAt : null),
-            updatedAt: (docData.updatedAt instanceof Timestamp ? docData.updatedAt : null),
-            overallScore: score,
-            goals: (Array.isArray(docData.goals) ? docData.goals : []) as string[],
-            scoresSummary: (docData.scoresSummary ?? docData.scores) as CoachAssessmentSummary['scoresSummary'],
-            coachUid: (typeof docData.coachUid === 'string' ? docData.coachUid : null),
-            previousScore: docData.previousScore as number | undefined,
-            trend: docData.trend as number | undefined,
-            assessmentCount: docData.assessmentCount as number | undefined,
-            clientStatus,
-            remoteIntakeAwaitingStudio:
-              clientStatus !== 'deleted' && docData.remoteIntakeAwaitingStudio === true,
-            assessmentType: docData.assessmentType as CoachAssessmentSummary['assessmentType'],
-            isPartial: docData.isPartial === true,
-          });
+          newData.push(mapOrgClientDocToSummary(docSnap));
           newLastDoc = docSnap;
         });
 

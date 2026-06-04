@@ -1,6 +1,6 @@
 import type { FormData } from '@/contexts/FormContext';
 import { ASSESSMENT_LABELS } from '@/constants/assessment';
-import { CONSULTATION_COPY } from '@/constants/consultation';
+import { PRE_ASSESSMENT_COPY } from '@/constants/preAssessment';
 import {
   countParqYesAnswers,
   formatIntakeFieldLabel,
@@ -75,13 +75,13 @@ export function IntakeReviewSummary({
       <div>
         <h2 className="text-lg font-semibold text-foreground">
           {variant === 'studio'
-            ? CONSULTATION_COPY.intakeReviewTitleStudio
-            : CONSULTATION_COPY.intakeReviewTitle}
+            ? PRE_ASSESSMENT_COPY.intakeReviewTitleStudio
+            : PRE_ASSESSMENT_COPY.intakeReviewTitle}
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
           {variant === 'studio'
-            ? CONSULTATION_COPY.intakeReviewSummaryStudio
-            : CONSULTATION_COPY.intakeReviewSummary}
+            ? PRE_ASSESSMENT_COPY.intakeReviewSummaryStudio
+            : PRE_ASSESSMENT_COPY.intakeReviewSummary}
         </p>
       </div>
       <SectionBlock title="About them" rows={aboutRows} />

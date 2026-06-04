@@ -6,12 +6,12 @@ import type { FormData } from '@/contexts/FormContext';
 import type { PhaseId } from '@/lib/phases/types';
 import { hasRemoteIntakeResumeSession } from '@/lib/assessment/baselineSession';
 
-export type StudioSessionStep = 'intake-review' | 'consultation' | 'phase';
+export type StudioSessionStep = 'intake-review';
 
-/** Physical battery order after consultation (excludes P0/P1). */
+/** Physical battery order for in-studio tests (excludes P0/P1 pre-assessment). */
 export const STUDIO_PHYSICAL_PHASE_ORDER: PhaseId[] = ['P3', 'P2', 'P5', 'P4', 'P7'];
 
-/** Full baseline plan phase ids (no P6). */
+/** Full baseline plan phase ids (no P6 — goals on P1 / pre-assessment). */
 export const STUDIO_BASELINE_PHASE_IDS: PhaseId[] = ['P0', 'P1', 'P3', 'P2', 'P5', 'P4', 'P7'];
 
 const REMOTE_POSTURE_VIEWS = ['front', 'side-left', 'back', 'side-right'] as const;
@@ -53,7 +53,7 @@ export function shouldUseStudioBaselineFlow(options: {
   return options.isBaselineSession && !options.isPartialAssessment;
 }
 
-/** True when the client completed (or partially completed) home intake before studio. */
+/** True when the client completed (or partially completed) home pre-assessment before studio. */
 export function shouldShowRemoteIntakeReview(
   formData: FormData,
   remoteIntakeResume: boolean,
@@ -61,40 +61,12 @@ export function shouldShowRemoteIntakeReview(
   return remoteIntakeResume || isRemoteIntakeFormComplete(formData);
 }
 
-export function resolveInitialStudioStep(options: {
-  formData: FormData;
-  consultationComplete: boolean;
-  remoteIntakeResume: boolean;
-}): StudioSessionStep {
-  if (options.consultationComplete) return 'phase';
-
-  const intakeDone = isRemoteIntakeFormComplete(options.formData);
-  if (options.remoteIntakeResume && !intakeDone) {
-    return 'intake-review';
-  }
-
-  return 'consultation';
-}
-
-/** Reconcile a persisted studio step with the current session (avoids stale intake-review). */
-export function reconcileStudioSessionStep(
-  stored: StudioSessionStep | null,
-  options: {
-    formData: FormData;
-    consultationComplete: boolean;
-    remoteIntakeResume: boolean;
-  },
-): StudioSessionStep {
-  if (!stored) return resolveInitialStudioStep(options);
-  if (options.consultationComplete) return 'phase';
-  const intakeDone = isRemoteIntakeFormComplete(options.formData);
-  if (
-    stored === 'intake-review' &&
-    !(options.remoteIntakeResume && !intakeDone)
-  ) {
-    return resolveInitialStudioStep(options);
-  }
-  return stored;
+/** Partial remote pre-assessment — show review screen before physical phases. */
+export function shouldShowStudioIntakeReview(
+  formData: FormData,
+  remoteIntakeResume: boolean,
+): boolean {
+  return remoteIntakeResume && !isRemoteIntakeFormComplete(formData);
 }
 
 export function filterPhasesForStudioBaseline(

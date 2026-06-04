@@ -3,9 +3,8 @@ import type { FormData } from '@/contexts/FormContext';
 import {
   filterPhasesForStudioBaseline,
   isRemoteIntakeFormComplete,
-  reconcileStudioSessionStep,
-  resolveInitialStudioStep,
   shouldShowRemoteIntakeReview,
+  shouldShowStudioIntakeReview,
   sortStudioPhaseIds,
 } from './studioSessionSteps';
 
@@ -27,51 +26,12 @@ describe('studioSessionSteps', () => {
     expect(isRemoteIntakeFormComplete(completeIntake)).toBe(true);
   });
 
-  it('resolveInitialStudioStep starts at consultation when intake done', () => {
+  it('shouldShowStudioIntakeReview only for partial remote pre-assessment', () => {
     expect(
-      resolveInitialStudioStep({
-        formData: completeIntake,
-        consultationComplete: false,
-        remoteIntakeResume: true,
-      }),
-    ).toBe('consultation');
-    expect(
-      resolveInitialStudioStep({
-        formData: completeIntake,
-        consultationComplete: true,
-        remoteIntakeResume: true,
-      }),
-    ).toBe('phase');
-  });
-
-  it('resolveInitialStudioStep starts at intake-review for partial remote intake', () => {
-    expect(
-      resolveInitialStudioStep({
-        formData: { fullName: 'Jane' } as FormData,
-        consultationComplete: false,
-        remoteIntakeResume: true,
-      }),
-    ).toBe('intake-review');
-  });
-
-  it('resolveInitialStudioStep starts at consultation for all-in-studio walk-in', () => {
-    expect(
-      resolveInitialStudioStep({
-        formData: {} as FormData,
-        consultationComplete: false,
-        remoteIntakeResume: false,
-      }),
-    ).toBe('consultation');
-  });
-
-  it('reconcileStudioSessionStep drops stale intake-review for studio walk-in', () => {
-    expect(
-      reconcileStudioSessionStep('intake-review', {
-        formData: {} as FormData,
-        consultationComplete: false,
-        remoteIntakeResume: false,
-      }),
-    ).toBe('consultation');
+      shouldShowStudioIntakeReview({ fullName: 'Jane' } as FormData, true),
+    ).toBe(true);
+    expect(shouldShowStudioIntakeReview(completeIntake, true)).toBe(false);
+    expect(shouldShowStudioIntakeReview({} as FormData, false)).toBe(false);
   });
 
   it('shouldShowRemoteIntakeReview is false for empty walk-in form', () => {

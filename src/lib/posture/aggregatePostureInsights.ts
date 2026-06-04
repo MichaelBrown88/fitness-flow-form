@@ -78,12 +78,16 @@ export function viewLabelUpper(view: PostureFindingViewId): string {
   }
 }
 
+function stripLegacyPlaceholderPrefix(text: string): string {
+  return text.replace(/^Placeholder:\s*/i, '').replace(/\bPlaceholder:\s*/gi, '').trim();
+}
+
 export function buildFocusBullets(findings: PostureFindingRecord[], max = 4): string[] {
   const sorted = sortFindingsForDisplay(findings);
   const bullets: string[] = [];
   const seen = new Set<string>();
   for (const f of sorted) {
-    const t = f.whatWellDo.trim();
+    const t = stripLegacyPlaceholderPrefix(f.whatWellDo.trim());
     if (!t || seen.has(t)) continue;
     seen.add(t);
     bullets.push(t);

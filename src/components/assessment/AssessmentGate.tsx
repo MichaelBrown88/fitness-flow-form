@@ -14,17 +14,16 @@ import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
   hasPartialAssessmentInSession,
   isAssessmentSetupConfirmedInSession,
-  isConsultationCompleteInSession,
   parseEditAssessmentPayload,
   readPartialAssessmentRecord,
-  readStudioSessionStep,
   removeAssessmentSetupConfirmed,
   removeEditAssessment,
   removePartialAssessment,
   removePrefillClient,
 } from '@/lib/assessment/assessmentSessionStorage';
 import { shouldSkipSessionPlanWizard } from '@/lib/assessment/assessmentGateUtils';
-import { hasActiveBaselineSession } from '@/lib/assessment/baselineSession';
+import { hasActiveBaselineSession, hasRemoteIntakeResumeSession } from '@/lib/assessment/baselineSession';
+import { shouldShowStudioIntakeReview } from '@/lib/assessment/studioSessionSteps';
 import { AssessmentStudioSteps } from './AssessmentStudioSteps';
 import { PhaseFormContent } from './PhaseFormContent';
 import { AssessmentClientStep } from './AssessmentClientStep';
@@ -68,8 +67,7 @@ export function AssessmentGate({
   const [studioStepsComplete, setStudioStepsComplete] = useState(() => {
     if (!hasActiveBaselineSession()) return true;
     if (hasPartialAssessmentInSession()) return true;
-    const step = readStudioSessionStep();
-    return step === 'phase' || isConsultationCompleteInSession();
+    return !shouldShowStudioIntakeReview(formData, hasRemoteIntakeResumeSession());
   });
   const hasClientFromUrl = useMemo(() => searchParams.get('client') ?? null, [searchParams]);
 
@@ -182,7 +180,8 @@ export function AssessmentGate({
     showForm &&
     !studioStepsComplete &&
     hasActiveBaselineSession() &&
-    !hasPartialAssessmentInSession();
+    !hasPartialAssessmentInSession() &&
+    shouldShowStudioIntakeReview(formData, hasRemoteIntakeResumeSession());
 
   if (needsStudioSteps) {
     return (

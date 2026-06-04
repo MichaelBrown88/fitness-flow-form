@@ -31,22 +31,22 @@ export const PHASE_SUMMARIES = {
   P1: 'Daily habits that impact training and recovery.',
   P2: 'Body composition scan and analysis.',
   P3: 'Resting heart rate and cardio fitness assessment.',
-  P4: 'Posture, movement patterns, and mobility screens.',
-  P5: 'Basic strength and endurance metrics.',
+  P4: 'Posture scan and movement pattern observations.',
+  P5: 'Functional strength and endurance metrics.',
   P6: 'Set ambitions after we understand your baseline.',
   P7: 'Review results and create reports.',
 } as const;
 
 // Gate Hints
 export const PHASE_GATE_HINTS: Record<string, string | undefined> = {
-  P0: 'Complete before starting assessment.',
-  P1: 'Complete lifestyle before health screening.',
-  P2: 'Complete before movement assessment.',
-  P3: 'Complete first physical assessment - requires resting heart rate.',
-  P4: undefined,
-  P5: 'Complete movement before strength testing.',
+  P0: 'Pre-assessment — client details and PAR-Q.',
+  P1: 'Pre-assessment — lifestyle and goals.',
+  P2: 'Physical assessment — body composition.',
+  P3: 'Physical assessment — resting HR before cardio test.',
+  P4: 'Physical assessment — posture and movement patterns.',
+  P5: 'Physical assessment — strength tests.',
   P6: undefined,
-  P7: 'Assessment complete.',
+  P7: 'Generate the AXIS report when physical tests are complete.',
 };
 
 // Field Labels by Phase

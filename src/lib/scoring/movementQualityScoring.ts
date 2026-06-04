@@ -2,30 +2,27 @@ import type { FormData } from '@/contexts/FormContext';
 import { MOVEMENT_LOGIC_DB } from '../clinical-data';
 import { POSTURE_STANDARD } from '@/lib/utils/postureAlignment';
 import type { ScoreCategory, ScoreDetail } from './types';
+import { resolveMobilityForScoring } from './deriveMobilityFromPatterns';
 
 export function scoreMovementQuality(form: FormData, age: number, gender: string): ScoreCategory {
-  // 1. MOBILITY SCORING
+  // 1. MOBILITY SCORING (explicit legacy fields or inferred from movement patterns)
   const mapMobility = (v: string) => (v === 'good' ? 100 : v === 'fair' ? 60 : v === 'poor' ? 30 : 0);
+  const mobility = resolveMobilityForScoring(form);
 
-  const hasHip = !!(form.mobilityHip && form.mobilityHip.trim() !== '');
-  const hasShoulder = !!(form.mobilityShoulder && form.mobilityShoulder.trim() !== '');
-  // Support both new bilateral fields and legacy single field
-  const hasAnkleLeft = !!(form.mobilityAnkleLeft && form.mobilityAnkleLeft.trim() !== '');
-  const hasAnkleRight = !!(form.mobilityAnkleRight && form.mobilityAnkleRight.trim() !== '');
-  const hasAnkleLegacy = !!(form.mobilityAnkle && form.mobilityAnkle.trim() !== '');
+  const hipMob = mobility.hip ? mapMobility(mobility.hip) : 0;
+  const shoulderMob = mobility.shoulder ? mapMobility(mobility.shoulder) : 0;
 
-  const hipMob = hasHip ? mapMobility(form.mobilityHip) : 0;
-  const shoulderMob = hasShoulder ? mapMobility(form.mobilityShoulder) : 0;
-
-  // Calculate ankle mobility: use bilateral if available, otherwise fall back to legacy
   let ankleMob = 0;
-  if (hasAnkleLeft || hasAnkleRight) {
-    const ankleLeftMob = hasAnkleLeft ? mapMobility(form.mobilityAnkleLeft) : 0;
-    const ankleRightMob = hasAnkleRight ? mapMobility(form.mobilityAnkleRight) : 0;
-    const ankleScores = [ankleLeftMob, ankleRightMob].filter(s => s > 0);
-    ankleMob = ankleScores.length > 0 ? Math.round(ankleScores.reduce((a, b) => a + b, 0) / ankleScores.length) : 0;
-  } else if (hasAnkleLegacy) {
-    ankleMob = mapMobility(form.mobilityAnkle);
+  if (mobility.ankleLeft || mobility.ankleRight) {
+    const ankleLeftMob = mobility.ankleLeft ? mapMobility(mobility.ankleLeft) : 0;
+    const ankleRightMob = mobility.ankleRight ? mapMobility(mobility.ankleRight) : 0;
+    const ankleScores = [ankleLeftMob, ankleRightMob].filter((s) => s > 0);
+    ankleMob =
+      ankleScores.length > 0
+        ? Math.round(ankleScores.reduce((a, b) => a + b, 0) / ankleScores.length)
+        : 0;
+  } else if (mobility.ankleLegacy) {
+    ankleMob = mapMobility(mobility.ankleLegacy);
   }
 
   const mobilityScores = [hipMob, shoulderMob, ankleMob].filter(s => s > 0);
@@ -259,10 +256,17 @@ export function scoreMovementQuality(form: FormData, age: number, gender: string
     contraindications.push('Loaded movement in painful patterns');
   }
 
+  const mobilityDetailValue =
+    mobilityScore > 0
+      ? mobility.inferred
+        ? 'Inferred from movement'
+        : 'Joints'
+      : '-';
+
   const details: ScoreDetail[] = [
     { id: 'posture', label: 'Posture', value: postureScore > 0 ? 'Analyzed' : '-', score: postureScore },
     { id: 'movement', label: 'Movement', value: movementScore > 0 ? 'Patterns' : '-', score: movementScore },
-    { id: 'mobility', label: 'Mobility', value: mobilityScore > 0 ? 'Joints' : '-', score: mobilityScore },
+    { id: 'mobility', label: 'Mobility', value: mobilityDetailValue, score: mobilityScore },
   ];
 
   const allCategoryScores = [postureScore, movementScore, mobilityScore].filter(s => s > 0);

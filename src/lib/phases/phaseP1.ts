@@ -60,6 +60,27 @@ export const phaseP1: PhaseDefinition = {
           orgConfigKey: 'medications',
           conditional: { showWhen: { field: 'medicationsFlag', value: 'yes' } },
         },
+        {
+          id: 'clientGoals' as keyof FormData,
+          type: 'multiselect' as FieldType,
+          label: ASSESSMENT_LABELS.P6.clientGoals,
+          placeholder: ASSESSMENT_PLACEHOLDERS.P6.clientGoals,
+          tooltip: ASSESSMENT_TOOLTIPS.P6.clientGoals,
+          options: ASSESSMENT_OPTIONS.clientGoals,
+        },
+        {
+          id: 'trainingFrequency' as keyof FormData,
+          type: 'select' as FieldType,
+          label: ASSESSMENT_LABELS.P6.trainingFrequency,
+          tooltip: ASSESSMENT_TOOLTIPS.P6.trainingFrequency,
+          options: ASSESSMENT_OPTIONS.trainingFrequency,
+        },
+        {
+          id: 'goalDeadline' as keyof FormData,
+          type: 'date' as FieldType,
+          label: ASSESSMENT_LABELS.P6.goalDeadline,
+          tooltip: ASSESSMENT_TOOLTIPS.P6.goalDeadline,
+        },
       ],
     }
   ],

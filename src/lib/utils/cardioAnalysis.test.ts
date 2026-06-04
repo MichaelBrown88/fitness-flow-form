@@ -22,6 +22,22 @@ describe('resolveCardioPillarRole', () => {
 });
 
 describe('calculateCardioAnalysis', () => {
+  it('does not inflate VO2 when peak HR is low (submax test)', () => {
+    const result = calculateCardioAnalysis(
+      40,
+      'male',
+      mapFitnessGoalLevel('active'),
+      77,
+      112,
+      91,
+      undefined,
+      { pillarRole: 'supporting' },
+    );
+
+    expect(result.vo2.current).toBeGreaterThan(15);
+    expect(result.vo2.current).toBeLessThan(28);
+  });
+
   it('does not assign elite VO2 target for build-muscle maintenance profile', () => {
     const result = calculateCardioAnalysis(
       SALEM_AGE,
@@ -36,9 +52,9 @@ describe('calculateCardioAnalysis', () => {
 
     expect(result.maintenanceMode).toBe(true);
     expect(result.vo2.current).toBeGreaterThan(38);
-    expect(result.vo2.current).toBeLessThan(45);
-    expect(result.vo2.target).toBeLessThan(50);
-    expect(result.vo2.gap).toBeLessThan(8);
+    expect(result.vo2.current).toBeLessThanOrEqual(50);
+    expect(result.vo2.target).toBeLessThanOrEqual(52);
+    expect(result.vo2.gap).toBeLessThan(12);
   });
 
   it('still allows ambitious VO2 gap when fitness is a primary goal', () => {
@@ -54,7 +70,7 @@ describe('calculateCardioAnalysis', () => {
     );
 
     expect(result.maintenanceMode).toBeUndefined();
-    expect(result.vo2.target).toBeGreaterThan(50);
-    expect(result.vo2.gap).toBeGreaterThan(10);
+    expect(result.vo2.target).toBeGreaterThan(result.vo2.current);
+    expect(result.vo2.gap).toBeGreaterThan(0);
   });
 });

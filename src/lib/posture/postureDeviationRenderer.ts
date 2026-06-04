@@ -10,15 +10,49 @@ export function drawDeviations(
   analysis: PostureAnalysisResult,
   centerX: number,
   shoulderY: number,
-  hipY: number
+  hipY: number,
+  clientFacing = false
 ): void {
   const facingDir = view === 'side-right' ? 1 : -1;
   const isBackView = view === 'back';
 
-  ctx.strokeStyle = CONFIG.POSTURE_OVERLAY.STYLE.DEVIATION_COLOR;
-  ctx.lineWidth = CONFIG.POSTURE_OVERLAY.STYLE.DEVIATION_WIDTH;
-  ctx.setLineDash([5, 5]);
+  const style = CONFIG.POSTURE_OVERLAY.STYLE;
+  const strokeColor = clientFacing
+    ? style.CLIENT_DEVIATION_COLOR
+    : style.DEVIATION_COLOR;
+  const strokeWidth = clientFacing
+    ? style.CLIENT_DEVIATION_WIDTH
+    : style.DEVIATION_WIDTH;
 
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = strokeWidth;
+  ctx.setLineDash(clientFacing ? [] : [5, 5]);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  if (clientFacing) {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(15, 23, 42, 0.5)';
+    ctx.lineWidth = strokeWidth + 3;
+    drawDeviationShapes(ctx, view, analysis, centerX, shoulderY, hipY, facingDir, isBackView);
+    ctx.restore();
+  }
+
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = strokeWidth;
+  drawDeviationShapes(ctx, view, analysis, centerX, shoulderY, hipY, facingDir, isBackView);
+}
+
+function drawDeviationShapes(
+  ctx: CanvasRenderingContext2D,
+  view: string,
+  analysis: PostureAnalysisResult,
+  centerX: number,
+  shoulderY: number,
+  hipY: number,
+  facingDir: number,
+  isBackView: boolean
+): void {
   if (view === 'front' || view === 'back') {
     drawFrontBackDeviations(ctx, analysis, centerX, shoulderY, hipY, isBackView);
   } else {

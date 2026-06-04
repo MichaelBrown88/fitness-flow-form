@@ -29,6 +29,22 @@
       "collectionGroup": "clients",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "coachUid", "order": "ASCENDING" },
+        { "fieldPath": "remoteIntakeAwaitingStudio", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "clients",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "coachUid", "order": "ASCENDING" },
+        { "fieldPath": "remoteIntakePending", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "clients",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "organizationId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]

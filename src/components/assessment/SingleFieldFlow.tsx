@@ -8,6 +8,16 @@ import { type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { shouldShowField } from '@/lib/utils/equipmentFieldFilter';
 import { FieldControl } from './FieldControl';
+import {
+  MovementPatternCapture,
+  type MovementPatternSectionId,
+} from '@/components/assessment/movement/MovementPatternCapture';
+
+const MOVEMENT_PATTERN_SECTIONS = new Set<MovementPatternSectionId>([
+  'overhead-squat',
+  'hinge-assessment',
+  'lunge-assessment',
+]);
 
 type IntakeSection = {
   id: string;
@@ -125,6 +135,17 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
   };
 
   if (!currentStep) return null;
+
+  if (MOVEMENT_PATTERN_SECTIONS.has(section.id as MovementPatternSectionId)) {
+    return (
+      <MovementPatternCapture
+        sectionId={section.id as MovementPatternSectionId}
+        sectionTitle={section.title}
+        onComplete={onComplete}
+        onBack={activeFieldIdx > 0 ? handleBack : onGoToPreviousSection}
+      />
+    );
+  }
 
   // ── PAR-Q bypass: the component manages its own multi-step flow ─
   const isParQField = currentStep.length === 1 && currentStep[0].type === 'parq';

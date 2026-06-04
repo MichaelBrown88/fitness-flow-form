@@ -96,7 +96,8 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
       overheadSquat: ['overhead-squat'],
       hinge: ['hinge-assessment'],
       lunge: ['lunge-assessment'],
-      mobility: ['mobility'],
+      /** Legacy module key — maps to movement pattern sections (standalone mobility screens removed). */
+      mobility: ['overhead-squat', 'hinge-assessment', 'lunge-assessment'],
       strength: ['strength-endurance'],
       lifestyle: ['lifestyle-overview'],
     };
@@ -174,7 +175,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
       },
       'posture': { 
         phaseIds: ['P0', 'P4', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'posture', 'overhead-squat', 'hinge-assessment', 'lunge-assessment', 'mobility'] 
+        sectionIds: ['basic-client-info', 'parq', 'posture'] 
       },
       'fitness': { 
         phaseIds: ['P0', 'P3', 'P7'], 

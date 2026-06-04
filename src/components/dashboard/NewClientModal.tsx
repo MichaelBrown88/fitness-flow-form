@@ -84,7 +84,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
           });
           toast({
             title: UI_TOASTS.SUCCESS.INTAKE_LINK_EMAILED,
-            description: `Waiting for ${trimmedName} to complete their intake.`,
+            description: `Waiting for ${trimmedName} to complete pre-assessment.`,
           });
         } catch (e) {
           logger.error('[NewClientModal] intake email failed', e);
@@ -105,7 +105,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
     } catch {
       toast({
         variant: 'destructive',
-        title: 'Could not create intake link',
+        title: 'Could not create pre-assessment link',
         description: 'Check your connection and try again.',
       });
     } finally {
@@ -151,7 +151,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
               Add a new client
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Send a remote intake link, or start an assessment in studio now.
+              Send a pre-assessment link, or start physical assessment in studio now.
             </DialogDescription>
           </DialogHeader>
 
@@ -169,7 +169,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
 
             <FieldShell
               label="Email"
-              help="We email the intake link from One Assess when you send the link."
+              help="We email the pre-assessment link from One Assess when you send the link."
             >
               <Input
                 type="email"
@@ -199,7 +199,7 @@ export function NewClientModal({ open, onOpenChange, organizationId }: NewClient
                 ) : (
                   <Link2 className="h-4 w-4" />
                 )}
-                Send intake link
+                Send pre-assessment link
               </Button>
               <Button
                 onClick={handleStartInStudio}

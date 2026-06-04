@@ -119,7 +119,7 @@ export function PhaseFormSingleFieldFlow({
             toast({
               title: 'Resting heart rate required',
               description:
-                'Capture seated resting HR after consultation — at least 5 minutes quiet before the fitness test.',
+                'Capture seated resting HR after at least 5 minutes quiet before the fitness test.',
               variant: 'destructive',
             });
             return;

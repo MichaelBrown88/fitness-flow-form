@@ -52,7 +52,7 @@ export function useClientReportData({
   
   const strengths = useMemo(() => {
     return orderedCats
-      .filter(cat => cat.score >= 70 && cat.strengths.length > 0)
+      .filter(cat => cat.score >= 60 && cat.strengths.length > 0)
       .flatMap(cat => 
         cat.strengths.map(s => ({
           category: niceLabel(cat.id),

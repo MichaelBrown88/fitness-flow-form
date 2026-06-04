@@ -117,15 +117,5 @@ export const phaseP4: PhaseDefinition = {
         { id: 'lungePainLevel' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.lungePainLevel, tooltip: ASSESSMENT_TOOLTIPS.P4.lungePainLevel, conditional: { showWhen: { field: 'lungeHasPain', value: 'yes' } }, options: ASSESSMENT_OPTIONS.lungePainLevel },
       ]
     },
-    {
-      id: 'mobility',
-      title: SECTION_TITLES.P4.mobility,
-      fields: [
-        { id: 'mobilityHip' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.mobilityHip, pattern: 'Hip Mobility', tooltip: ASSESSMENT_TOOLTIPS.P4.mobilityHip, options: ASSESSMENT_OPTIONS.mobilityQuality },
-        { id: 'mobilityShoulder' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.mobilityShoulder, pattern: 'Shoulder Mobility', tooltip: ASSESSMENT_TOOLTIPS.P4.mobilityShoulder, options: ASSESSMENT_OPTIONS.mobilityQuality },
-        { id: 'mobilityAnkleLeft' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.mobilityAnkleLeft, pattern: 'Ankle Mobility', side: 'left', pairId: 'ankle-mobility', tooltip: ASSESSMENT_TOOLTIPS.P4.mobilityAnkleLeft, options: ASSESSMENT_OPTIONS.mobilityQuality },
-        { id: 'mobilityAnkleRight' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P4.mobilityAnkleRight, pattern: 'Ankle Mobility', side: 'right', pairId: 'ankle-mobility', tooltip: ASSESSMENT_TOOLTIPS.P4.mobilityAnkleRight, options: ASSESSMENT_OPTIONS.mobilityQuality },
-      ]
-    },
   ],
 };

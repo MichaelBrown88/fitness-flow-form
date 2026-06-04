@@ -62,9 +62,11 @@ function buildWeightLossHorizons(
     targetKg = (weightKg * (safeParse(levelWL) || 10)) / 100;
   }
   const rate = weeklyWeightLossKg(profile, targetKg);
-  const kg1m = Math.min(targetKg * 0.25, rate.rate * 4);
-  const kg4m = Math.min(targetKg * 0.55, rate.rate * 16);
-  const kg12m = targetKg;
+  const fatKg = (weightKg * (profile.bodyFatPct ?? 0)) / 100;
+  const maxPhysiological = Math.min(rate.rate * 52, fatKg * 0.9, weightKg * 0.28);
+  const kg1m = Math.min(rate.rate * 4, maxPhysiological);
+  const kg4m = Math.min(rate.rate * 16, maxPhysiological);
+  const kg12m = maxPhysiological;
 
   return [
     {

@@ -222,13 +222,23 @@ export const UI_CLIENT_DETAIL = {
   /** Collapsible section title — distinct from the Overview nav tab */
   OVERVIEW_SECTION_TITLE: 'Snapshot',
   TAB_SUMMARY: 'Summary',
-  TAB_CONSULTATION: 'Consultation',
   TAB_REPORT: 'Report',
   TAB_TIMELINE: 'Timeline',
-  INTAKE_READY_PILL: 'Intake ready — review consultation, then studio',
-  INTAKE_REVIEW_CTA: 'Review intake & consultation',
-  INTAKE_PENDING_PILL: 'Waiting for client intake',
-  INTAKE_PENDING_DESC: 'Link sent — they have not submitted their pre-visit form yet.',
+  INTAKE_READY_PILL: 'Pre-assessment complete — ready for physical assessment',
+  INTAKE_PENDING_PILL: 'Waiting for pre-assessment',
+  INTAKE_PENDING_DESC: 'Link sent — they have not submitted their pre-assessment yet.',
+  OVERVIEW_WHATS_NEXT: "What's next",
+  OVERVIEW_EMPTY_PENDING_TITLE: 'Waiting for their pre-assessment',
+  OVERVIEW_EMPTY_PENDING_BODY:
+    'They need to finish the link you sent. You will see lifestyle and goals here once they submit — AXIS scores appear after the physical assessment in studio.',
+  OVERVIEW_EMPTY_READY_TITLE: 'Ready for physical assessment',
+  OVERVIEW_EMPTY_READY_BODY:
+    'Pre-assessment answers are saved. When they are in studio, run the physical assessment to unlock their AXIS Score™ and full report.',
+  OVERVIEW_EMPTY_READY_CTA: 'Start physical assessment',
+  OVERVIEW_EMPTY_NEW_TITLE: 'Start their assessment',
+  OVERVIEW_EMPTY_NEW_BODY:
+    'Send a pre-assessment link for them to complete at home, or run intake and testing in studio when they arrive.',
+  OVERVIEW_EMPTY_NEW_CTA: 'New assessment',
 } as const;
 
 /** Command palette page shortcuts */

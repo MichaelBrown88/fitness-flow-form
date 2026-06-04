@@ -17,7 +17,12 @@ import {
   RemoteMobileYesNoField,
 } from '@/components/remote/RemoteMobileField';
 import { RemoteMobileDateWheelPicker } from '@/components/remote/RemoteMobileDateWheelPicker';
-import { RemotePostureIntroIllustration } from '@/components/remote/RemotePostureIntroIllustration';
+import { PosturePhoneCaptureGraphic } from '@/components/remote/PosturePhoneCaptureGraphic';
+import {
+  PostureIntakeChoice,
+  type PostureIntakePlan,
+} from '@/components/remote/PostureIntakeChoice';
+import { RemoteIntakeProgressBar } from '@/components/remote/RemoteIntakeProgressBar';
 import { RemotePostureGuidedCapture } from '@/components/remote/RemotePostureGuidedCapture';
 import { RemoteIntakeSuccess } from '@/components/remote/RemoteIntakeSuccess';
 import {
@@ -28,11 +33,14 @@ import { initialBasicFromPrefill } from '@/lib/remote/remoteIntakePrefill';
 import type { RemoteBasicInfoPrefill } from '@/lib/remote/remoteIntakePrefill';
 import {
   buildRemoteIntakeScreens,
+  INITIAL_PRE_ASSESSMENT_GOALS,
   isScreenValid,
   screenSubtitle,
   screenTitle,
+  type PreAssessmentGoalsState,
   type RemoteIntakeScreen,
 } from '@/lib/remote/remoteIntakeFlow';
+import { RemoteMobileGoalPicker } from '@/components/remote/RemoteMobileGoalPicker';
 import type { BasicInfoState } from '@/components/remote/steps/RemoteBasicInfoStep';
 
 const REMOTE_INTAKE_COMPLETE_KEY = 'remote-intake-complete';
@@ -65,6 +73,7 @@ function isScreenValidWithMeds(
   lifestyle: LifestyleRemoteState,
   parq: Record<string, string>,
   posturePaths: Partial<Record<RemotePostureView, string>>,
+  goalsState: PreAssessmentGoalsState,
 ): boolean {
   if (
     screen.kind === 'text' &&
@@ -79,7 +88,7 @@ function isScreenValidWithMeds(
   if (screen.kind === 'text' && screen.field === 'email') {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(basic.email.trim());
   }
-  return isScreenValid(screen, basic, lifestyle, parq, posturePaths);
+  return isScreenValid(screen, basic, lifestyle, parq, posturePaths, goalsState);
 }
 
 export default function PublicRemoteAssessment() {
@@ -100,6 +109,8 @@ export default function PublicRemoteAssessment() {
   const [lifestyle, setLifestyle] = useState<LifestyleRemoteState>(INITIAL_LIFESTYLE_REMOTE);
   const [parqAnswers, setParqAnswers] = useState<Record<string, string>>({});
   const [posturePaths, setPosturePaths] = useState<Partial<Record<RemotePostureView, string>>>({});
+  const [posturePlan, setPosturePlan] = useState<PostureIntakePlan>(null);
+  const [goals, setGoals] = useState<PreAssessmentGoalsState>(INITIAL_PRE_ASSESSMENT_GOALS);
 
   useEffect(() => {
     if (!token) {
@@ -144,32 +155,45 @@ export default function PublicRemoteAssessment() {
   const currentScreen = screens[screenIndex];
   const progress = screens.length > 0 ? (screenIndex + 1) / screens.length : 0;
 
+  const postureCapturedCount = Object.keys(posturePaths).length;
+  const postureStepReady = postureCapturedCount > 0 || posturePlan === 'studio';
+
   const currentValid = useMemo(() => {
     if (!currentScreen) return false;
-    return isScreenValidWithMeds(currentScreen, basicInfo, lifestyle, parqAnswers, posturePaths);
-  }, [currentScreen, basicInfo, lifestyle, parqAnswers, posturePaths]);
-
-  const postureCapturedCount = Object.keys(posturePaths).length;
+    if (currentScreen.kind === 'posture') return postureStepReady;
+    return isScreenValidWithMeds(
+      currentScreen,
+      basicInfo,
+      lifestyle,
+      parqAnswers,
+      posturePaths,
+      goals,
+    );
+  }, [
+    currentScreen,
+    basicInfo,
+    lifestyle,
+    parqAnswers,
+    posturePaths,
+    goals,
+    postureStepReady,
+  ]);
 
   const primaryDisabled = useMemo(() => {
     if (!currentScreen) return true;
-    if (currentScreen.kind === 'posture' && postureCapturedCount === 0) {
-      return false;
-    }
     return !currentValid;
-  }, [currentScreen, currentValid, postureCapturedCount]);
+  }, [currentScreen, currentValid]);
 
   const intakeLayout =
-    currentScreen &&
-    currentScreen.kind !== 'welcome' &&
-    currentScreen.kind !== 'group'
-      ? 'centered'
-      : 'default';
+    currentScreen && currentScreen.kind !== 'welcome' ? 'centered' : 'default';
 
   const intakeTitle = useMemo(() => {
     if (!currentScreen) return undefined;
     if (currentScreen.kind === 'dateOfBirth') {
       return ASSESSMENT_COPY.REMOTE_INTAKE_DOB_TITLE;
+    }
+    if (currentScreen.kind === 'goalDeadline') {
+      return ASSESSMENT_COPY.REMOTE_INTAKE_GOAL_DEADLINE_TITLE;
     }
     if (currentScreen.kind === 'posture') {
       return ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_TITLE;
@@ -183,6 +207,9 @@ export default function PublicRemoteAssessment() {
       return currentScreen.readOnly
         ? 'We already have this from your coach — tap Next to confirm.'
         : ASSESSMENT_COPY.REMOTE_INTAKE_DOB_HINT;
+    }
+    if (currentScreen.kind === 'goalDeadline') {
+      return ASSESSMENT_COPY.REMOTE_INTAKE_GOAL_DEADLINE_HINT;
     }
     if (currentScreen.kind === 'posture') {
       if (postureCapturedCount > 0) {
@@ -206,6 +233,15 @@ export default function PublicRemoteAssessment() {
       for (const [view, path] of Object.entries(posturePaths)) {
         if (path) fields[`postureRemotePath_${view}`] = path;
       }
+      if (goals.selectedGoals.length > 0) {
+        fields.clientGoals = goals.selectedGoals.join(',');
+      }
+      if (goals.trainingFrequency.trim()) {
+        fields.trainingFrequency = goals.trainingFrequency.trim();
+      }
+      if (goals.goalDeadline.trim()) {
+        fields.goalDeadline = goals.goalDeadline.trim();
+      }
       for (const k of Object.keys(fields)) {
         if (!fields[k]) delete fields[k];
       }
@@ -220,17 +256,23 @@ export default function PublicRemoteAssessment() {
     }
   };
 
-  const goNext = () => {
-    if (!currentScreen) return;
-    if (currentScreen.kind === 'posture' && Object.keys(posturePaths).length === 0) {
-      setPostureCaptureOpen(true);
-      return;
-    }
+  const advanceScreen = () => {
     if (screenIndex >= screens.length - 1) {
       void handleSubmitAll();
       return;
     }
     setScreenIndex((i) => i + 1);
+  };
+
+  const goNext = () => {
+    if (!currentScreen) return;
+    if (currentScreen.kind === 'posture') {
+      if (postureCapturedCount > 0 || posturePlan === 'studio') {
+        advanceScreen();
+      }
+      return;
+    }
+    advanceScreen();
   };
 
   const goBack = () => {
@@ -300,6 +342,7 @@ export default function PublicRemoteAssessment() {
       case 'dateOfBirth':
         return (
           <RemoteMobileDateWheelPicker
+            compact
             value={basicInfo.dateOfBirth}
             onChange={(iso) => setBasicInfo((prev) => ({ ...prev, dateOfBirth: iso }))}
             readOnly={currentScreen.readOnly}
@@ -376,30 +419,61 @@ export default function PublicRemoteAssessment() {
         return (
           <RemoteMobileYesNoField
             label={currentScreen.label}
+            showLabel={false}
             value={parqAnswers[currentScreen.questionId] ?? ''}
             onChange={(v) =>
               setParqAnswers((prev) => ({ ...prev, [currentScreen.questionId]: v }))
             }
           />
         );
+      case 'goals':
+        return (
+          <RemoteMobileGoalPicker
+            options={currentScreen.options}
+            selected={goals.selectedGoals}
+            onChange={(selectedGoals) => setGoals((prev) => ({ ...prev, selectedGoals }))}
+          />
+        );
+      case 'trainingFrequency':
+        return (
+          <RemoteMobileChoiceField
+            value={goals.trainingFrequency}
+            onChange={(v) => setGoals((prev) => ({ ...prev, trainingFrequency: v }))}
+            options={currentScreen.options}
+          />
+        );
+      case 'goalDeadline':
+        return (
+          <RemoteMobileDateWheelPicker
+            compact
+            variant="goalDeadline"
+            value={goals.goalDeadline}
+            onChange={(iso) => setGoals((prev) => ({ ...prev, goalDeadline: iso }))}
+          />
+        );
       case 'posture':
         return (
-          <div className="flex w-full flex-col items-center gap-6">
+          <div className="flex w-full max-w-sm flex-col items-center gap-5">
             {postureCapturedCount === 0 ? (
               <>
-                <RemotePostureIntroIllustration />
-                <p className="max-w-sm text-center text-base leading-relaxed text-foreground/90">
+                <PosturePhoneCaptureGraphic />
+                <p className="max-w-[30ch] text-center text-sm leading-snug text-muted-foreground">
                   {ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_BODY}
                 </p>
-                <p className="max-w-sm text-center text-sm leading-relaxed text-muted-foreground">
-                  {ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_TIP}
-                </p>
+                <PostureIntakeChoice
+                  plan={posturePlan}
+                  onSelectPhone={() => {
+                    setPosturePlan('phone');
+                    setPostureCaptureOpen(true);
+                  }}
+                  onSelectStudio={() => setPosturePlan('studio')}
+                />
               </>
             ) : (
               <Button
                 type="button"
                 variant="outline"
-                className="h-12 w-full max-w-sm rounded-2xl text-base"
+                className="h-11 w-full rounded-xl text-sm"
                 onClick={() => setPostureCaptureOpen(true)}
               >
                 {ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_RETAKE}
@@ -413,30 +487,12 @@ export default function PublicRemoteAssessment() {
   };
 
   const primaryLabel =
-    currentScreen?.kind === 'posture' && postureCapturedCount === 0
-      ? ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_START
-      : screenIndex >= screens.length - 1
-        ? 'Submit'
-        : 'Next';
-
-  const intakeBrandHeader = (
-    <header className="shrink-0 border-b border-border/60 px-4 py-3">
-      <div className="mx-auto flex max-w-md items-center gap-2">
-        <div
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
-          aria-hidden
-        >
-          OA
-        </div>
-        <span className="text-sm font-semibold tracking-tight">One Assess</span>
-      </div>
-    </header>
-  );
+    screenIndex >= screens.length - 1 ? 'Submit' : 'Next';
 
   if (currentScreen?.kind === 'welcome') {
     return (
       <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
-        {intakeBrandHeader}
+        <RemoteIntakeProgressBar progress={progress} />
         <RemoteIntakeWelcome onStart={goNext} loading={submitting} />
       </div>
     );
@@ -444,25 +500,22 @@ export default function PublicRemoteAssessment() {
 
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-background">
-      {intakeBrandHeader}
-      <div className="flex min-h-0 flex-1 flex-col">
-        <RemoteMobileShell
-          progress={progress}
-          title={intakeTitle}
-          subtitle={intakeSubtitle}
-          layout={intakeLayout}
-          primaryLabel={primaryLabel}
-          primaryDisabled={primaryDisabled}
-          primaryLoading={submitting}
-          onPrimary={goNext}
-          showBack={screenIndex > 0}
-          onBack={goBack}
-          className="flex-1"
-        >
-          {error ? <p className="mb-4 text-sm text-destructive">{error}</p> : null}
-          {renderScreenBody()}
-        </RemoteMobileShell>
-      </div>
+      <RemoteMobileShell
+        progress={progress}
+        title={intakeTitle}
+        subtitle={intakeSubtitle}
+        layout={intakeLayout}
+        primaryLabel={primaryLabel}
+        primaryDisabled={primaryDisabled}
+        primaryLoading={submitting}
+        onPrimary={goNext}
+        showBack={screenIndex > 0}
+        onBack={goBack}
+        className="h-full min-h-0 flex-1"
+      >
+        {error ? <p className="mb-3 text-sm text-destructive">{error}</p> : null}
+        {renderScreenBody()}
+      </RemoteMobileShell>
     </div>
   );
 }

@@ -44,6 +44,8 @@ export type CoachAssessmentSummary = {
   coachUid?: string | null;
   /** Client finished remote-friendly steps; coach-only phases may remain */
   remoteIntakeAwaitingStudio?: boolean;
+  /** Coach sent pre-assessment link; client has not submitted yet */
+  remoteIntakePending?: boolean;
   /** Client profile account status (from organizations/.../clients doc) */
   clientStatus?: 'active' | 'inactive' | 'paused' | 'archived' | 'deleted';
   assessmentType?: 'full' | 'pillar';

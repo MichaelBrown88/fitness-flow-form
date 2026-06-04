@@ -258,14 +258,6 @@ export default function ClientDetailLayout() {
           {UI_CLIENT_DETAIL.TAB_SUMMARY}
         </NavLink>
         <NavLink
-          to={buildClientPath(clientName, 'consultation')}
-          className={({ isActive }) =>
-            `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`
-          }
-        >
-          {UI_CLIENT_DETAIL.TAB_CONSULTATION}
-        </NavLink>
-        <NavLink
           to={buildClientPath(clientName, 'report')}
           className={({ isActive }) =>
             `px-3 py-2 text-sm font-bold rounded-lg ${isActive ? 'bg-card text-foreground' : 'text-muted-foreground hover:text-foreground-secondary'}`

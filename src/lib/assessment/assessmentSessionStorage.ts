@@ -5,7 +5,6 @@
 
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import type { PartialCategory } from '@/lib/assessmentCompleteness';
-import type { StudioSessionStep } from '@/lib/assessment/studioSessionSteps';
 import {
   clearBaselineSessionFlags,
   markBaselineAssessmentSession,
@@ -410,35 +409,7 @@ export function shouldSuppressLocalDraftRecovery(): boolean {
   return hasEditAssessmentInSession() || hasPrefillClientInSession();
 }
 
-// --- Studio baseline steps ---
-
-export function readStudioSessionStep(): StudioSessionStep | null {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEYS.STUDIO_SESSION_STEP);
-    if (raw === 'intake-review' || raw === 'consultation' || raw === 'phase') return raw;
-  } catch {
-    /* ignore */
-  }
-  return null;
-}
-
-export function writeStudioSessionStep(step: StudioSessionStep): void {
-  safeSetItem(STORAGE_KEYS.STUDIO_SESSION_STEP, step);
-}
-
-export function isConsultationCompleteInSession(): boolean {
-  try {
-    return sessionStorage.getItem(STORAGE_KEYS.CONSULTATION_COMPLETE) === '1';
-  } catch {
-    return false;
-  }
-}
-
-export function markConsultationCompleteInSession(): void {
-  safeSetItem(STORAGE_KEYS.CONSULTATION_COMPLETE, '1');
-  writeStudioSessionStep('phase');
-}
-
+/** Clears legacy studio step session keys (pre-assessment review no longer persisted). */
 export function clearStudioSessionStepFlags(): void {
   safeRemoveItem(STORAGE_KEYS.STUDIO_SESSION_STEP);
   safeRemoveItem(STORAGE_KEYS.CONSULTATION_COMPLETE);

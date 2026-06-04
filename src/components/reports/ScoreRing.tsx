@@ -33,6 +33,7 @@ export function ScoreRing({
 }: ScoreRingProps) {
   const pct = Math.max(0, Math.min(100, score));
   const dash = (pct / 100) * ARC_LENGTH;
+  const compactNumerals = size <= 130;
 
   return (
     <div className={cn('inline-flex flex-col items-center', className)} style={{ width: size }}>
@@ -65,7 +66,13 @@ export function ScoreRing({
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center leading-none">
-          <span className="text-5xl font-bold tabular-nums tracking-[-0.02em] text-foreground sm:text-6xl">
+          <span
+            className={
+              compactNumerals
+                ? 'text-4xl font-bold tabular-nums tracking-[-0.02em] text-foreground sm:text-[2.65rem]'
+                : 'text-5xl font-bold tabular-nums tracking-[-0.02em] text-foreground sm:text-6xl'
+            }
+          >
             {score || '—'}
           </span>
           <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">

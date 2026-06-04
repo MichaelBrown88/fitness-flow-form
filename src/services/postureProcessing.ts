@@ -20,6 +20,7 @@ import {
 } from '@/constants/postureLandmarkQuality';
 import { LandmarkResult, detectPostureLandmarks } from '@/lib/ai/postureLandmarks';
 import { drawLandmarkWireframe } from '@/lib/utils/postureOverlay';
+import { composeClientPosturePreview } from '@/lib/posture/composeClientPosturePreview';
 import { buildPostureResult } from '@/lib/ai/postureTemplates';
 import type { PostureAiContext, PostureAnalysisResult } from '@/lib/ai/postureAnalysis';
 import { buildStructuredPostureFindings } from '@/lib/posture/buildStructuredPostureFindings';
@@ -248,8 +249,24 @@ export async function processPostureImage(
     };
     logger.debug(`Template + structured findings complete for ${view}`, ctx);
 
+    let imageWithDeviations = wireframeImage;
+    try {
+      imageWithDeviations = await composeClientPosturePreview(
+        imageData,
+        view,
+        analysis,
+        landmarks,
+      );
+    } catch (composeError) {
+      logger.warn(
+        `Client posture preview failed for ${view}, using wireframe fallback`,
+        ctx,
+        composeError,
+      );
+    }
+
     logger.debug(`Complete processing for ${view}`, ctx);
-    
+
     const landmarkConfidence = assessLandmarkConfidence(landmarks.raw);
     if (!landmarkConfidence.confident) {
       logger.warn(`[POSTURE] Low landmark confidence (${landmarkConfidence.avgVisibility.toFixed(2)}): ${landmarkConfidence.retakeReason}`, ctx);
@@ -257,7 +274,7 @@ export async function processPostureImage(
 
     return {
       alignedImage: imageData,
-      imageWithDeviations: wireframeImage,
+      imageWithDeviations,
       wireframeImage,
       analysis,
       landmarks,

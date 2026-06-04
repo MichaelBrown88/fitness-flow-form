@@ -43,7 +43,6 @@ const ClientOverview = lazy(() => import("./pages/client/ClientOverview"));
 const ClientHistory = lazy(() => import("./pages/client/ClientHistory"));
 const ClientRoadmapTab = lazy(() => import("./pages/client/ClientRoadmapTab"));
 const ClientReportTab = lazy(() => import("./pages/client/ClientReportTab"));
-const ClientConsultationTab = lazy(() => import("./pages/client/ClientConsultationTab"));
 const ClientCoachNotesTab = lazy(() => import("./pages/client/ClientCoachNotesTab"));
 const ClientAchievementsTab = lazy(() => import("./pages/client/ClientAchievementsTab"));
 const ClientSettings = lazy(() => import("./pages/client/ClientSettings"));
@@ -252,7 +251,6 @@ const App = () => (
                       <Route path="clients/:clientName" element={<ClientDetailLayout />}>
                         <Route index element={<ClientOverview />} />
                         <Route path="overview" element={<Navigate to="." replace />} />
-                        <Route path="consultation" element={<ClientConsultationTab />} />
                         <Route path="report" element={<ClientReportTab />} />
                         <Route path="roadmap" element={<ClientRoadmapTab />} />
                         <Route path="coach-notes" element={<Navigate to="../timeline#notes" replace />} />

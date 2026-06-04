@@ -17,8 +17,10 @@ export async function addPostureOverlay(
     showHipLine = true,
     lineColor = CONFIG.POSTURE_OVERLAY.STYLE.LINE_COLOR,
     lineWidth = CONFIG.POSTURE_OVERLAY.STYLE.LINE_WIDTH,
+    backgroundColor = '#000000',
+    clientFacingDeviations = false,
     analysis,
-    mode = 'reference'
+    mode = 'reference',
   } = options;
 
   return new Promise((resolve, reject) => {
@@ -44,8 +46,7 @@ export async function addPostureOverlay(
 
         const landmarkData = options.landmarks || analysis?.landmarks;
 
-        // Pure black background - matches dark mode UI
-        ctx.fillStyle = '#000000';
+        ctx.fillStyle = backgroundColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (mode === 'align' && landmarkData) {
@@ -81,7 +82,15 @@ export async function addPostureOverlay(
         }
 
         if (mode === 'deviation' && analysis) {
-          drawDeviations(ctx, view, analysis, targetCenterX, targetShoulderY, targetHipY);
+          drawDeviations(
+            ctx,
+            view,
+            analysis,
+            targetCenterX,
+            targetShoulderY,
+            targetHipY,
+            clientFacingDeviations,
+          );
         }
 
         resolve(canvas.toDataURL('image/jpeg', 0.95));

@@ -39,9 +39,9 @@ export const STORAGE_KEYS = {
   /** `1` = resuming after client completed remote intake (show prefill banner). */
   REMOTE_INTAKE_RESUME: 'remoteIntakeResume',
 
-  /** Studio baseline: `intake-review` | `consultation` | `phase` */
+  /** Legacy studio step key (cleared on baseline start) */
   STUDIO_SESSION_STEP: 'studioSessionStep',
-  /** `1` = consultation step completed this session */
+  /** Legacy consultation gate (cleared on baseline start) */
   CONSULTATION_COMPLETE: 'consultationComplete',
   /** `1` = returning client modular session plan (not first baseline). */
   RETURNING_SESSION_PLAN: 'returningSessionPlan',

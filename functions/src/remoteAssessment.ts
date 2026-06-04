@@ -24,6 +24,13 @@ const LIFESTYLE_KEYS = new Set([
   'alcoholFrequency', 'medicationsFlag', 'medicationsNotes',
 ]);
 
+/** Goals captured during pre-assessment (comma-serialized clientGoals in remote submit). */
+const PRE_ASSESSMENT_GOAL_KEYS = new Set([
+  'clientGoals',
+  'trainingFrequency',
+  'goalDeadline',
+]);
+
 const PARQ_KEYS = [
   'parq1', 'parq2', 'parq3', 'parq4', 'parq5', 'parq6', 'parq7',
   'parq8', 'parq9', 'parq10', 'parq11', 'parq12', 'parq13', 'parqNotes',
@@ -67,10 +74,11 @@ function allowedKeysForScope(scope: RemoteAssessmentScope): string[] {
   if (scope === 'lifestyle') return Array.from(LIFESTYLE_KEYS);
   if (scope === 'posture') return posturePathKeys;
   if (scope === 'lifestyle_posture') return [...Array.from(LIFESTYLE_KEYS), ...posturePathKeys];
-  // 'full': remote intake — no body comp (measured in studio on coach equipment)
+  // 'full': pre-assessment — no body comp (measured in studio on coach equipment)
   return [
     ...BASIC_INFO_KEYS,
     ...Array.from(LIFESTYLE_KEYS),
+    ...Array.from(PRE_ASSESSMENT_GOAL_KEYS),
     ...PARQ_KEYS,
     ...posturePathKeys,
   ];
@@ -234,6 +242,7 @@ export async function handleCreateRemoteAssessmentToken(
       status: 'active',
       remoteIntakePending: true,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       ...(intake.email ? { email: intake.email } : {}),
       ...(hasBasicPrefill(intakePrefill) ? { formData: intakePrefill } : {}),
     });
@@ -245,7 +254,11 @@ export async function handleCreateRemoteAssessmentToken(
     // Coach is regenerating an intake link for an existing client and may
     // have supplied an updated email. Patch only what was given — never
     // blank existing fields.
-    const clientPatch: Record<string, unknown> = {};
+    const clientPatch: Record<string, unknown> = {
+      remoteIntakePending: true,
+      remoteIntakeAwaitingStudio: false,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
     if (intake.email) clientPatch.email = intake.email;
     if (hasBasicPrefill(intakePrefill)) {
       clientPatch.formData = mergeBasicPrefill(
@@ -255,9 +268,7 @@ export async function handleCreateRemoteAssessmentToken(
         intakePrefill,
       );
     }
-    if (Object.keys(clientPatch).length > 0) {
-      await clientRef.update(clientPatch);
-    }
+    await clientRef.update(clientPatch);
   }
 
   const token = randomBytes(16).toString('hex');
@@ -481,7 +492,18 @@ export async function handleSubmitRemoteAssessmentFields(
     const prev = doc.data() as { formData?: Record<string, unknown> };
     const prevForm = { ...(prev.formData ?? {}) } as Record<string, unknown>;
 
-    const nextForm = { ...prevForm, ...sanitized };
+    const goalFields = { ...sanitized };
+    const clientGoalsRaw = goalFields.clientGoals;
+    delete goalFields.clientGoals;
+
+    const nextForm = { ...prevForm, ...goalFields } as Record<string, unknown>;
+
+    if (typeof clientGoalsRaw === 'string' && clientGoalsRaw.trim()) {
+      nextForm.clientGoals = clientGoalsRaw
+        .split(',')
+        .map((g) => g.trim())
+        .filter((g) => g.length > 0);
+    }
 
     if (Object.keys(posturePatch).length > 0) {
       const existing =
@@ -515,6 +537,7 @@ export async function handleSubmitRemoteAssessmentFields(
       remoteIntakePending: false,
       remoteIntakeAwaitingStudio: true,
       remoteIntakeLastAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       ...nameUpdate,
       ...(parqFlagged ? { parqFlagged: true } : {}),
     });

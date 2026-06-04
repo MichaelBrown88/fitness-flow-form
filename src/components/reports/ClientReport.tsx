@@ -1,5 +1,5 @@
 /**
- * Simplified Client Report — layout orchestration; section config and chrome live under ./client/.
+ * Client AXIS report — v2 calm debrief when standalone; legacy scroll stack for coach embed.
  */
 
 import React, { useMemo, useCallback } from 'react';
@@ -15,8 +15,14 @@ import {
   getActiveReportSectionIds,
 } from './client/ClientReportScrollLayout';
 import { ReportPillarJumpRow } from './client/sub-components/ReportPillarJumpRow';
-import { buildClientOverallSummary } from './client/sub-components/clientPillarSummary';
+import {
+  buildClientOverallSummary,
+  buildClientPriorityFallbacks,
+} from './client/sub-components/clientPillarSummary';
+import { buildClientScoreHeadline } from '@/lib/reports/clientScoreHeadline';
 import { buildProjectedOutlook } from '@/lib/goals/projectedOutlook';
+import { buildClientReportModel } from '@/lib/reports/buildClientReportModel';
+import { ClientReportV2Layout } from './client/v2/ClientReportV2Layout';
 import { ASSESSMENT_OPTIONS } from '@/constants/assessment';
 import { CLIENT_REPORT_COPY } from '@/constants/clientReport';
 
@@ -60,7 +66,6 @@ export default function ClientReport({
 }) {
   const {
     safeScores,
-    archetype,
     strengths,
     areasForImprovement,
     clientName,
@@ -72,6 +77,28 @@ export default function ClientReport({
     reportDate,
   } = useClientReportData({ scores, goals, formData, previousScores, previousFormData });
 
+  const reportModel = useMemo(
+    () =>
+      buildClientReportModel({
+        scores: safeScores,
+        formData,
+        goals,
+        previousScores,
+        gapAnalysisData,
+        clientName,
+        reportDate,
+      }),
+    [
+      safeScores,
+      formData,
+      goals,
+      previousScores,
+      gapAnalysisData,
+      clientName,
+      reportDate,
+    ],
+  );
+
   const { setRef: setSectionRef } = useScrollRevealSections(SECTION_IDS, DEFAULT_OPEN);
 
   const sectionCtx: ClientReportSectionContext = useMemo(
@@ -79,7 +106,6 @@ export default function ClientReport({
       safeScores,
       scores,
       previousScores,
-      archetype,
       strengths,
       areasForImprovement,
       overallRadarData,
@@ -97,7 +123,6 @@ export default function ClientReport({
       safeScores,
       scores,
       previousScores,
-      archetype,
       strengths,
       areasForImprovement,
       overallRadarData,
@@ -123,20 +148,42 @@ export default function ClientReport({
     [safeScores, previousScores?.overall],
   );
 
-  const priorityStrengths = useMemo(
-    () => strengths.map((s) => ({ text: s.strength })),
-    [strengths],
-  );
+  const priorityStrengths = useMemo(() => {
+    const fromCategories = strengths.map((s) => ({
+      text: s.category ? `${s.category}: ${s.strength}` : s.strength,
+    }));
+    if (fromCategories.length > 0) return fromCategories;
+    return buildClientPriorityFallbacks(safeScores).strengths.map((text) => ({ text }));
+  }, [strengths, safeScores]);
 
-  const priorityFocusAreas = useMemo(
-    () => areasForImprovement.map((a) => ({ text: a.weakness })),
-    [areasForImprovement],
+  const priorityFocusAreas = useMemo(() => {
+    const fromCategories = areasForImprovement.map((a) => ({
+      text: a.category ? `${a.category}: ${a.weakness}` : a.weakness,
+    }));
+    if (fromCategories.length > 0) return fromCategories;
+    return buildClientPriorityFallbacks(safeScores).focusAreas.map((text) => ({ text }));
+  }, [areasForImprovement, safeScores]);
+
+  const scoreHeadline = useMemo(
+    () => buildClientScoreHeadline(safeScores),
+    [safeScores],
   );
 
   const projectedOutlook = useMemo(
     () => buildProjectedOutlook(formData, safeScores, goals),
     [formData, safeScores, goals],
   );
+
+  const compactOutlookBullets = useMemo(() => {
+    const horizons = projectedOutlook?.horizons;
+    if (horizons && horizons.length > 0) {
+      return horizons
+        .slice(0, 2)
+        .flatMap((h) => h.bullets.slice(0, 1))
+        .slice(0, 2);
+    }
+    return (projectedOutlook?.bullets ?? []).slice(0, 2);
+  }, [projectedOutlook]);
 
   const goalChipLabels = useMemo(() => {
     const ids = goals?.length ? goals : formData?.clientGoals ?? [];
@@ -145,8 +192,6 @@ export default function ClientReport({
       .filter(Boolean)
       .slice(0, 4);
   }, [goals, formData?.clientGoals]);
-
-  const arcNavToken = reportShareToken ?? roadmapShareToken;
 
   const scrollToPillar = useCallback((sectionId: string) => {
     const el = document.querySelector(`[data-section-id="${sectionId}"]`);
@@ -165,87 +210,69 @@ export default function ClientReport({
   }
 
   const containerClass = standalone
-    ? 'min-h-screen bg-muted/50 text-foreground px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 py-2 sm:py-4 md:py-6 lg:py-8 xl:py-12 overflow-x-hidden'
+    ? 'min-h-screen bg-muted/40 text-foreground px-3 py-6 sm:px-5 sm:py-8 md:px-6 lg:px-8 overflow-x-hidden'
     : 'w-full text-foreground overflow-x-hidden';
 
   const contentClass = standalone
-    ? 'max-w-[1400px] mx-auto space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 w-full min-w-0'
+    ? 'mx-auto w-full min-w-0 max-w-5xl'
     : 'space-y-2 sm:space-y-3 md:space-y-4 lg:space-y-5 xl:space-y-6 w-full min-w-0';
+
+  const baselineNarrative =
+    standalone && showBaselineNarrative ? CLIENT_REPORT_COPY.baselineNarrative : undefined;
 
   return (
     <div className={containerClass}>
       <div className={`${contentClass} overflow-x-hidden`}>
-        {safeScores.categories?.length > 0 && (
-          <>
-            <AxisSummaryCard
-              clientName={clientName}
-              reportDate={reportDate}
-              scores={safeScores}
-              previousOverallScore={previousScores?.overall ?? null}
-              narrative={overallNarrative}
-              archetype={archetype}
-              radarData={overallRadarData}
-              previousRadarData={previousRadarData}
-              priorityStrengths={priorityStrengths}
-              priorityFocusAreas={priorityFocusAreas}
-              outlookHeadline={projectedOutlook?.headline}
-              outlookBullets={projectedOutlook?.bullets}
-              outlookHorizons={projectedOutlook?.horizons}
-              onPillarSelect={scrollToPillar}
-              orgName={reportMeta?.orgName}
-              coachName={reportMeta?.coachName}
-              assessmentNumber={reportMeta?.assessmentNumber}
-              formData={formData}
-              goalLabels={standalone ? goalChipLabels : []}
-              baselineNarrative={
-                standalone && showBaselineNarrative ? CLIENT_REPORT_COPY.baselineNarrative : undefined
-              }
-              clientFacingRadar={standalone}
-              showActions={Boolean(coachActions)}
-              onShare={coachActions?.onShare}
-              onSendToClient={coachActions?.onSendToClient}
-              onDownloadPdf={coachActions?.onDownloadPdf}
-            />
-            <ReportPillarJumpRow activeSectionIds={activeSectionIds} />
-          </>
+        {standalone ? (
+          <ClientReportV2Layout
+            model={reportModel}
+            orgName={reportMeta?.orgName}
+            showPartialAssessmentBanner
+            baselineNarrative={baselineNarrative}
+            showActions={Boolean(coachActions)}
+            onShare={coachActions?.onShare}
+            onSendToClient={coachActions?.onSendToClient}
+            onDownloadPdf={coachActions?.onDownloadPdf}
+          />
+        ) : (
+          safeScores.categories?.length > 0 && (
+            <>
+              <AxisSummaryCard
+                clientName={clientName}
+                reportDate={reportDate}
+                scores={safeScores}
+                previousOverallScore={previousScores?.overall ?? null}
+                narrative={overallNarrative}
+                scoreHeadline={scoreHeadline}
+                radarData={overallRadarData}
+                previousRadarData={previousRadarData}
+                priorityStrengths={priorityStrengths}
+                priorityFocusAreas={priorityFocusAreas}
+                outlookHeadline={projectedOutlook?.headline}
+                outlookBullets={compactOutlookBullets}
+                onPillarSelect={scrollToPillar}
+                orgName={reportMeta?.orgName}
+                coachName={reportMeta?.coachName}
+                assessmentNumber={reportMeta?.assessmentNumber}
+                formData={formData}
+                goalLabels={[]}
+                clientFacingRadar={false}
+                showActions={Boolean(coachActions)}
+                onShare={coachActions?.onShare}
+                onSendToClient={coachActions?.onSendToClient}
+                onDownloadPdf={coachActions?.onDownloadPdf}
+              />
+              <ReportPillarJumpRow activeSectionIds={activeSectionIds} />
+            </>
+          )
         )}
 
-        <ClientReportScrollLayout
-          sectionCtx={sectionCtx}
-          setSectionRef={setSectionRef}
-          showPartialAssessmentBanner={standalone}
-        />
-
-        {standalone && arcNavToken && (
-          <div className="md:hidden flex items-center justify-between rounded-xl border border-border bg-muted/40 px-4 py-3">
-            <div className="min-w-0 pr-3">
-              <p className="text-sm font-semibold text-foreground">{CLIENT_REPORT_COPY.arcTeaserTitle}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{CLIENT_REPORT_COPY.arcTeaserBody}</p>
-            </div>
-            <a
-              href={`/r/${arcNavToken}/roadmap`}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:opacity-90"
-            >
-              {CLIENT_REPORT_COPY.arcTeaserCta}
-            </a>
-          </div>
-        )}
-
-        {standalone && arcNavToken && (
-          <div className="hidden md:flex items-center justify-between rounded-xl border border-border bg-muted/40 px-5 py-4">
-            <div>
-              <p className="text-sm font-semibold text-foreground">Your ARC™ is ready</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Your coach has published your personalised journey plan.
-              </p>
-            </div>
-            <a
-              href={`/r/${arcNavToken}/roadmap`}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:opacity-90 shrink-0"
-            >
-              View ARC™
-            </a>
-          </div>
+        {!standalone && (
+          <ClientReportScrollLayout
+            sectionCtx={sectionCtx}
+            setSectionRef={setSectionRef}
+            showPartialAssessmentBanner={false}
+          />
         )}
       </div>
     </div>

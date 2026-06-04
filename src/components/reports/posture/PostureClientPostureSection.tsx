@@ -67,12 +67,16 @@ export function PostureClientPostureSection({ postureResults, postureImages }: P
               key={view}
               type="button"
               onClick={() => setExpandedView(view)}
-              className="group relative overflow-hidden rounded-lg bg-muted text-left"
+              className="group relative overflow-hidden rounded-lg border border-border/60 bg-white text-left dark:bg-white"
             >
-              <div className="aspect-[3/5] w-full overflow-hidden">
-                <img src={url} alt="" className="h-full w-full object-cover object-top" />
+              <div className="aspect-[3/5] w-full overflow-hidden bg-white">
+                <img
+                  src={url}
+                  alt=""
+                  className="h-full w-full object-contain object-center"
+                />
               </div>
-              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/70 to-transparent p-1.5">
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-gradient-to-t from-black/60 to-transparent p-1.5">
                 <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white drop-shadow">
                   {viewLabelUpper(view)}
                 </span>

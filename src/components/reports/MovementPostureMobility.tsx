@@ -14,6 +14,7 @@ import { PostureTrainerPostureSection } from './posture/PostureTrainerPostureSec
 import { MuscleMap } from './MuscleMap';
 import { combineMuscleImplications } from '@/lib/posture/findingMuscleMap';
 import { deriveMovementMuscleSets } from '@/lib/scoring/movementMuscleMap';
+import { resolveMobilityForScoring } from '@/lib/scoring/deriveMobilityFromPatterns';
 import { Activity, AlertCircle, CheckCircle2, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/utils/logger';
@@ -383,48 +384,50 @@ export function MovementPostureMobility({ formData, scores, standalone = false, 
   const movementStrengths = allStrengths.slice(0, 3);
   const movementWeaknesses = allFocusAreas.slice(0, 3);
   
-  // Mobility findings - separate from movement assessments
-  // Mobility is about joint range of motion, not movement patterns
   const mobilityStrengths: string[] = [];
   const mobilityFocusAreas: string[] = [];
-  
-  // Check mobility fields (Hip, Shoulder, Ankle)
-  const hipMobility = formData.mobilityHip?.toLowerCase() || '';
-  const shoulderMobility = formData.mobilityShoulder?.toLowerCase() || '';
-  const ankleMobility = formData.mobilityAnkle?.toLowerCase() || '';
-  
-  // Hip Mobility
-  if (hipMobility) {
-    if (hipMobility === 'good' || hipMobility === 'excellent') {
-      mobilityStrengths.push('Good hip mobility and range of motion');
-    } else if (hipMobility === 'fair') {
-      mobilityFocusAreas.push('Hip mobility is moderate. Focus on hip flexor stretches and hip mobility drills.');
-    } else if (hipMobility === 'poor' || hipMobility === 'limited') {
-      mobilityFocusAreas.push('Hip mobility is limited. Include hip flexor stretches, hip mobility drills, and glute activation work.');
+  const resolvedMobility = resolveMobilityForScoring(formData);
+  const mobilityPrefix = resolvedMobility.inferred ? 'Inferred from movement: ' : '';
+
+  const appendJointMobility = (quality: string, goodLine: string, fairLine: string, poorLine: string) => {
+    if (!quality) return;
+    if (quality === 'good') {
+      mobilityStrengths.push(goodLine);
+    } else if (quality === 'fair') {
+      mobilityFocusAreas.push(`${mobilityPrefix}${fairLine}`);
+    } else if (quality === 'poor') {
+      mobilityFocusAreas.push(`${mobilityPrefix}${poorLine}`);
     }
-  }
-  
-  // Shoulder Mobility
-  if (shoulderMobility) {
-    if (shoulderMobility === 'good' || shoulderMobility === 'excellent') {
-      mobilityStrengths.push('Good shoulder mobility and range of motion');
-    } else if (shoulderMobility === 'fair') {
-      mobilityFocusAreas.push('Shoulder mobility is moderate. Include shoulder CARs and thoracic extension work.');
-    } else if (shoulderMobility === 'poor' || shoulderMobility === 'limited') {
-      mobilityFocusAreas.push('Shoulder mobility is limited. Add shoulder CARs, thoracic extension work, and posterior capsule stretches.');
-    }
-  }
-  
-  // Ankle Mobility
-  if (ankleMobility) {
-    if (ankleMobility === 'good' || ankleMobility === 'excellent') {
-      mobilityStrengths.push('Good ankle mobility and range of motion');
-    } else if (ankleMobility === 'fair') {
-      mobilityFocusAreas.push('Ankle mobility is moderate. Add calf stretches and ankle mobility exercises.');
-    } else if (ankleMobility === 'poor' || ankleMobility === 'limited') {
-      mobilityFocusAreas.push('Ankle mobility is limited. Focus on calf stretches, ankle dorsiflexion drills, and plantar fascia release.');
-    }
-  }
+  };
+
+  appendJointMobility(
+    resolvedMobility.hip,
+    'Good hip mobility and range of motion',
+    'Hip mobility is moderate. Focus on hip flexor stretches and hip mobility drills.',
+    'Hip mobility is limited. Include hip flexor stretches, hip mobility drills, and glute activation work.',
+  );
+  appendJointMobility(
+    resolvedMobility.shoulder,
+    'Good shoulder mobility and range of motion',
+    'Shoulder mobility is moderate. Include shoulder CARs and thoracic extension work.',
+    'Shoulder mobility is limited. Add shoulder CARs, thoracic extension work, and posterior capsule stretches.',
+  );
+
+  const ankleQuality =
+    resolvedMobility.ankleLeft && resolvedMobility.ankleRight
+      ? resolvedMobility.ankleLeft === 'poor' || resolvedMobility.ankleRight === 'poor'
+        ? 'poor'
+        : resolvedMobility.ankleLeft === 'fair' || resolvedMobility.ankleRight === 'fair'
+          ? 'fair'
+          : 'good'
+      : resolvedMobility.ankleLegacy || resolvedMobility.ankleLeft || resolvedMobility.ankleRight;
+
+  appendJointMobility(
+    ankleQuality,
+    'Good ankle mobility and range of motion',
+    'Ankle mobility is moderate. Add calf stretches and ankle mobility exercises.',
+    'Ankle mobility is limited. Focus on calf stretches, ankle dorsiflexion drills, and plantar fascia release.',
+  );
   
   // Show all findings from all 3 mobility assessments (Hip, Shoulder, Ankle)
   // Limit to reasonable number for display (up to 3 items each) to ensure both positives and negatives are shown

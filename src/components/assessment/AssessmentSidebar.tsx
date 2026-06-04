@@ -1,8 +1,13 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import type { PhaseSection } from '@/lib/phaseConfig';
 import { ASSESSMENT_COPY } from '@/constants/assessmentCopy';
+import {
+  ASSESSMENT_SESSION_STAGES,
+  groupIndexedPhasesByStage,
+} from '@/constants/assessmentSession';
+import type { PhaseId } from '@/lib/phases/types';
 
 interface AssessmentSidebarProps {
   sidebarOpen: boolean;
@@ -81,6 +86,20 @@ export const AssessmentSidebar = ({
   const sessionStepNumber = sessionStepIndex >= 0 ? sessionStepIndex + 1 : 1;
   const sessionStepTotal = Math.max(phasesWithoutResults.length, 1);
 
+  const stageGroups = groupIndexedPhasesByStage(
+    visiblePhases.map((phase) => ({ ...phase, id: phase.id as PhaseId })),
+  );
+
+  const workStepByIdx = useMemo(() => {
+    const map = new Map<number, number>();
+    let n = 0;
+    for (const { i } of phasesWithoutResults) {
+      n += 1;
+      map.set(i, n);
+    }
+    return map;
+  }, [phasesWithoutResults]);
+
   return (
     <>
       {/* Desktop sidebar — compact progress bar layout */}
@@ -117,38 +136,52 @@ export const AssessmentSidebar = ({
           </p>
         </div>
 
-        {/* Phase list (compact) */}
-        <div className="space-y-1 mb-4">
-          {visiblePhases.map((phase, idx) => {
-            const { isActive, isCompleted, isDisabled } = getPhaseState(idx, phase);
-            return (
-              <button
-                key={phase.id}
-                onClick={() => !isDisabled && handlePhaseClick(idx, (phase.sections || []) as PhaseSection[])}
-                disabled={isDisabled}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${
-                  isActive
-                    ? 'bg-primary/10 text-foreground font-bold'
-                    : isCompleted
-                      ? 'text-foreground-secondary font-medium hover:bg-muted/50'
-                      : isDisabled
-                        ? 'text-foreground-tertiary cursor-not-allowed'
-                        : 'text-muted-foreground font-medium hover:bg-muted/50'
-                }`}
-              >
-                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                  isCompleted
-                    ? 'bg-primary text-primary-foreground'
-                    : isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground'
-                }`}>
-                  {isCompleted ? '✓' : idx + 1}
-                </span>
-                <span className="truncate text-left text-xs">{phase.title}</span>
-              </button>
-            );
-          })}
+        {/* Phase list grouped by session stage */}
+        <div className="space-y-3 mb-4">
+          {stageGroups.map((group) => (
+            <div key={group.stage} className="space-y-1">
+              <p className="px-2 text-[10px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+                {ASSESSMENT_SESSION_STAGES[group.stage].label}
+              </p>
+              {group.items.map(({ phase, idx }) => {
+                const { isActive, isCompleted, isDisabled } = getPhaseState(idx, phase);
+                const stepLabel =
+                  phase.id === 'P7' ? '—' : (workStepByIdx.get(idx) ?? idx + 1);
+                return (
+                  <button
+                    key={phase.id}
+                    onClick={() =>
+                      !isDisabled &&
+                      handlePhaseClick(idx, (phase.sections || []) as PhaseSection[])
+                    }
+                    disabled={isDisabled}
+                    className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors ${
+                      isActive
+                        ? 'bg-primary/10 text-foreground font-bold'
+                        : isCompleted
+                          ? 'text-foreground-secondary font-medium hover:bg-muted/50'
+                          : isDisabled
+                            ? 'text-foreground-tertiary cursor-not-allowed'
+                            : 'text-muted-foreground font-medium hover:bg-muted/50'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+                        isCompleted
+                          ? 'bg-primary text-primary-foreground'
+                          : isActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {isCompleted ? '✓' : stepLabel}
+                    </span>
+                    <span className="truncate text-left text-xs">{phase.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
 
         {/* Active phase sections */}

@@ -131,7 +131,7 @@ export function PostureViewExpandedSheet({
             </div>
 
             {/* ─── Image panel (RIGHT on desktop, TOP on mobile) ─── */}
-            <div className="order-1 md:order-2 h-[55vh] w-full shrink-0 overflow-hidden bg-black md:h-full md:w-auto md:flex-1">
+            <div className="order-1 md:order-2 h-[55vh] w-full shrink-0 overflow-hidden bg-white md:h-full md:w-auto md:flex-1">
               {imageUrl ? (
                 <img
                   src={imageUrl}

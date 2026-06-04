@@ -7,6 +7,8 @@ import {
 import type { LifestyleRemoteState } from '@/components/remote/PublicRemoteLifestyleFields';
 import { ASSESSMENT_LABELS, ASSESSMENT_OPTIONS } from '@/constants/assessment';
 
+const P6 = ASSESSMENT_LABELS.P6;
+
 const P0 = ASSESSMENT_LABELS.P0;
 const P1 = ASSESSMENT_LABELS.P1;
 
@@ -48,6 +50,14 @@ export type RemoteIntakeScreen =
       domain: 'lifestyle';
     }
   | { id: string; kind: 'parq'; questionId: string; label: string }
+  | { id: 'goals'; kind: 'goals'; label: string; options: SelectOption[] }
+  | {
+      id: 'trainingFrequency';
+      kind: 'trainingFrequency';
+      label: string;
+      options: SelectOption[];
+    }
+  | { id: 'goalDeadline'; kind: 'goalDeadline'; label: string }
   | { id: 'posture'; kind: 'posture' };
 
 type SelectOption = { value: string; label: string };
@@ -223,6 +233,32 @@ export function buildRemoteIntakeScreens(params: {
     });
   }
 
+  if (params.allowedKeys.has('clientGoals')) {
+    screens.push({
+      id: 'goals',
+      kind: 'goals',
+      label: P6.clientGoals,
+      options: selectOptions(ASSESSMENT_OPTIONS.clientGoals),
+    });
+  }
+
+  if (params.allowedKeys.has('trainingFrequency')) {
+    screens.push({
+      id: 'trainingFrequency',
+      kind: 'trainingFrequency',
+      label: P6.trainingFrequency,
+      options: selectOptions(ASSESSMENT_OPTIONS.trainingFrequency),
+    });
+  }
+
+  if (params.allowedKeys.has('goalDeadline')) {
+    screens.push({
+      id: 'goalDeadline',
+      kind: 'goalDeadline',
+      label: P6.goalDeadline,
+    });
+  }
+
   for (const q of parqQuestions) {
     if (q.conditional && params.gender !== q.conditional.showWhen.value) continue;
     screens.push({
@@ -240,12 +276,25 @@ export function buildRemoteIntakeScreens(params: {
 
 export { initialBasicFromPrefill } from '@/lib/remote/remoteIntakePrefill';
 
+export type PreAssessmentGoalsState = {
+  selectedGoals: string[];
+  trainingFrequency: string;
+  goalDeadline: string;
+};
+
+export const INITIAL_PRE_ASSESSMENT_GOALS: PreAssessmentGoalsState = {
+  selectedGoals: [],
+  trainingFrequency: '',
+  goalDeadline: '',
+};
+
 export function isScreenValid(
   screen: RemoteIntakeScreen,
   basic: BasicInfoState,
   lifestyle: LifestyleRemoteState,
   parq: Record<string, string>,
   posturePaths: Partial<Record<string, string>>,
+  goals: PreAssessmentGoalsState,
 ): boolean {
   switch (screen.kind) {
     case 'welcome':
@@ -270,8 +319,14 @@ export function isScreenValid(
       return screen.fields.every((f) => lifestyle[f.field].trim().length > 0);
     case 'parq':
       return (parq[screen.questionId] ?? '').trim().length > 0;
+    case 'goals':
+      return goals.selectedGoals.length > 0;
+    case 'trainingFrequency':
+      return goals.trainingFrequency.trim().length > 0;
+    case 'goalDeadline':
+      return true;
     case 'posture':
-      return Object.keys(posturePaths).length > 0;
+      return true;
     default:
       return false;
   }
@@ -280,19 +335,34 @@ export function isScreenValid(
 export function screenTitle(screen: RemoteIntakeScreen): string | undefined {
   if (screen.kind === 'welcome') return undefined;
   if (screen.kind === 'group') return screen.title;
-  if (screen.kind === 'parq') return 'Health screening';
+  if (screen.kind === 'parq') return screen.label;
   if (screen.kind === 'posture') return undefined;
-  if (screen.kind === 'dateOfBirth') return undefined;
-  if (screen.kind === 'text' || screen.kind === 'select') return screen.label;
+  if (screen.kind === 'dateOfBirth' || screen.kind === 'goalDeadline') return undefined;
+  if (
+    screen.kind === 'goals' ||
+    screen.kind === 'trainingFrequency' ||
+    screen.kind === 'text' ||
+    screen.kind === 'select'
+  ) {
+    return screen.label;
+  }
   return undefined;
 }
 
 export function screenSubtitle(screen: RemoteIntakeScreen): string | undefined {
-  if (screen.kind === 'welcome' || screen.kind === 'posture' || screen.kind === 'dateOfBirth') {
+  if (
+    screen.kind === 'welcome' ||
+    screen.kind === 'posture' ||
+    screen.kind === 'dateOfBirth' ||
+    screen.kind === 'goalDeadline'
+  ) {
     return undefined;
   }
+  if (screen.kind === 'goals') {
+    return 'Pick up to two.';
+  }
   if (screen.kind === 'parq') {
-    return 'Answer honestly. Your coach reviews this before your session.';
+    return 'Your coach reviews this before your session.';
   }
   if (screen.kind === 'text' && screen.readOnly) {
     return 'We already have this from your coach — tap Next to confirm.';

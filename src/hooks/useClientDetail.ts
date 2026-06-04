@@ -611,12 +611,21 @@ export function useClientDetail(): UseClientDetailResult {
     (async () => {
       const currentBreakdown: Record<string, number> = {};
 
-      if (currentAssessment) {
+      const intakeOnlyOnProfile =
+        profile?.remoteIntakePending === true ||
+        (profile?.remoteIntakeAwaitingStudio === true && snapshots.length === 0);
+
+      if (currentAssessment && !intakeOnlyOnProfile) {
         const scores = computeScores(currentAssessment.formData);
-        scores.categories.forEach(cat => {
-          currentBreakdown[cat.id] = cat.score;
+        scores.categories.forEach((cat) => {
+          if (cat.assessed) currentBreakdown[cat.id] = cat.score;
         });
         if (!cancelled) setCategoryBreakdown(currentBreakdown);
+      } else if (intakeOnlyOnProfile) {
+        if (!cancelled) {
+          setCategoryBreakdown({});
+          setCategoryChanges({});
+        }
       } else if (assessments.length > 0 && assessments[0].scoresSummary) {
         assessments[0].scoresSummary.categories.forEach(cat => {
           currentBreakdown[cat.id] = cat.score;
@@ -658,7 +667,7 @@ export function useClientDetail(): UseClientDetailResult {
     return () => {
       cancelled = true;
     };
-  }, [user, clientName, assessments, snapshots, currentAssessment, readOrgId, userProfile]);
+  }, [user, clientName, assessments, snapshots, currentAssessment, profile, readOrgId, userProfile]);
 
   // Handle client transfer (Phase E)
   const handleTransferClient = useCallback(async (toCoachUid: string) => {

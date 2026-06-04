@@ -69,7 +69,7 @@ export function RemoteMobileChoiceField({
             aria-selected={selected}
             onClick={() => onChange(o.value)}
             className={cn(
-              'flex w-full items-start gap-3 rounded-2xl border-2 px-4 py-3.5 text-left text-base leading-snug transition-colors',
+              'flex w-full items-start gap-3 rounded-2xl border-2 px-4 py-3 text-left text-base leading-snug transition-colors',
               selected
                 ? 'border-primary bg-primary/10 text-foreground'
                 : 'border-border bg-card text-foreground active:bg-muted',
@@ -99,32 +99,60 @@ export function RemoteMobileYesNoField({
   label,
   value,
   onChange,
+  showLabel = true,
 }: {
   label: string;
   value: string;
   onChange: (v: 'yes' | 'no') => void;
+  /** When false, question is shown only in the shell header. */
+  showLabel?: boolean;
 }) {
+  const options: { value: 'no' | 'yes'; label: string }[] = [
+    { value: 'no', label: 'No' },
+    { value: 'yes', label: 'Yes' },
+  ];
+
   return (
-    <div className="space-y-4">
-      <p className="text-base font-medium leading-snug text-foreground">{label}</p>
-      <div className="grid grid-cols-2 gap-3">
-        {(['no', 'yes'] as const).map((opt) => (
-          <button
-            key={opt}
-            type="button"
-            onClick={() => onChange(opt)}
-            className={cn(
-              'h-14 rounded-2xl border-2 text-base font-semibold capitalize transition-colors',
-              value === opt
-                ? opt === 'yes'
-                  ? 'border-rose-500 bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300'
-                  : 'border-primary bg-primary/10 text-primary'
-                : 'border-border bg-card text-muted-foreground active:bg-muted',
-            )}
-          >
-            {opt}
-          </button>
-        ))}
+    <div className="w-full space-y-3">
+      {showLabel ? (
+        <p className="text-base font-medium leading-snug text-foreground">{label}</p>
+      ) : null}
+      <div className="flex w-full flex-col gap-2" role="radiogroup" aria-label={showLabel ? undefined : label}>
+        {options.map((opt) => {
+          const selected = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(opt.value)}
+              className={cn(
+                'flex min-h-[3.25rem] w-full items-center gap-3 rounded-2xl border-2 px-4 py-3.5 text-left text-base font-semibold transition-colors',
+                selected
+                  ? opt.value === 'yes'
+                    ? 'border-rose-500 bg-rose-50 text-rose-900 dark:bg-rose-950/40 dark:text-rose-200'
+                    : 'border-primary bg-primary/10 text-foreground'
+                  : 'border-border bg-card text-foreground active:bg-muted',
+              )}
+            >
+              <span
+                className={cn(
+                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2',
+                  selected
+                    ? opt.value === 'yes'
+                      ? 'border-rose-500 bg-rose-500 text-white'
+                      : 'border-primary bg-primary text-primary-foreground'
+                    : 'border-muted-foreground/40',
+                )}
+                aria-hidden
+              >
+                {selected ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : null}
+              </span>
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

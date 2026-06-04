@@ -42,6 +42,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { getCoachNotes } from '@/services/coachNotes';
 import type { CoachNotesDoc } from '@/lib/coachNotes/types';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
+import { ClientOverviewEmpty, type ClientOverviewEmptyVariant } from './ClientOverviewEmpty';
+import {
+  hasAssessmentSnapshotHistory,
+  pillarDisplayScore,
+  shouldShowClientArchetype,
+  shouldShowCoachAxisDashboard,
+} from '@/lib/client/clientAxisOverview';
 import { cn } from '@/lib/utils';
 
 function buildClientPath(name: string, sub?: string): string {
@@ -150,10 +157,40 @@ export default function ClientOverview() {
     [currentAssessment],
   );
 
-  const archetype = useMemo(
-    () => (scores ? determineArchetype(scores, currentAssessment?.formData) : null),
-    [scores, currentAssessment?.formData],
+  const showCoachAxis = useMemo(
+    () =>
+      shouldShowCoachAxisDashboard({
+        snapshots: snapshots ?? [],
+        remoteIntakePending: profile?.remoteIntakePending,
+        remoteIntakeAwaitingStudio: profile?.remoteIntakeAwaitingStudio,
+      }),
+    [snapshots, profile?.remoteIntakePending, profile?.remoteIntakeAwaitingStudio],
   );
+
+  const archetype = useMemo(() => {
+    if (!showCoachAxis || !scores || !shouldShowClientArchetype(scores)) return null;
+    return determineArchetype(scores, currentAssessment?.formData);
+  }, [showCoachAxis, scores, currentAssessment?.formData]);
+
+  const overviewEmptyVariant = useMemo((): ClientOverviewEmptyVariant | null => {
+    if (showCoachAxis) return null;
+    if (profile?.remoteIntakePending) return 'intake-pending';
+    if (
+      profile?.remoteIntakeAwaitingStudio ||
+      (!hasAssessmentSnapshotHistory(snapshots ?? []) &&
+        profile?.formData &&
+        Object.keys(profile.formData).length > 0)
+    ) {
+      return 'intake-ready';
+    }
+    return 'not-started';
+  }, [
+    showCoachAxis,
+    profile?.remoteIntakePending,
+    profile?.remoteIntakeAwaitingStudio,
+    profile?.formData,
+    snapshots,
+  ]);
 
   // Snapshots sorted oldest → newest for the trend / journey logic.
   const sortedSnapshots = useMemo(() => {
@@ -301,6 +338,20 @@ export default function ClientOverview() {
 
   // ─── Render ──────────────────────────────────────────────────────
 
+  if (overviewEmptyVariant) {
+    return (
+      <ClientOverviewEmpty
+        name={displayClientName || clientName}
+        variant={overviewEmptyVariant}
+        onPrimaryAction={
+          overviewEmptyVariant === 'intake-pending'
+            ? undefined
+            : () => void handleNewAssessment()
+        }
+      />
+    );
+  }
+
   return (
     <div className="space-y-5">
       <HeroStrip
@@ -312,39 +363,8 @@ export default function ClientOverview() {
         radarScores={currentRadar}
         lastAssessedAt={lastAssessmentDate}
         roadmapStatus={roadmapStatus}
+        showAxisScores={showCoachAxis}
       />
-
-      {profile?.remoteIntakePending && !profile?.remoteIntakeAwaitingStudio ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-500/25 bg-amber-500/5 px-4 py-3">
-          <div>
-            <p className="text-sm font-medium text-foreground">{UI_CLIENT_DETAIL.INTAKE_PENDING_PILL}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{UI_CLIENT_DETAIL.INTAKE_PENDING_DESC}</p>
-          </div>
-        </div>
-      ) : null}
-
-      {profile?.remoteIntakeAwaitingStudio ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-          <p className="text-sm font-medium text-foreground">{UI_CLIENT_DETAIL.INTAKE_READY_PILL}</p>
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              className="rounded-full"
-              onClick={() => navigate(buildClientPath(clientName, 'consultation'))}
-            >
-              {UI_CLIENT_DETAIL.INTAKE_REVIEW_CTA}
-            </Button>
-            <Button
-              size="sm"
-              className="rounded-full"
-              onClick={() => void handleNewAssessment()}
-            >
-              Continue in studio
-            </Button>
-          </div>
-        </div>
-      ) : null}
 
       <JourneySection
         startingScores={startingScores}
@@ -418,6 +438,7 @@ interface HeroStripProps {
   radarScores: number[];
   lastAssessedAt: Date | null;
   roadmapStatus: 'loading' | 'none' | 'draft' | 'sent';
+  showAxisScores: boolean;
 }
 
 function HeroStrip({
@@ -429,6 +450,7 @@ function HeroStrip({
   radarScores,
   lastAssessedAt,
   roadmapStatus,
+  showAxisScores,
 }: HeroStripProps) {
   const t = tone(currentOverall);
   const arcLabel =
@@ -483,35 +505,36 @@ function HeroStrip({
           </div>
         </div>
 
-        {/* Right: AXIS score + pillar radar */}
-        <div className="flex items-center gap-6">
-          <div className="text-right">
-            <p className="inline-flex items-center justify-end gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              <AxisDiamondMark />
-              Current AXIS™
-            </p>
-            <div className="mt-1 flex items-baseline justify-end gap-1">
-              <span className={cn('text-6xl font-bold leading-none tracking-[-0.025em] tabular-nums', TONE_TEXT[t])}>
-                {currentOverall || '—'}
-              </span>
-              {currentOverall ? (
-                <span className="text-xl font-semibold text-muted-foreground">/ 100</span>
+        {showAxisScores ? (
+          <div className="flex items-center gap-6">
+            <div className="text-right">
+              <p className="inline-flex items-center justify-end gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <AxisDiamondMark />
+                Current AXIS™
+              </p>
+              <div className="mt-1 flex items-baseline justify-end gap-1">
+                <span className={cn('text-6xl font-bold leading-none tracking-[-0.025em] tabular-nums', TONE_TEXT[t])}>
+                  {currentOverall || '—'}
+                </span>
+                {currentOverall ? (
+                  <span className="text-xl font-semibold text-muted-foreground">/ 100</span>
+                ) : null}
+              </div>
+              {scoreChange !== 0 ? (
+                <p
+                  className={cn(
+                    'mt-1 text-[12px] font-semibold tabular-nums',
+                    scoreChange > 0 ? 'text-score-green-fg' : 'text-score-red-fg',
+                  )}
+                >
+                  {scoreChange > 0 ? '▲ +' : '▼ '}
+                  {scoreChange} since baseline
+                </p>
               ) : null}
             </div>
-            {scoreChange !== 0 ? (
-              <p
-                className={cn(
-                  'mt-1 text-[12px] font-semibold tabular-nums',
-                  scoreChange > 0 ? 'text-score-green-fg' : 'text-score-red-fg',
-                )}
-              >
-                {scoreChange > 0 ? '▲ +' : '▼ '}
-                {scoreChange} since baseline
-              </p>
-            ) : null}
+            <MiniPillarRadar scores={radarScores} size={120} />
           </div>
-          <MiniPillarRadar scores={radarScores} size={120} />
-        </div>
+        ) : null}
       </div>
     </section>
   );
@@ -1156,9 +1179,10 @@ function PillarSnapshots({
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {PILLAR_ORDER.map((p) => {
           const cat: ScoreCategory | undefined = scores?.categories.find((c) => c.id === p.id);
-          const score = cat?.score ?? breakdown[p.id] ?? 0;
-          const change = changes[p.id];
+          const displayScore = pillarDisplayScore(cat?.score ?? breakdown[p.id], cat?.assessed);
+          const change = cat?.assessed ? changes[p.id] : undefined;
           const Icon = p.icon;
+          const badgeScore = displayScore ?? 0;
           return (
             <button
               key={p.id}
@@ -1174,10 +1198,21 @@ function PillarSnapshots({
                 <DeltaPill diff={change} />
               </div>
               <div className="flex items-center justify-between">
-                <span className={cn('text-3xl font-bold leading-none tracking-[-0.025em] tabular-nums', TONE_TEXT[tone(score)])}>
-                  {score || '—'}
+                <span
+                  className={cn(
+                    'text-3xl font-bold leading-none tracking-[-0.025em] tabular-nums',
+                    displayScore != null ? TONE_TEXT[tone(displayScore)] : 'text-muted-foreground',
+                  )}
+                >
+                  {displayScore ?? '—'}
                 </span>
-                <PillarScoreBadge pillar={p.id} score={score} size={56} />
+                {displayScore != null ? (
+                  <PillarScoreBadge pillar={p.id} score={badgeScore} size={56} />
+                ) : (
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full border border-dashed border-border text-muted-foreground">
+                    —
+                  </span>
+                )}
               </div>
             </button>
           );

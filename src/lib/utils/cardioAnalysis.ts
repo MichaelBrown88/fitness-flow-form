@@ -115,9 +115,18 @@ export function calculateCardioAnalysis(
     const hrReserve = maxHREstimate - restingHR;
     if (hrReserve > 0) {
       const effortUsed = (peakHR - restingHR) / hrReserve;
-      if (effortUsed > 0) {
-        currentVO2 = (26.8 - 3.5) / effortUsed + 3.5;
-        currentVO2 = Math.max(15, Math.min(85, currentVO2));
+      if (effortUsed > 0.12) {
+        /** VO2 reserve scale top used for %HRR mapping (ml/kg/min). */
+        const vo2Ceiling = 50;
+        const vo2AtPeak = 3.5 + (vo2Ceiling - 3.5) * Math.min(effortUsed, 1);
+        // Extrapolate to max only when the test was strenuous enough; low peak HR
+        // (submax test) previously used 1/effort and inflated VO2 (e.g. 68+).
+        if (effortUsed >= 0.52) {
+          currentVO2 = 3.5 + (vo2AtPeak - 3.5) / effortUsed;
+        } else {
+          currentVO2 = vo2AtPeak;
+        }
+        currentVO2 = Math.max(12, Math.min(75, round1(currentVO2)));
       }
     }
   }

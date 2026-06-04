@@ -98,13 +98,53 @@ export function buildClientOverallSummary(
   const mid = assessed.filter((c) => c.score >= 50 && c.score < 75).length;
   const low = assessed.filter((c) => c.score < 50).length;
 
+  const scoreLine = `Your AXIS Score is ${overall} out of 100.`;
+
   if (overall >= 75) {
-    return `Your overall AXIS Score is in a healthy range.${trendBit} ${strong} of ${total} pillars are strong.${focusBit}`;
+    return `${scoreLine} You are in a healthy range overall.${trendBit} ${strong} of ${total} pillars are strong — keep building on that.${focusBit}`;
   }
   if (overall >= 50) {
-    return `Your overall AXIS Score shows a solid base with clear upside.${trendBit} ${strong} pillars strong, ${mid} with room to grow${low > 0 ? `, ${low} need more attention` : ''}.${focusBit}`;
+    return `${scoreLine} You have a solid base with clear upside.${trendBit} ${strong} pillars are strong, ${mid} have room to grow${low > 0 ? `, and ${low} need more attention` : ''}.${focusBit}`;
   }
-  return `Your overall AXIS Score shows several areas to prioritise.${trendBit} ${low} of ${total} pillars need focused work.${focusBit}`;
+  return `${scoreLine} Several areas need focused work right now.${trendBit} ${low} of ${total} pillars are below where we want them.${focusBit}`;
+}
+
+/** Plain-language strength/focus lines when category bullets are sparse. */
+export function buildClientPriorityFallbacks(
+  scores: ScoreSummary,
+): { strengths: string[]; focusAreas: string[] } {
+  const assessed = (scores.categories ?? []).filter((c) => c.assessed);
+  if (assessed.length === 0) {
+    return { strengths: [], focusAreas: [] };
+  }
+
+  const ranked = [...assessed].sort((a, b) => b.score - a.score);
+  const top = ranked[0];
+  const bottom = ranked[ranked.length - 1];
+  const strengths: string[] = [];
+  const focusAreas: string[] = [];
+
+  if (top && top.score >= 55) {
+    const label = PILLAR_LABEL_SHORT[top.id] ?? top.title.toLowerCase();
+    const detail = top.strengths?.[0];
+    strengths.push(
+      detail
+        ? `${capitalise(label)} (${Math.round(top.score)}): ${decapitalise(detail)}`
+        : `${capitalise(label)} is your strongest pillar at ${Math.round(top.score)}.`,
+    );
+  }
+
+  if (bottom && bottom.score < 75) {
+    const label = PILLAR_LABEL_SHORT[bottom.id] ?? bottom.title.toLowerCase();
+    const detail = bottom.weaknesses?.[0];
+    focusAreas.push(
+      detail
+        ? `${capitalise(label)} (${Math.round(bottom.score)}): ${decapitalise(detail)}`
+        : `${capitalise(label)} is the best place to focus next (${Math.round(bottom.score)}).`,
+    );
+  }
+
+  return { strengths, focusAreas };
 }
 
 function severityRank(severity: 'low' | 'medium' | 'high'): number {

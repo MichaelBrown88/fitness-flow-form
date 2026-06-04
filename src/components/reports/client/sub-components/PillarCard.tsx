@@ -1,9 +1,14 @@
-import React from 'react';
-import { TrendingDown, TrendingUp } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronDown, TrendingDown, TrendingUp } from 'lucide-react';
 import type { PillarKey } from '@/lib/reports/radarData';
 import { cn } from '@/lib/utils';
 import { CLIENT_REPORT_COPY } from '@/constants/clientReport';
 import { PillarCardSection } from './PillarCardSection';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 interface PillarCardProps {
   pillar: PillarKey;
@@ -21,6 +26,8 @@ interface PillarCardProps {
   targets?: React.ReactNode;
   /** @deprecated Use `targets` */
   gapAnalysis?: React.ReactNode;
+  /** Defaults to snapshot heading; use for posture scan photos only on client report. */
+  graphicSectionTitle?: string;
   className?: string;
 }
 
@@ -42,7 +49,7 @@ function scoreToneClass(score: number): string {
 }
 
 /**
- * Pillar card: header → summary → body (graphic | targets + labelled lists).
+ * Pillar card: header → summary → takeaways → graphic → optional collapsible targets.
  */
 export const PillarCard: React.FC<PillarCardProps> = ({
   pillar,
@@ -57,8 +64,10 @@ export const PillarCard: React.FC<PillarCardProps> = ({
   graphic,
   targets,
   gapAnalysis,
+  graphicSectionTitle,
   className,
 }) => {
+  const [targetsOpen, setTargetsOpen] = useState(false);
   const hasScore = typeof score === 'number';
   const diff =
     hasScore && previousScore != null ? Math.round(score!) - Math.round(previousScore) : null;
@@ -68,7 +77,6 @@ export const PillarCard: React.FC<PillarCardProps> = ({
   const focusItems = focusAreas.slice(0, MAX_LIST_ITEMS);
   const hasLists = strengthItems.length > 0 || focusItems.length > 0;
   const hasBody = Boolean(graphic) || Boolean(targetsContent) || hasLists;
-  const hasRightColumn = Boolean(targetsContent) || hasLists;
 
   return (
     <section
@@ -112,36 +120,49 @@ export const PillarCard: React.FC<PillarCardProps> = ({
         </p>
       ) : null}
 
+      {hasLists ? (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {strengthItems.length > 0 ? (
+            <PillarCardSection title={CLIENT_REPORT_COPY.strengthsHeading}>
+              <BulletList items={strengthItems} dotClass="before:bg-score-green" />
+            </PillarCardSection>
+          ) : null}
+          {focusItems.length > 0 ? (
+            <PillarCardSection title={CLIENT_REPORT_COPY.focusHeading}>
+              <BulletList items={focusItems} dotClass="before:bg-score-amber" />
+            </PillarCardSection>
+          ) : null}
+        </div>
+      ) : null}
+
       {hasBody ? (
-        <div
-          className={cn(
-            'mt-6 grid items-start gap-4',
-            graphic && hasRightColumn ? 'sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]' : 'grid-cols-1',
-          )}
-        >
+        <div className="mt-6 space-y-4">
           {graphic ? (
-            <PillarCardSection title={CLIENT_REPORT_COPY.snapshotHeading} className="h-full">
+            <PillarCardSection
+              title={graphicSectionTitle ?? CLIENT_REPORT_COPY.snapshotHeading}
+            >
               <div className="min-w-0">{graphic}</div>
             </PillarCardSection>
           ) : null}
-          {hasRightColumn ? (
-            <div className="min-w-0 space-y-3">
-              {targetsContent ? (
-                <PillarCardSection title={CLIENT_REPORT_COPY.targetsHeading}>
-                  {targetsContent}
-                </PillarCardSection>
-              ) : null}
-              {strengthItems.length > 0 ? (
-                <PillarCardSection title={CLIENT_REPORT_COPY.strengthsHeading}>
-                  <BulletList items={strengthItems} dotClass="before:bg-score-green" />
-                </PillarCardSection>
-              ) : null}
-              {focusItems.length > 0 ? (
-                <PillarCardSection title={CLIENT_REPORT_COPY.focusHeading}>
-                  <BulletList items={focusItems} dotClass="before:bg-score-amber" />
-                </PillarCardSection>
-              ) : null}
-            </div>
+          {targetsContent ? (
+            <Collapsible open={targetsOpen} onOpenChange={setTargetsOpen}>
+              <CollapsibleTrigger className="flex w-full items-center justify-between gap-2 rounded-lg py-1 text-left text-sm font-semibold text-foreground transition-colors hover:text-foreground/80">
+                <span>{CLIENT_REPORT_COPY.targetsHeading}</span>
+                <ChevronDown
+                  className={cn(
+                    'h-4 w-4 shrink-0 text-muted-foreground transition-transform',
+                    targetsOpen && 'rotate-180',
+                  )}
+                  aria-hidden
+                />
+                <span className="sr-only">
+                  {targetsOpen
+                    ? CLIENT_REPORT_COPY.targetsDetailsHide
+                    : CLIENT_REPORT_COPY.targetsDetailsToggle}
+                </span>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2">{targetsContent}</CollapsibleContent>
+            </Collapsible>
           ) : null}
         </div>
       ) : null}

@@ -283,6 +283,12 @@ export const CONFIG = {
       DEVIATION_COLOR: "#ff0000",
       DEVIATION_WIDTH: 3,
       PLACEHOLDER_BG: "#f1f5f9",
+      /** Client AXIS report — person on white, high-contrast overlays */
+      CLIENT_BG: "#ffffff",
+      CLIENT_LINE_COLOR: "rgba(22, 163, 74, 0.9)",
+      CLIENT_LINE_WIDTH: 3,
+      CLIENT_DEVIATION_COLOR: "#dc2626",
+      CLIENT_DEVIATION_WIDTH: 7,
     },
   },
 

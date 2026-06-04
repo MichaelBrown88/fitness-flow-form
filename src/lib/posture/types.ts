@@ -9,6 +9,9 @@ export interface OverlayOptions {
   showHipLine?: boolean;
   lineColor?: string;
   lineWidth?: number;
+  backgroundColor?: string;
+  /** Stronger red deviation lines for client-facing report images */
+  clientFacingDeviations?: boolean;
   analysis?: PostureAnalysisResult;
   mode?: 'reference' | 'align' | 'deviation';
   landmarks?: PostureAnalysisResult['landmarks'];

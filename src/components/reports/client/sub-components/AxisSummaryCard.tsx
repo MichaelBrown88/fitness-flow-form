@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Download, Share2, Trophy, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowRight, Download, Share2, TrendingDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { RadarData } from '@/lib/reports/radarData';
 import OverallRadarPolygon from '@/components/reports/OverallRadarPolygon';
@@ -10,7 +10,6 @@ import { cn } from '@/lib/utils';
 import { CLIENT_REPORT_COPY } from '@/constants/clientReport';
 import { PillarCardSection } from './PillarCardSection';
 import { ReportPriorityChips, type ReportPriorityItem } from './ReportPriorityChips';
-import type { GoalHorizonBlock } from '@/lib/goals/goalHorizons';
 
 interface AxisSummaryCardProps {
   clientName: string;
@@ -18,14 +17,14 @@ interface AxisSummaryCardProps {
   scores: ScoreSummary;
   previousOverallScore?: number | null;
   narrative?: string;
-  archetype?: { name: string; description: string };
+  /** Score-derived headline (replaces client archetype badge). */
+  scoreHeadline?: string | null;
   radarData: RadarData[];
   previousRadarData?: RadarData[];
   priorityStrengths?: ReportPriorityItem[];
   priorityFocusAreas?: ReportPriorityItem[];
   outlookHeadline?: string;
   outlookBullets?: string[];
-  outlookHorizons?: GoalHorizonBlock[];
   onPillarSelect?: (sectionId: string) => void;
   orgName?: string;
   coachName?: string;
@@ -46,14 +45,13 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
   scores,
   previousOverallScore,
   narrative,
-  archetype,
+  scoreHeadline,
   radarData,
   previousRadarData,
   priorityStrengths = [],
   priorityFocusAreas = [],
   outlookHeadline,
   outlookBullets = [],
-  outlookHorizons = [],
   onPillarSelect,
   goalLabels = [],
   baselineNarrative,
@@ -67,14 +65,12 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
   const scoreDiff = previousOverallScore != null ? overall - previousOverallScore : null;
 
   const firstName = clientName?.trim().split(/\s+/)[0] || 'client';
-  const description = narrative ?? archetype?.description;
   const hasPriorities =
     priorityStrengths.length > 0 || priorityFocusAreas.length > 0;
-  const hasOutlook =
-    Boolean(outlookHeadline) &&
-    (outlookHorizons.length > 0 || outlookBullets.length > 0);
+  const hasOutlook = Boolean(outlookHeadline) || outlookBullets.length > 0;
   const hasRadar = radarData.length > 0;
-  const hasLeftContent = Boolean(description) || hasPriorities || hasOutlook;
+  const hasLeftContent =
+    Boolean(narrative) || Boolean(scoreHeadline) || hasPriorities || hasOutlook;
 
   return (
     <section className="rounded-2xl bg-card p-6 ring-1 ring-border/60 sm:p-8">
@@ -86,6 +82,11 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
           <h2 className="mt-1 text-2xl font-bold tracking-[-0.02em] text-foreground sm:text-3xl">
             {clientName || 'Assessment summary'}
           </h2>
+          {scoreHeadline ? (
+            <p className="mt-2 max-w-xl text-sm font-medium leading-snug text-foreground-secondary">
+              {scoreHeadline}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-4 sm:gap-5">
@@ -94,12 +95,6 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
             <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-foreground/80">
               AXIS Score™
             </p>
-            {archetype?.name ? (
-              <div className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-[11px] font-bold leading-snug text-foreground">
-                <Trophy className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span className="truncate">{archetype.name}</span>
-              </div>
-            ) : null}
             {baselineNarrative ? (
               <p className="text-[12px] leading-relaxed text-muted-foreground">{baselineNarrative}</p>
             ) : null}
@@ -142,37 +137,9 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
       >
         {hasLeftContent ? (
           <div className="flex min-h-0 flex-col justify-center gap-4">
-            {description ? (
-              <PillarCardSection title={CLIENT_REPORT_COPY.axisSummaryHeading}>
-                <p className="text-sm leading-relaxed text-foreground-secondary">{description}</p>
-              </PillarCardSection>
-            ) : null}
-
-            {hasOutlook ? (
-              <PillarCardSection title={CLIENT_REPORT_COPY.outlookHeading}>
-                <p className="text-sm leading-relaxed text-foreground-secondary">{outlookHeadline}</p>
-                {outlookHorizons.length > 0 ? (
-                  <div className="mt-3 space-y-4">
-                    {outlookHorizons.map((block) => (
-                      <div key={block.months}>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          {block.title}
-                        </p>
-                        <ul className="mt-1 list-disc space-y-1 pl-4 text-sm text-foreground-secondary">
-                          {block.bullets.map((bullet) => (
-                            <li key={bullet}>{bullet}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-foreground-secondary">
-                    {outlookBullets.map((bullet) => (
-                      <li key={bullet}>{bullet}</li>
-                    ))}
-                  </ul>
-                )}
+            {narrative ? (
+              <PillarCardSection title={CLIENT_REPORT_COPY.whereYouAreHeading}>
+                <p className="text-sm leading-relaxed text-foreground-secondary">{narrative}</p>
               </PillarCardSection>
             ) : null}
 
@@ -183,6 +150,28 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
                   focusAreas={priorityFocusAreas}
                   layout="split"
                 />
+              </PillarCardSection>
+            ) : null}
+
+            {hasOutlook ? (
+              <PillarCardSection title={CLIENT_REPORT_COPY.outlookHeading}>
+                {outlookHeadline ? (
+                  <p className="text-sm leading-relaxed text-foreground-secondary">
+                    {outlookHeadline}
+                  </p>
+                ) : null}
+                {outlookBullets.length > 0 ? (
+                  <ul
+                    className={cn(
+                      'list-disc space-y-1 pl-4 text-sm text-foreground-secondary',
+                      outlookHeadline && 'mt-2',
+                    )}
+                  >
+                    {outlookBullets.map((bullet) => (
+                      <li key={bullet}>{bullet}</li>
+                    ))}
+                  </ul>
+                ) : null}
               </PillarCardSection>
             ) : null}
           </div>

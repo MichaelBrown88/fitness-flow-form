@@ -103,8 +103,9 @@ export function useClientList(
           (item.remoteIntakeAwaitingStudio === true || schedule?.remoteIntakeAwaitingStudio === true),
         remoteIntakePending:
           intakeActive &&
-          schedule?.remoteIntakePending === true &&
-          !(schedule?.remoteIntakeAwaitingStudio || item.remoteIntakeAwaitingStudio),
+          (item.remoteIntakePending === true ||
+            (schedule?.remoteIntakePending === true &&
+              !(schedule?.remoteIntakeAwaitingStudio || item.remoteIntakeAwaitingStudio))),
       };
     });
 

@@ -30,6 +30,8 @@ export {
   cropAndCenterImage,
 } from './postureOverlayCanvas';
 
+export { composeClientPosturePreview } from './composeClientPosturePreview';
+
 // Alignment calculations
 export { calculateFrontBackAlignments } from './postureAlignmentFront';
 export { calculateSideViewAlignments } from './postureAlignmentSide';

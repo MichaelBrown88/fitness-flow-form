@@ -21,18 +21,6 @@ export function RemoteIntakeLayout({
 }: RemoteIntakeLayoutProps) {
   return (
     <div className="min-h-[100dvh] bg-background text-foreground">
-      <header className="shrink-0 border-b border-border/60 bg-background px-4 py-3">
-        <div className="mx-auto flex max-w-md items-center gap-2">
-          <div
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground"
-            aria-hidden
-          >
-            OA
-          </div>
-          <span className="text-sm font-semibold tracking-tight">One Assess</span>
-        </div>
-      </header>
-
       {loading ? (
         <div className="flex flex-col items-center justify-center gap-3 px-4 py-24 text-muted-foreground">
           <Loader2 className="h-8 w-8 animate-spin" aria-hidden />
