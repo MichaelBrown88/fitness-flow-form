@@ -178,12 +178,12 @@ service cloud.firestore {
           (isPlatformAdmin() && hasDataAccess(orgId) && isNotImpersonating());
         // First row (bootstrap): profile.organizationId must match this org (invite roster is server-written).
         allow create: if isAuthenticated() && request.auth.uid == coachId &&
-          exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.organizationId == orgId;
+          exists(/databases/$(database)/documents/user-profiles/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/user-profiles/$(request.auth.uid)).data.organizationId == orgId;
         // Coaches may update only their own roster row: displayName + email, no privilege escalation
         allow update: if isAuthenticated() && request.auth.uid == coachId &&
-          exists(/databases/$(database)/documents/userProfiles/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/userProfiles/$(request.auth.uid)).data.organizationId == orgId &&
+          exists(/databases/$(database)/documents/user-profiles/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/user-profiles/$(request.auth.uid)).data.organizationId == orgId &&
           request.resource.data.uid == request.auth.uid &&
           (!resource.data.keys().hasAny(['uid']) || resource.data.uid == request.auth.uid) &&
           request.resource.data.role == resource.data.role &&
@@ -310,8 +310,9 @@ service cloud.firestore {
       allow update: if request.auth.uid == uid &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'displayName', 'email', 'photoURL', 'preferences', 'settings',
-          'onboardingComplete', 'equipmentList', 'defaultCadence',
-          'completedChecklist', 'dismissedChecklist', 'theme'
+          'onboardingCompleted', 'isActiveCoach', 'firstAssessmentCompleted',
+          'equipmentList', 'defaultCadence',
+          'completedChecklist', 'dismissedChecklist', 'theme', 'updatedAt'
         ]);
       // Allow initial profile creation (onboarding sets role + organizationId)
       allow create: if request.auth.uid == uid;

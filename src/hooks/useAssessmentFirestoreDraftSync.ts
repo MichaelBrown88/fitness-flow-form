@@ -17,12 +17,15 @@ export function useAssessmentFirestoreDraftSync(
   isResultsPhase: boolean,
   organizationId: string | undefined,
   activePhaseIdx: number,
+  activePhaseId?: string,
 ): void {
   const isEditModeRef = useRef(hasEditAssessmentInSession());
   const formRef = useRef(formData);
   const phaseRef = useRef(activePhaseIdx);
+  const phaseIdRef = useRef(activePhaseId);
   formRef.current = formData;
   phaseRef.current = activePhaseIdx;
+  phaseIdRef.current = activePhaseId;
 
   const flushToFirestore = useCallback(async () => {
     if (isEditModeRef.current || isResultsPhase) return;
@@ -34,6 +37,7 @@ export function useAssessmentFirestoreDraftSync(
     try {
       await saveDraftAssessment(clientName, fd, orgId, {
         activePhaseIdx: phaseRef.current,
+        ...(phaseIdRef.current ? { activePhaseId: phaseIdRef.current } : {}),
       });
     } catch (e) {
       logger.warn('[Draft] Firestore sync failed (non-fatal)', e);

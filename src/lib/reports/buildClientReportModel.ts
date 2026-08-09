@@ -14,7 +14,12 @@ import {
 import { buildClientScoreHeadline } from '@/lib/reports/clientScoreHeadline';
 import { buildClientProgressionRows } from '@/lib/reports/clientProgressionRows';
 import type { ClientReportProgressionRow } from '@/lib/reports/clientProgressionRows';
-import { buildClientGoalPhases } from '@/lib/reports/clientGoalPhases';
+import { buildClientGoalPhases, buildClientSelfGuidedHabits } from '@/lib/reports/clientGoalPhases';
+import { buildClientRoadmapCards, type ClientRoadmapCard } from '@/lib/reports/clientRoadmapCards';
+import {
+  buildClientNinetyDayTarget,
+  type ClientNinetyDayTarget,
+} from '@/lib/reports/clientNinetyDayTarget';
 import { buildClientProfile } from '@/lib/physiology/profile';
 import { weeklyWeightLossKg } from '@/lib/physiology/rates';
 import { safeParse } from '@/lib/utils/numbers';
@@ -35,14 +40,10 @@ import {
   buildFocusBullets,
   sortFindingsForDisplay,
 } from '@/lib/posture/aggregatePostureInsights';
-import {
-  buildLifestyleNarrative,
-  buildMovementNarrative,
-  type ClientPillarNarrativeItem,
-} from '@/lib/reports/clientPillarNarratives';
+import { buildMovementFindings, type ClientMovementFindingsModel } from '@/lib/reports/clientMovementFindings';
 import { sanitizeClientReportCopy } from '@/lib/reports/sanitizeClientReportCopy';
 
-export type ClientPillarContentMode = 'progression' | 'narrative';
+export type ClientPillarContentMode = 'progression' | 'lifestyle-factors' | 'movement-findings';
 
 export interface ClientReportMetricChip {
   label: string;
@@ -63,8 +64,7 @@ export interface ClientReportPillarModel {
   metrics: ClientReportMetricChip[];
   progressionRows: ClientReportProgressionRow[];
   contentMode: ClientPillarContentMode;
-  narrativeIntro: string | null;
-  narrativeItems: ClientPillarNarrativeItem[];
+  movementFindings: ClientMovementFindingsModel | null;
   goalTieIn: string | null;
   pillarRole: PillarRole;
 }
@@ -92,13 +92,21 @@ export interface ClientReportModel {
   /** Goal-led promise — primary message for the client. */
   goalPromise: string;
   welcome: string;
-  goingWell: string[];
-  focusNext: string[];
-  primaryGoalLabel: string | null;
-  primaryGoalId: string | null;
+  /** One deduplicated, goal-weighted priority list for the hero (replaces the measured split). */
+  focusFirst: string[];
+  /** All stated goals as display labels (chips in the hero). */
+  goalLabels: string[];
   planSteps: ClientReportPlanStep[];
+  /** Compact self-guided habits shown under the coached plan. */
+  selfGuidedHabits: string[];
+  /** High-level behaviour roadmap — one card per assessed pillar, goal-priority order. */
+  roadmapCards: ClientRoadmapCard[];
+  /** Achievable 90-day body-weight + macro target for the roadmap (null when data is insufficient). */
+  roadmapTarget: ClientNinetyDayTarget | null;
   pillars: ClientReportPillarModel[];
   posture: ClientReportPostureModel | null;
+  /** Render-only — lifestyle factor grid in v2 pillars. */
+  formData?: FormData;
 }
 
 export interface BuildClientReportModelInput {
@@ -120,9 +128,10 @@ export function buildClientReportModel(input: BuildClientReportModelInput): Clie
 
   const goalCtx = parseClientGoals(formData, goals);
   const goalIds = goalCtx.allGoals;
-  const primaryGoalLabel =
-    ASSESSMENT_OPTIONS.clientGoals.find((g) => g.value === goalIds[0])?.label ?? null;
-  const primaryGoalId = goalIds[0] ?? null;
+  const goalLabels = goalIds
+    .map((id) => ASSESSMENT_OPTIONS.clientGoals.find((g) => g.value === id)?.label ?? id)
+    .filter(Boolean)
+    .slice(0, 4);
 
   const goalPromise = sanitizeClientReportCopy(
     buildGoalPromise(formData, scores, goals, goalCtx),
@@ -131,10 +140,12 @@ export function buildClientReportModel(input: BuildClientReportModelInput): Clie
   const headline = headlineRaw ? sanitizeClientReportCopy(headlineRaw) : null;
   const welcome = buildWelcomeParagraph(scores, previousOverall, goalPromise);
 
-  const strengths = buildHeroList(scores, 'strength', goalCtx).map(sanitizeClientReportCopy);
-  const focusNext = buildHeroList(scores, 'focus', goalCtx).map(sanitizeClientReportCopy);
+  const focusFirst = dedupeLines(
+    buildHeroList(scores, 'focus', goalCtx, 3).map(sanitizeClientReportCopy),
+  ).slice(0, 3);
 
   const planSteps = buildClientGoalPhases(formData, scores, goals);
+  const selfGuidedHabits = buildClientSelfGuidedHabits(formData, goals);
 
   const pillars = sortPillarsByGoalRole(
     SECTION_IDS.map((sectionId) =>
@@ -145,6 +156,14 @@ export function buildClientReportModel(input: BuildClientReportModelInput): Clie
 
   const posture = buildPostureModel(formData);
 
+  const roadmapCards = buildClientRoadmapCards(
+    pillars.map((p) => ({ scoringId: p.scoringId, score: p.score })),
+    formData,
+    goalCtx,
+  );
+
+  const roadmapTarget = buildClientNinetyDayTarget(formData, scores, goalCtx);
+
   return {
     clientName,
     reportDate,
@@ -153,14 +172,26 @@ export function buildClientReportModel(input: BuildClientReportModelInput): Clie
     headline,
     goalPromise,
     welcome,
-    goingWell: strengths,
-    focusNext,
-    primaryGoalLabel,
-    primaryGoalId,
+    focusFirst,
+    goalLabels,
     planSteps,
+    selfGuidedHabits,
+    roadmapCards,
+    roadmapTarget,
     pillars,
     posture,
+    formData,
   };
+}
+
+function dedupeLines(lines: string[]): string[] {
+  const seen = new Set<string>();
+  return lines.filter((line) => {
+    const key = line.trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function buildGoalPromise(
@@ -259,6 +290,7 @@ function buildHeroList(
   scores: ScoreSummary,
   kind: 'strength' | 'focus',
   goalCtx: ClientGoalContext,
+  limit = 2,
 ): string[] {
   const assessed = [...(scores.categories ?? [])].filter((c) => c.assessed);
   assessed.sort(
@@ -274,15 +306,15 @@ function buildHeroList(
     }
     const list = kind === 'strength' ? cat.strengths : cat.weaknesses;
     for (const line of list ?? []) {
-      if (line && items.length < 2) items.push(line);
+      if (line && items.length < limit) items.push(line);
     }
   }
 
-  if (items.length > 0) return items.slice(0, 2);
+  if (items.length > 0) return items.slice(0, limit);
 
   const fallbacks = buildClientPriorityFallbacks(scores);
   const fb = kind === 'strength' ? fallbacks.strengths : fallbacks.focusAreas;
-  return fb.slice(0, 2);
+  return fb.slice(0, limit);
 }
 
 function pillarRoleRank(role: PillarRole): number {
@@ -309,15 +341,15 @@ function buildPillarModel(
   const gapIndex =
     sectionId === 'body-comp' ? 0 : sectionId === 'strength' ? 1 : sectionId === 'cardio' ? 2 : -1;
 
-  const isNarrativePillar =
-    sectionId === 'movement-quality' || sectionId === 'lifestyle';
-  const movementNarrative =
+  const contentMode: ClientPillarContentMode =
     sectionId === 'movement-quality'
-      ? buildMovementNarrative(formData, cat)
-      : null;
-  const lifestyleNarrative =
-    sectionId === 'lifestyle' ? buildLifestyleNarrative(formData, cat) : null;
-  const narrative = movementNarrative ?? lifestyleNarrative;
+      ? 'movement-findings'
+      : sectionId === 'lifestyle'
+        ? 'lifestyle-factors'
+        : 'progression';
+
+  const movementFindings =
+    sectionId === 'movement-quality' ? buildMovementFindings(formData, cat) : null;
 
   return {
     sectionId,
@@ -333,22 +365,22 @@ function buildPillarModel(
     metrics:
       sectionId === 'lifestyle'
         ? extractLifestyleMetrics(formData)
-        : gapIndex >= 0
+        : sectionId === 'body-comp' || sectionId === 'strength' || sectionId === 'cardio'
           ? extractGapMetrics(sectionId, gapAnalysisData[gapIndex])
           : [],
-    progressionRows: isNarrativePillar
-      ? []
-      : buildClientProgressionRows(
-          sectionId,
-          gapAnalysisData,
-          formData,
-          cat,
-          scores,
-          goals,
-        ),
-    contentMode: isNarrativePillar ? 'narrative' : 'progression',
-    narrativeIntro: narrative?.intro ?? null,
-    narrativeItems: narrative?.items ?? [],
+    progressionRows:
+      contentMode === 'progression'
+        ? buildClientProgressionRows(
+            sectionId,
+            gapAnalysisData,
+            formData,
+            cat,
+            scores,
+            goals,
+          )
+        : [],
+    contentMode,
+    movementFindings,
     goalTieIn: buildPillarGoalTieIn(scoringId, pillarRole, goalCtx),
     pillarRole,
   };
@@ -399,7 +431,8 @@ function extractGapMetrics(
     const g = gap.cardioGaps;
     const chips: ClientReportMetricChip[] = [];
     if (g.vo2.current > 0) {
-      chips.push({ label: 'Fitness level', value: `${g.vo2.current.toFixed(1)} ml/kg/min` });
+      // No lab units client-side — "Fitness level" plain framing carries the number.
+      chips.push({ label: 'Fitness level', value: g.vo2.current.toFixed(1) });
     }
     if (g.rhr.current > 0) {
       chips.push({ label: 'Resting HR', value: `${Math.round(g.rhr.current)} bpm` });

@@ -84,6 +84,7 @@ export default function DashboardClients() {
           orgDefaultActivePillars={ctx.orgSettings?.defaultCadence?.activePillars}
           onViewHistory={ctx.handleViewHistory}
           onStartAssessment={(name) => void ctx.handleNewAssessmentForClient(name)}
+          onNewClient={ctx.onNewClient}
           writeOrganizationId={ctx.profile?.organizationId}
           coachUid={ctx.user?.uid}
           profile={ctx.profile}

@@ -27,6 +27,7 @@ import { UI_TOASTS } from '@/constants/ui';
 import {
   clearClientNavAssessmentBleedKeys,
   confirmAssessmentSetup,
+  writeAssessmentPhaseId,
   writeAssessmentPhaseIndex,
   writeEditAssessmentPayload,
   writePartialAssessment,
@@ -88,6 +89,7 @@ export interface UseClientDetailResult {
     formData: FormData;
     updatedAt: Timestamp | null;
     activePhaseIdx: number | null;
+    activePhaseId: string | null;
   } | null;
   
   setIsEditing: React.Dispatch<React.SetStateAction<boolean>>;
@@ -144,6 +146,7 @@ export function useClientDetail(): UseClientDetailResult {
     formData: FormData;
     updatedAt: Timestamp | null;
     activePhaseIdx: number | null;
+    activePhaseId: string | null;
   } | null>(null);
 
   const displayClientName = useMemo(() => {
@@ -584,6 +587,11 @@ export function useClientDetail(): UseClientDetailResult {
         incompleteDraft.activePhaseIdx >= 0
       ) {
         writeAssessmentPhaseIndex(incompleteDraft.activePhaseIdx);
+        // The id lets the assessment mount reconcile a stale positional index
+        // after a phase-order change (id-preferred resume).
+        if (incompleteDraft.activePhaseId) {
+          writeAssessmentPhaseId(incompleteDraft.activePhaseId);
+        }
       }
     } catch {
       // non-fatal

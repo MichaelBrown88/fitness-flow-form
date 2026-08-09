@@ -1471,109 +1471,6 @@ async function resolveCallerOrgId(): Promise<string> {
   return orgId;
 }
 
-/**
- * Evaluate and unlock achievements for all clients based on their existing session history.
- * Run this after importPlatformData() so imported assessments count toward badges.
- *
- * Run from the browser console: await backfillAchievements()
- */
-export async function backfillAchievements(): Promise<void> {
-  const orgId = await resolveCallerOrgId();
-  const { evaluateAchievements } = await import('@/services/achievements');
-  const { computeScores } = await import('@/lib/scoring');
-  const db = getDb();
-
-  const clientsSnap = await getDocs(getOrgClientsCollection(orgId));
-
-  logger.debug(`Backfilling achievements — Org: ${orgId}`);
-
-  let totalClients = 0;
-  let totalUnlocked = 0;
-
-  for (const clientDoc of clientsSnap.docs) {
-    const slug = clientDoc.id;
-    if (!/^[a-z][a-z0-9\-._]+$/.test(slug)) continue;
-
-    const d = clientDoc.data() as { clientName?: string };
-    const clientName = d.clientName ?? slug;
-
-    const sessionsCol = collection(db, `organizations/${orgId}/clients/${slug}/sessions`);
-    const sessionsSnap = await getDocs(query(sessionsCol, orderBy('timestamp', 'asc')));
-    if (sessionsSnap.empty) {
-      logger.debug(`  — ${clientName}: no sessions, skipping`);
-      continue;
-    }
-
-    const sessions = sessionsSnap.docs.map(docSnap => ({
-      id: docSnap.id,
-      ...(docSnap.data() as { formData?: Record<string, unknown>; overallScore?: number }),
-    }));
-
-    const latestSession = [...sessions].reverse().find(
-      s => s.formData && Object.keys(s.formData).length > 0,
-    );
-    if (!latestSession?.formData) {
-      logger.debug(`  — ${clientName}: sessions have no formData, skipping`);
-      continue;
-    }
-
-    const { formData } = latestSession as unknown as {
-      formData: import('@/contexts/FormContext').FormData;
-      overallScore?: number;
-    };
-    const scores = computeScores(formData);
-    const categoryScores = scores.categories.map((c) => ({
-      id: c.id,
-      score: c.score,
-      assessed: c.assessed,
-    }));
-    const overallScore = latestSession.overallScore ?? scores.overall;
-
-    const prevSession = sessions.length > 1
-      ? (sessions[sessions.length - 2] as unknown as {
-          formData?: import('@/contexts/FormContext').FormData;
-          overallScore?: number;
-        })
-      : null;
-    let prevCategoryScores:
-      | Array<{ id: string; score: number; assessed: boolean }>
-      | undefined;
-    let previousFullProfileScore: number | null | undefined;
-    if (prevSession?.formData && Object.keys(prevSession.formData).length > 0) {
-      const prevScores = computeScores(prevSession.formData as import('@/contexts/FormContext').FormData);
-      previousFullProfileScore = prevScores.fullProfileScore;
-      prevCategoryScores = prevScores.categories.map((c) => ({
-        id: c.id,
-        score: c.score,
-        assessed: c.assessed,
-      }));
-    }
-
-    const unlocked = await evaluateAchievements({
-      organizationId: orgId,
-      clientId: slug,
-      overallScore,
-      fullProfileScore: scores.fullProfileScore,
-      categoryScores,
-      previousOverallScore: prevSession?.overallScore ?? undefined,
-      previousFullProfileScore,
-      previousCategoryScores: prevCategoryScores,
-      assessmentCount: sessions.length,
-    });
-
-    totalClients++;
-    totalUnlocked += unlocked.length;
-
-    if (unlocked.length > 0) {
-      logger.debug(`  🏆 ${clientName}: ${unlocked.length} achievement(s) unlocked`);
-      unlocked.forEach(a => logger.debug(`    - ${a.title}: ${a.description}`));
-    } else {
-      logger.debug(`  ✓ ${clientName}: no new achievements (score: ${Math.round(overallScore)})`);
-    }
-  }
-  logger.debug(`\n✅ Backfill complete: ${totalClients} client(s), ${totalUnlocked} achievement(s) unlocked.`);
-}
-
 // ---------------------------------------------------------------------------
 // Repair: patch missing current/state docs and client profile score fields
 // ---------------------------------------------------------------------------
@@ -2573,7 +2470,6 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     exportPlatformData?: typeof exportPlatformData;
     importPlatformData?: typeof importPlatformData;
     deleteV1Paths?: typeof deleteV1Paths;
-    backfillAchievements?: typeof backfillAchievements;
     repairCurrentState?: typeof repairCurrentState;
     diagnoseCurrentState?: typeof diagnoseCurrentState;
     cleanupOrphanDocs?: typeof cleanupOrphanDocs;
@@ -2611,7 +2507,6 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   win.exportPlatformData = exportPlatformData;
   win.importPlatformData = importPlatformData;
   win.deleteV1Paths = deleteV1Paths;
-  win.backfillAchievements = backfillAchievements;
   win.repairCurrentState = repairCurrentState;
   win.diagnoseCurrentState = diagnoseCurrentState;
   win.cleanupOrphanDocs = cleanupOrphanDocs;
@@ -2634,5 +2529,5 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
   win.reconcilePlatformData = reconcilePlatformData;
   win.seedAIConfig = seedAIConfig;
   win.verifyPlatformCutover = verifyPlatformCutover;
-  logger.info('[PlatformDataReconciler] Ready: auditDataIntegrity, exportPlatformData, importPlatformData, backfillAchievements, diagnoseCurrentState, and more.');
+  logger.info('[PlatformDataReconciler] Ready: auditDataIntegrity, exportPlatformData, importPlatformData, diagnoseCurrentState, and more.');
 }

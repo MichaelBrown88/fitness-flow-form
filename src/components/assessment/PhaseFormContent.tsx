@@ -25,6 +25,8 @@ import { PhaseFormConfidentialFooter } from '@/components/assessment/phaseForm/P
 import { IntakePrefillBanner } from '@/components/assessment/IntakePrefillBanner';
 import { PhaseFormSingleFieldFlow } from '@/components/assessment/phaseForm/PhaseFormSingleFieldFlow';
 import { computeScores, buildRoadmap } from '@/lib/scoring';
+import { writeSessionDraftAssessmentBundle } from '@/lib/assessment/assessmentSessionStorage';
+import { saveDraftAssessment } from '@/services/coachAssessments';
 import type { ScoreSummary } from '@/lib/scoring/types';
 import { logger } from '@/lib/utils/logger';
 import { UI_DRAFT } from '@/constants/ui';
@@ -102,8 +104,13 @@ export const PhaseFormContent = ({
     isPartialAssessment,
     isResultsPhase,
     activePhaseIdx,
+    activePhaseId: activePhase.id,
     updateFormData,
     setActivePhaseIdx,
+    resolvePhaseIdxById: (phaseId) => {
+      const idx = visiblePhases.findIndex((p) => p.id === phaseId);
+      return idx === -1 ? null : idx;
+    },
   });
 
   usePartialAssessmentPrefetch({
@@ -115,13 +122,32 @@ export const PhaseFormContent = ({
     updateFormData,
   });
 
-  const handleSaveAndExit = useCallback(() => {
+  const handleSaveAndExit = useCallback(async () => {
+    // Flush the draft immediately — the debounced session/Firestore draft
+    // writers cancel pending timers on unmount, so exiting without an
+    // explicit flush can drop the most recent answers.
+    const draftClientName = (activeClientName || formData.fullName || '').trim();
+    writeSessionDraftAssessmentBundle(formData, draftClientName);
+    let cloudSaved = false;
+    if (profile?.organizationId && draftClientName) {
+      try {
+        await saveDraftAssessment(draftClientName, formData, profile.organizationId, {
+          activePhaseIdx,
+          activePhaseId: activePhase.id,
+        });
+        cloudSaved = true;
+      } catch (err) {
+        logger.error('Save and exit: cloud draft flush failed', err);
+      }
+    }
     toast({
       title: UI_DRAFT.DRAFT_SAVED,
-      description: PHASE_FORM_COPY.SAVE_AND_EXIT_TOAST_DESCRIPTION,
+      description: cloudSaved
+        ? PHASE_FORM_COPY.SAVE_AND_EXIT_TOAST_DESCRIPTION
+        : PHASE_FORM_COPY.SAVE_AND_EXIT_LOCAL_ONLY_DESCRIPTION,
     });
     navigate(ROUTES.DASHBOARD);
-  }, [navigate, toast]);
+  }, [navigate, toast, formData, activeClientName, profile?.organizationId, activePhaseIdx, activePhase.id]);
 
   const [isDemoAssessment, setIsDemoAssessment] = useState(false);
   const [reviewCheckpointOpen, setReviewCheckpointOpen] = useState(false);
@@ -165,22 +191,14 @@ export const PhaseFormContent = ({
   } = saveHook;
 
   const cameraHook = useCameraHandler({
-    formData,
     updateFormData,
-    activePhaseId: activePhase.id,
-    activePhaseIdx,
-    visiblePhases,
-    isPartialAssessment,
     organizationId: profile?.organizationId,
-    onPhaseChange: setActivePhaseIdx,
   });
   const {
     showCamera,
     setShowCamera,
     showPostureCompanion,
     setShowPostureCompanion,
-    showBodyCompCompanion,
-    setShowBodyCompCompanion,
     ocrReviewData,
     setOcrReviewData,
     isProcessingOcr,
@@ -190,7 +208,6 @@ export const PhaseFormContent = ({
     handleCapture,
     applyOcrData,
     handlePostureCompanionComplete,
-    handleBodyCompCompanionComplete,
   } = cameraHook;
 
   const roadmap = useMemo(() => {
@@ -246,11 +263,8 @@ export const PhaseFormContent = ({
         logger.error('Scroll failed:', e);
       }
     }, 100);
-
-    toast({
-      title: PHASE_FORM_COPY.GENERATING_REPORTS_TITLE,
-      description: PHASE_FORM_COPY.GENERATING_REPORTS_DESCRIPTION,
-    });
+    // No toast here — the results panel's single loading state covers the
+    // transition while the save continues in the background.
   };
 
   const handleStartNewAssessment = () => {
@@ -368,7 +382,6 @@ export const PhaseFormContent = ({
             isPartialAssessment={isPartialAssessment}
             onShowCamera={(mode) => setShowCamera(mode)}
             onShowPostureCompanion={() => setShowPostureCompanion(true)}
-            onShowBodyCompCompanion={() => setShowBodyCompCompanion(true)}
             onRequestPreResultsReview={openPreResultsReview}
           />
 
@@ -437,9 +450,6 @@ export const PhaseFormContent = ({
         showPostureCompanion={showPostureCompanion}
         setShowPostureCompanion={setShowPostureCompanion}
         handlePostureCompanionComplete={handlePostureCompanionComplete}
-        showBodyCompCompanion={showBodyCompCompanion}
-        setShowBodyCompCompanion={setShowBodyCompCompanion}
-        handleBodyCompCompanionComplete={handleBodyCompCompanionComplete}
         isProcessingOcr={isProcessingOcr}
         processingMode={processingMode}
         postureRetakeWarning={postureRetakeWarning}

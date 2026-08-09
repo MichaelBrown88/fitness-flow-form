@@ -130,38 +130,10 @@ export function getDashboardSeoForPathname(pathname: string): SeoPageMeta {
     description: DASHBOARD_SEO_DESCRIPTION,
     noindex: true,
   };
-  if (pathname === ROUTES.DASHBOARD) {
-    return {
-      title: 'Today | One Assess',
-      description: 'Reassessment queue, tasks, and daily coaching overview.',
-      noindex: true,
-    };
-  }
-  if (pathname.startsWith(ROUTES.DASHBOARD_CLIENTS)) {
+  if (pathname === ROUTES.DASHBOARD || pathname.startsWith(ROUTES.DASHBOARD_CLIENTS)) {
     return {
       title: 'Clients | One Assess',
       description: 'Client roster and assessments.',
-      noindex: true,
-    };
-  }
-  if (pathname.startsWith(ROUTES.DASHBOARD_WORK)) {
-    return {
-      title: 'Today | One Assess',
-      description: 'Reassessment queue, tasks, and daily coaching overview.',
-      noindex: true,
-    };
-  }
-  if (pathname.startsWith(ROUTES.DASHBOARD_SCHEDULE)) {
-    return {
-      title: 'Work | One Assess',
-      description: 'Reassessment queue and due dates for your clients.',
-      noindex: true,
-    };
-  }
-  if (pathname.startsWith(ROUTES.DASHBOARD_CALENDAR)) {
-    return {
-      title: 'Work | One Assess',
-      description: 'Assessment and follow-up calendar.',
       noindex: true,
     };
   }
@@ -169,13 +141,6 @@ export function getDashboardSeoForPathname(pathname: string): SeoPageMeta {
     return {
       title: 'Team | One Assess',
       description: 'Coach roster and team metrics.',
-      noindex: true,
-    };
-  }
-  if (pathname.startsWith(ROUTES.DASHBOARD_ARTIFACTS)) {
-    return {
-      title: 'Artifacts | One Assess',
-      description: 'Public report, client ARC™ (roadmap), and milestone links for clients and social posts.',
       noindex: true,
     };
   }

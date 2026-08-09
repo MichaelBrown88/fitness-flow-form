@@ -25,9 +25,10 @@ export const phaseP5: PhaseDefinition = {
       id: 'strength-endurance',
       title: SECTION_TITLES.P5['strength-endurance'],
       fields: [
-        { id: 'squatsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P5.squatsOneMinuteReps, placeholder: ASSESSMENT_PLACEHOLDERS.P5.squatsOneMinuteReps, tooltip: ASSESSMENT_TOOLTIPS.P5.squatsOneMinuteReps },
-        { id: 'pushupsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P5.pushupsOneMinuteReps, placeholder: ASSESSMENT_PLACEHOLDERS.P5.pushupsOneMinuteReps, tooltip: ASSESSMENT_TOOLTIPS.P5.pushupsOneMinuteReps },
-        { id: 'plankDurationSeconds' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P5.plankDurationSeconds, placeholder: ASSESSMENT_PLACEHOLDERS.P5.plankDurationSeconds, tooltip: ASSESSMENT_TOOLTIPS.P5.plankDurationSeconds },
+        // Bodyweight endurance — one card so the coach records the whole circuit in place
+        { id: 'squatsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P5.squatsOneMinuteReps, pairId: 'strength-endurance', placeholder: ASSESSMENT_PLACEHOLDERS.P5.squatsOneMinuteReps, tooltip: ASSESSMENT_TOOLTIPS.P5.squatsOneMinuteReps },
+        { id: 'pushupsOneMinuteReps' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P5.pushupsOneMinuteReps, pairId: 'strength-endurance', placeholder: ASSESSMENT_PLACEHOLDERS.P5.pushupsOneMinuteReps, tooltip: ASSESSMENT_TOOLTIPS.P5.pushupsOneMinuteReps },
+        { id: 'plankDurationSeconds' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P5.plankDurationSeconds, pairId: 'strength-endurance', placeholder: ASSESSMENT_PLACEHOLDERS.P5.plankDurationSeconds, tooltip: ASSESSMENT_TOOLTIPS.P5.plankDurationSeconds },
         // Grip Strength - Test Method Selection
         { id: 'gripTestMethod' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P5.gripTestMethod, pattern: 'Grip Strength', tooltip: ASSESSMENT_TOOLTIPS.P5.gripTestMethod, options: ASSESSMENT_OPTIONS.gripTestMethod },
         // Grip Strength - Dynamometer

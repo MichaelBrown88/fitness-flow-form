@@ -144,12 +144,15 @@ export function hasReturningSessionPlan(): boolean {
 export function readBaselineFormPatch(): {
   assessmentPlan: AssessmentPlan;
   assessmentIntakeMode: BaselineIntakeMode | null;
+  postureInputMode: 'ai';
 } | null {
   if (!hasActiveBaselineSession()) return null;
   const plan = readBaselineSessionPlan() ?? buildFullBaselinePlan();
   return {
     assessmentPlan: plan,
     assessmentIntakeMode: readBaselineIntakeMode(),
+    // Studio baselines lead with photo capture; manual observation stays as fallback.
+    postureInputMode: 'ai',
   };
 }
 

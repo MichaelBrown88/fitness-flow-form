@@ -72,8 +72,7 @@ export const CONFIG = {
        *   - 'vertex' → VertexAIBackend, requires `aiplatform.googleapis.com`
        *               + `firebasevertexai.googleapis.com`. Matches the backend
        *               every other call in this app already uses (postureAnalysis,
-       *               BodyCompCompanionModal, ocrEngine, whatChangedNarrative,
-       *               coachAssistantWording).
+       *               ocrEngine, whatChangedNarrative).
        *   - 'google' → GoogleAIBackend, requires `generativelanguage.googleapis.com`
        *                + `firebasevertexai.googleapis.com` AND a Firebase-generated
        *                Gemini Developer API key (created by the AI Logic guided setup

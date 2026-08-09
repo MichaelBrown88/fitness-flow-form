@@ -22,7 +22,6 @@ import {
   GitCompare,
   Link2,
   Check,
-  Map,
   UserCog,
   ArrowRightLeft,
   PauseCircle,
@@ -142,13 +141,6 @@ export const ClientActionsDropdown: React.FC<ClientActionsDropdownProps> = ({
             View Full Report
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem
-          onClick={() => navigate(`/coach/clients/${encodedName}/roadmap`)}
-          className="rounded-lg text-xs font-medium px-2 py-2 cursor-pointer focus:bg-muted text-foreground-secondary gap-2"
-        >
-          <Map className="h-3.5 w-3.5 text-muted-foreground" />
-          View ARC™
-        </DropdownMenuItem>
         {latestAssessmentId && (
           <DropdownMenuItem
             onClick={handleCopyReportLink}

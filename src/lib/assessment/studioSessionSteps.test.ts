@@ -17,8 +17,9 @@ const completeIntake = {
 } as FormData;
 
 describe('studioSessionSteps', () => {
-  it('sortStudioPhaseIds orders studio baseline phases', () => {
+  it('sortStudioPhaseIds orders studio baseline phases (fitness first, body comp before review)', () => {
     expect(sortStudioPhaseIds(['P7', 'P3', 'P0', 'P2'])).toEqual(['P0', 'P3', 'P2', 'P7']);
+    expect(sortStudioPhaseIds(['P2', 'P4', 'P5', 'P3'])).toEqual(['P3', 'P5', 'P4', 'P2']);
   });
 
   it('isRemoteIntakeFormComplete requires core intake fields', () => {
@@ -41,7 +42,7 @@ describe('studioSessionSteps', () => {
 
   it('filterPhasesForStudioBaseline keeps P0/P1 for studio walk-in', () => {
     const ids = filterPhasesForStudioBaseline(
-      ['P0', 'P1', 'P3', 'P2', 'P5', 'P4', 'P7'],
+      ['P0', 'P1', 'P2', 'P3', 'P5', 'P4', 'P7'],
       {} as FormData,
       false,
     );
@@ -51,7 +52,7 @@ describe('studioSessionSteps', () => {
 
   it('filterPhasesForStudioBaseline drops P0/P1 when remote intake complete', () => {
     const ids = filterPhasesForStudioBaseline(
-      ['P0', 'P1', 'P3', 'P2', 'P5', 'P4', 'P7'],
+      ['P0', 'P1', 'P2', 'P3', 'P5', 'P4', 'P7'],
       completeIntake,
       true,
     );

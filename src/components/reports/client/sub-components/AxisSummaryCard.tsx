@@ -9,7 +9,7 @@ import type { FormData } from '@/contexts/FormContext';
 import { cn } from '@/lib/utils';
 import { CLIENT_REPORT_COPY } from '@/constants/clientReport';
 import { PillarCardSection } from './PillarCardSection';
-import { ReportPriorityChips, type ReportPriorityItem } from './ReportPriorityChips';
+import type { ReportPriorityItem } from './ReportPriorityChips';
 
 interface AxisSummaryCardProps {
   clientName: string;
@@ -23,20 +23,71 @@ interface AxisSummaryCardProps {
   previousRadarData?: RadarData[];
   priorityStrengths?: ReportPriorityItem[];
   priorityFocusAreas?: ReportPriorityItem[];
-  outlookHeadline?: string;
-  outlookBullets?: string[];
   onPillarSelect?: (sectionId: string) => void;
   orgName?: string;
   coachName?: string;
   assessmentNumber?: number;
   formData?: FormData;
   goalLabels?: string[];
+  /** Goal-led promise sentence — opens the summary so goals come before findings. */
+  goalPromise?: string;
   baselineNarrative?: string;
   clientFacingRadar?: boolean;
   showActions?: boolean;
   onDownloadPdf?: () => void;
   onShare?: () => void;
   onSendToClient?: () => void;
+}
+
+/** "Body Composition: Body fat within healthy range" → "Body fat within healthy range". */
+function stripCategoryPrefix(text: string): string {
+  const idx = text.indexOf(': ');
+  return idx > 0 ? text.slice(idx + 2) : text;
+}
+
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+function joinNaturally(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? '';
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+function ensurePeriod(text: string): string {
+  const trimmed = text.trim();
+  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
+}
+
+/**
+ * Composes the hero into a 3–4 sentence at-a-glance paragraph:
+ * goal-led position → current finding → strengths → focus areas.
+ */
+function buildAtAGlance(
+  goalPromise: string | undefined,
+  narrative: string | undefined,
+  strengths: ReportPriorityItem[],
+  focusAreas: ReportPriorityItem[],
+): string {
+  const sentences: string[] = [];
+  if (goalPromise) sentences.push(ensurePeriod(goalPromise));
+  if (narrative) sentences.push(ensurePeriod(narrative));
+
+  const strengthBits = strengths
+    .slice(0, 2)
+    .map((s) => lowerFirst(stripCategoryPrefix(s.text)));
+  if (strengthBits.length > 0) {
+    sentences.push(`${CLIENT_REPORT_COPY.goingWell}: ${joinNaturally(strengthBits)}.`);
+  }
+
+  const focusBits = focusAreas
+    .slice(0, 2)
+    .map((s) => lowerFirst(stripCategoryPrefix(s.text)));
+  if (focusBits.length > 0) {
+    sentences.push(`${CLIENT_REPORT_COPY.focusNext}: ${joinNaturally(focusBits)}.`);
+  }
+
+  return sentences.join(' ');
 }
 
 export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
@@ -50,10 +101,9 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
   previousRadarData,
   priorityStrengths = [],
   priorityFocusAreas = [],
-  outlookHeadline,
-  outlookBullets = [],
   onPillarSelect,
   goalLabels = [],
+  goalPromise,
   baselineNarrative,
   clientFacingRadar = false,
   showActions = false,
@@ -65,16 +115,17 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
   const scoreDiff = previousOverallScore != null ? overall - previousOverallScore : null;
 
   const firstName = clientName?.trim().split(/\s+/)[0] || 'client';
-  const hasPriorities =
-    priorityStrengths.length > 0 || priorityFocusAreas.length > 0;
-  const hasOutlook = Boolean(outlookHeadline) || outlookBullets.length > 0;
   const hasRadar = radarData.length > 0;
-  const hasLeftContent =
-    Boolean(narrative) || Boolean(scoreHeadline) || hasPriorities || hasOutlook;
+  const atAGlance = buildAtAGlance(
+    goalPromise,
+    narrative,
+    priorityStrengths,
+    priorityFocusAreas,
+  );
 
   return (
     <section className="rounded-2xl bg-card p-6 ring-1 ring-border/60 sm:p-8">
-      <header className="flex flex-col gap-5 border-b border-border/50 pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           {reportDate ? (
             <p className="text-[12px] text-muted-foreground">{reportDate}</p>
@@ -87,6 +138,23 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
               {scoreHeadline}
             </p>
           ) : null}
+          {goalLabels.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                {CLIENT_REPORT_COPY.v2PrimaryGoalPrefix}
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {goalLabels.map((label) => (
+                  <span
+                    key={label}
+                    className="inline-flex rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[11px] font-semibold text-foreground"
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-4 sm:gap-5">
@@ -97,18 +165,6 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
             </p>
             {baselineNarrative ? (
               <p className="text-[12px] leading-relaxed text-muted-foreground">{baselineNarrative}</p>
-            ) : null}
-            {goalLabels.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 pt-0.5">
-                {goalLabels.map((label) => (
-                  <span
-                    key={label}
-                    className="inline-flex rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[10px] font-semibold text-foreground"
-                  >
-                    {label}
-                  </span>
-                ))}
-              </div>
             ) : null}
             {scoreDiff !== null && scoreDiff !== 0 ? (
               <p
@@ -129,73 +185,28 @@ export const AxisSummaryCard: React.FC<AxisSummaryCardProps> = ({
         </div>
       </header>
 
-      <div
-        className={cn(
-          'mt-5 grid gap-4',
-          hasRadar && hasLeftContent && 'lg:grid-cols-2 lg:items-stretch lg:gap-5',
-        )}
-      >
-        {hasLeftContent ? (
-          <div className="flex min-h-0 flex-col justify-center gap-4">
-            {narrative ? (
-              <PillarCardSection title={CLIENT_REPORT_COPY.whereYouAreHeading}>
-                <p className="text-sm leading-relaxed text-foreground-secondary">{narrative}</p>
-              </PillarCardSection>
-            ) : null}
+      {hasRadar ? (
+        <OverallRadarPolygon
+          data={radarData}
+          previousData={previousRadarData}
+          onPillarSelect={onPillarSelect}
+          compact
+          className="mt-2"
+          clientFacingLabels={clientFacingRadar}
+          overallScore={scores.overall}
+        />
+      ) : null}
 
-            {hasPriorities ? (
-              <PillarCardSection title={CLIENT_REPORT_COPY.heroPrioritiesHeading}>
-                <ReportPriorityChips
-                  strengths={priorityStrengths}
-                  focusAreas={priorityFocusAreas}
-                  layout="split"
-                />
-              </PillarCardSection>
-            ) : null}
-
-            {hasOutlook ? (
-              <PillarCardSection title={CLIENT_REPORT_COPY.outlookHeading}>
-                {outlookHeadline ? (
-                  <p className="text-sm leading-relaxed text-foreground-secondary">
-                    {outlookHeadline}
-                  </p>
-                ) : null}
-                {outlookBullets.length > 0 ? (
-                  <ul
-                    className={cn(
-                      'list-disc space-y-1 pl-4 text-sm text-foreground-secondary',
-                      outlookHeadline && 'mt-2',
-                    )}
-                  >
-                    {outlookBullets.map((bullet) => (
-                      <li key={bullet}>{bullet}</li>
-                    ))}
-                  </ul>
-                ) : null}
-              </PillarCardSection>
-            ) : null}
-          </div>
-        ) : null}
-
-        {hasRadar ? (
-          <PillarCardSection
-            title={CLIENT_REPORT_COPY.pillarsOverviewHeading}
-            className={cn(
-              'flex min-h-[260px] flex-col',
-              hasLeftContent && 'lg:min-h-0',
-            )}
-          >
-            <OverallRadarPolygon
-              data={radarData}
-              previousData={previousRadarData}
-              onPillarSelect={onPillarSelect}
-              compact
-              className="flex-1"
-              clientFacingLabels={clientFacingRadar}
-            />
-          </PillarCardSection>
-        ) : null}
-      </div>
+      {atAGlance ? (
+        <PillarCardSection
+          title={CLIENT_REPORT_COPY.heroSummaryHeading}
+          className={hasRadar ? 'mt-2' : 'mt-5'}
+        >
+          <p className="max-w-[78ch] text-sm leading-relaxed text-foreground-secondary">
+            {atAGlance}
+          </p>
+        </PillarCardSection>
+      ) : null}
 
       {showActions ? (
         <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-border/50 pt-5">

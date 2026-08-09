@@ -51,17 +51,9 @@ export function IntakeReviewSummary({
     { label: p0.recentActivity, value: formatIntakeFieldLabel('recentActivity', formData.recentActivity) },
   ];
 
-  if (formData.recentActivity === 'currently-training') {
-    aboutRows.push({
-      label: p0.primaryTrainingStyles,
-      value: formatIntakeFieldLabel('primaryTrainingStyles', formData.primaryTrainingStyles),
-    });
-  }
-
   const lifestyleRows: Row[] = [
     { label: p1.activityLevel, value: formatIntakeFieldLabel('activityLevel', formData.activityLevel) },
     { label: p1.stepsPerDay, value: formatIntakeFieldLabel('stepsPerDay', formData.stepsPerDay) },
-    { label: p1.sedentaryHours, value: formatIntakeFieldLabel('sedentaryHours', formData.sedentaryHours) },
     { label: p1.sleepArchetype, value: formatIntakeFieldLabel('sleepArchetype', formData.sleepArchetype) },
     { label: p1.stressLevel, value: formatIntakeFieldLabel('stressLevel', formData.stressLevel) },
     { label: p1.nutritionHabits, value: formatIntakeFieldLabel('nutritionHabits', formData.nutritionHabits) },

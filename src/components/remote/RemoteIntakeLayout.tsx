@@ -3,7 +3,8 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface RemoteIntakeLayoutProps {
-  children: ReactNode;
+  /** Optional so the loading shell can render with no content. */
+  children?: ReactNode;
   /** Full-viewport shell for the step wizard (no marketing footer). */
   fullBleed?: boolean;
   loading?: boolean;

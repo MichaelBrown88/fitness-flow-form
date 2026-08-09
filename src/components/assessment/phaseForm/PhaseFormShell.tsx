@@ -10,7 +10,7 @@ export interface PhaseFormShellProps {
  */
 export function PhaseFormShell({ sidebar, main }: PhaseFormShellProps) {
   return (
-    <div className="relative flex min-h-[calc(100vh-64px)] flex-col lg:flex-row">
+    <div className="relative flex min-h-[calc(100vh-64px)] flex-col md:flex-row">
       {sidebar}
       {main}
     </div>

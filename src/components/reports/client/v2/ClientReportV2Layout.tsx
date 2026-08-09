@@ -2,6 +2,7 @@ import React from 'react';
 import type { ClientReportModel } from '@/lib/reports/buildClientReportModel';
 import { CLIENT_REPORT_COPY } from '@/constants/clientReport';
 import { ClientReportHero } from './ClientReportHero';
+import { ClientRoadmapSection } from './ClientRoadmapSection';
 import { ClientReportPlan } from './ClientReportPlan';
 import { PostureFilmstrip } from './PostureFilmstrip';
 import { ClientPillarBrief } from './ClientPillarBrief';
@@ -65,9 +66,8 @@ export function ClientReportV2Layout({
           headline={model.headline}
           goalPromise={model.goalPromise}
           welcome={model.welcome}
-          goingWell={model.goingWell}
-          focusNext={model.focusNext}
-          primaryGoalLabel={model.primaryGoalLabel}
+          focusFirst={model.focusFirst}
+          goalLabels={model.goalLabels}
           baselineNarrative={baselineNarrative}
           showActions={showActions}
           onDownloadPdf={onDownloadPdf}
@@ -78,7 +78,7 @@ export function ClientReportV2Layout({
       </div>
 
       <div className={SECTION_MUTED}>
-        <ClientReportPlan steps={model.planSteps} embedded />
+        <ClientReportPlan steps={model.planSteps} selfGuidedHabits={model.selfGuidedHabits} embedded />
       </div>
 
       {model.posture ? (
@@ -87,7 +87,7 @@ export function ClientReportV2Layout({
         </div>
       ) : null}
 
-      <section className={cn(SECTION_MUTED, 'pb-10')}>
+      <section className={SECTION_MUTED}>
         {showPartialAssessmentBanner ? (
           <div className="mb-6 rounded-sm border border-border/80 bg-card/80 px-4 py-3">
             <ClientPartialAssessmentBanner activeSectionIds={activeSectionIds} />
@@ -105,11 +105,17 @@ export function ClientReportV2Layout({
                 index % 2 === 1 && 'bg-muted/12',
               )}
             >
-              <ClientPillarBrief pillar={pillar} />
+              <ClientPillarBrief pillar={pillar} formData={model.formData} />
             </div>
           ))}
         </div>
       </section>
+
+      {model.roadmapCards.length > 0 ? (
+        <div className={cn(SECTION_DEFAULT, 'pb-10')}>
+          <ClientRoadmapSection cards={model.roadmapCards} target={model.roadmapTarget} embedded />
+        </div>
+      ) : null}
 
       <footer className="border-t border-border bg-muted/35 px-6 py-4 text-center sm:px-10">
         <p className="text-[10px] text-muted-foreground">

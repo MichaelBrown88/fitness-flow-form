@@ -1,5 +1,6 @@
 import React from 'react';
-import { CHART_HEX, CHART_PILLAR_COLOR_ORDER } from '@/lib/design/chartColors';
+import { CHART_HEX } from '@/lib/design/chartColors';
+import { scoreGrade, type ScoreGrade } from '@/lib/scoring/scoreColor';
 import { CLIENT_PILLAR_LABELS, SCORING_ID_TO_SECTION_ID } from '@/constants/clientReport';
 import { PILLAR_SCORE_ORDER, type RadarData } from '@/lib/reports/radarData';
 import { cn } from '@/lib/utils';
@@ -12,7 +13,15 @@ interface OverallRadarPolygonProps {
   className?: string;
   /** Use short plain-language pillar labels on public client reports. */
   clientFacingLabels?: boolean;
+  /** Overall AXIS score — drives the hull colour. Falls back to the pillar average. */
+  overallScore?: number;
 }
+
+const GRADE_HEX: Record<ScoreGrade, string> = {
+  green: CHART_HEX.scoreGreen,
+  amber: CHART_HEX.scoreAmber,
+  red: CHART_HEX.scoreRed,
+};
 
 function displayPillarLabel(label: string, fullLabel: string | undefined, clientFacing: boolean): string {
   if (!clientFacing) return label;
@@ -40,7 +49,8 @@ function valueAt(data: RadarData[], index: number, previous?: RadarData[]): numb
 }
 
 /**
- * Five-pillar radar with semantic pillar colours on spokes, hull edges, and vertex dots.
+ * Five-pillar radar. Single filled hull tinted by the overall score:
+ * green when strong, amber for room to improve, red when low.
  */
 export default function OverallRadarPolygon({
   data,
@@ -49,9 +59,14 @@ export default function OverallRadarPolygon({
   onPillarSelect,
   className,
   clientFacingLabels = false,
+  overallScore,
 }: OverallRadarPolygonProps) {
   const n = data.length;
   if (n === 0) return null;
+
+  const scoreForColor =
+    overallScore ?? data.reduce((sum, d) => sum + Math.max(0, Math.min(100, d.value)), 0) / n;
+  const hullColor = GRADE_HEX[scoreGrade(scoreForColor)];
 
   const size = compact ? 400 : 480;
   const cx = size / 2;
@@ -109,7 +124,6 @@ export default function OverallRadarPolygon({
         />
 
         {data.map((_, i) => {
-          const color = CHART_PILLAR_COLOR_ORDER[i % CHART_PILLAR_COLOR_ORDER.length];
           const tip = point(cx, cy, baseR, ang(i));
           return (
             <line
@@ -118,9 +132,9 @@ export default function OverallRadarPolygon({
               y1={cy}
               x2={tip.x}
               y2={tip.y}
-              stroke={color}
+              stroke={CHART_HEX.gridLight}
               strokeWidth={0.9}
-              opacity={0.35}
+              opacity={0.7}
             />
           );
         })}
@@ -138,42 +152,24 @@ export default function OverallRadarPolygon({
 
         <polygon
           points={hullPts}
-          fill="hsl(var(--foreground) / 0.05)"
-          stroke="none"
+          fill={hullColor}
+          fillOpacity={0.16}
+          stroke={hullColor}
+          strokeWidth={2}
+          strokeLinejoin="round"
         />
 
-        {vertices.map((v, i) => {
-          const next = vertices[(i + 1) % n];
-          const color = CHART_PILLAR_COLOR_ORDER[i % CHART_PILLAR_COLOR_ORDER.length];
-          return (
-            <line
-              key={`edge-${i}`}
-              x1={v.x}
-              y1={v.y}
-              x2={next.x}
-              y2={next.y}
-              stroke={color}
-              strokeWidth={2.25}
-              strokeLinecap="round"
-              opacity={0.9}
-            />
-          );
-        })}
-
-        {vertices.map((v, i) => {
-          const color = CHART_PILLAR_COLOR_ORDER[i % CHART_PILLAR_COLOR_ORDER.length];
-          return (
-            <circle
-              key={`dot-${i}`}
-              cx={v.x}
-              cy={v.y}
-              r={compact ? 5 : 6}
-              fill={color}
-              stroke="hsl(var(--card))"
-              strokeWidth={2.5}
-            />
-          );
-        })}
+        {vertices.map((v, i) => (
+          <circle
+            key={`dot-${i}`}
+            cx={v.x}
+            cy={v.y}
+            r={compact ? 4.5 : 5.5}
+            fill={hullColor}
+            stroke="hsl(var(--card))"
+            strokeWidth={2.5}
+          />
+        ))}
 
         {vertices.map((v, i) => {
           const prev = previousData?.find((p) => p.name === data[i]?.name);
@@ -198,7 +194,6 @@ export default function OverallRadarPolygon({
         {data.map((d, i) => {
           const a = ang(i);
           const lp = point(cx, cy, labelR, a);
-          const color = CHART_PILLAR_COLOR_ORDER[i % CHART_PILLAR_COLOR_ORDER.length];
           const anchor: 'start' | 'middle' | 'end' =
             lp.x < cx - 8 ? 'end' : lp.x > cx + 8 ? 'start' : 'middle';
           const isAbove = lp.y < cy - 4;
@@ -215,12 +210,12 @@ export default function OverallRadarPolygon({
               fontSize={compact ? 10 : 11}
               fontWeight={700}
               textAnchor={anchor}
-              fill={color}
+              fill="hsl(var(--muted-foreground))"
               className={clickable ? 'cursor-pointer' : undefined}
               onClick={
                 clickable
                   ? () => {
-                      onPillarSelect?.(sectionId);
+                      if (sectionId) onPillarSelect?.(sectionId);
                     }
                   : undefined
               }

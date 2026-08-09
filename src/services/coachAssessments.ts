@@ -113,6 +113,8 @@ export type SaveResult = {
 export type SaveDraftAssessmentOptions = {
   /** Persisted for cross-device resume (see `useAssessmentFirestoreDraftSync`). */
   activePhaseIdx?: number;
+  /** Phase id (e.g. 'P3') — preferred over the positional index on resume so phase reorders stay safe. */
+  activePhaseId?: string;
 };
 
 export async function saveDraftAssessment(
@@ -132,6 +134,9 @@ export async function saveDraftAssessment(
   if (options?.activePhaseIdx !== undefined) {
     payload.activePhaseIdx = options.activePhaseIdx;
   }
+  if (options?.activePhaseId !== undefined) {
+    payload.activePhaseId = options.activePhaseId;
+  }
   await setDoc(draftRef, payload);
 }
 
@@ -145,6 +150,7 @@ export async function getDraftAssessment(
   formData: FormData;
   updatedAt: Timestamp | null;
   activePhaseIdx: number | null;
+  activePhaseId: string | null;
 } | null> {
   const slug = generateClientSlug(clientName);
   const draftRef = doc(getDb(), ORGANIZATION.clients.draft(organizationId, slug));
@@ -154,10 +160,14 @@ export async function getDraftAssessment(
   const rawPhase = data?.activePhaseIdx;
   const activePhaseIdx =
     typeof rawPhase === 'number' && Number.isFinite(rawPhase) ? rawPhase : null;
+  const rawPhaseId = data?.activePhaseId;
+  const activePhaseId =
+    typeof rawPhaseId === 'string' && rawPhaseId.trim() ? rawPhaseId : null;
   return {
     formData: (data?.formData ?? {}) as FormData,
     updatedAt: (data?.updatedAt as Timestamp) ?? null,
     activePhaseIdx,
+    activePhaseId,
   };
 }
 
@@ -255,7 +265,7 @@ export async function saveCoachAssessment(
     if (legacyRefToDelete) await deleteDoc(legacyRefToDelete);
 
     // Auto-regenerate coach notes from this fresh assessment.
-    void fireCoachNotesRegeneration(validOrgId, slug, formData, scoresSummary);
+    void fireCoachNotesRegeneration(validOrgId, slug, formData);
 
     // Public report sync is handled by Cloud Function trigger on current/state writes.
     // ShareToken is read from the existing slug doc if one was previously shared.

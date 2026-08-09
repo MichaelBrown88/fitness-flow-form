@@ -6,37 +6,23 @@
 import { useState, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { processBodyCompScan } from '@/lib/ai/ocrEngine';
-import { compressImageForDisplay } from '@/lib/utils/imageCompression';
 import type { FormData } from '@/contexts/FormContext';
 import type { PostureCompanionData } from '@/lib/types/companion';
 import { logger } from '@/lib/utils/logger';
 
 interface UseCameraHandlerProps {
-  formData: FormData;
   updateFormData: (updates: Partial<FormData>) => void;
-  activePhaseId: string;
-  activePhaseIdx: number;
-  visiblePhases: Array<{ id: string }>;
-  isPartialAssessment: boolean;
   organizationId?: string;
-  onPhaseChange?: (idx: number) => void;
 }
 
 export function useCameraHandler({
-  formData,
   updateFormData,
-  activePhaseId,
-  activePhaseIdx,
-  visiblePhases,
-  isPartialAssessment,
   organizationId,
-  onPhaseChange,
 }: UseCameraHandlerProps) {
   const { toast } = useToast();
   // Camera state
   const [showCamera, setShowCamera] = useState<false | 'ocr'>(false);
   const [showPostureCompanion, setShowPostureCompanion] = useState(false);
-  const [showBodyCompCompanion, setShowBodyCompCompanion] = useState(false);
   const [ocrReviewData, setOcrReviewData] = useState<Partial<FormData> | null>(null);
   const [isProcessingOcr, setIsProcessingOcr] = useState(false);
   const [processingMode, setProcessingMode] = useState<'ocr' | 'posture' | null>(null);
@@ -48,9 +34,9 @@ export function useCameraHandler({
       setShowCamera(false);
       setProcessingMode('ocr');
       setIsProcessingOcr(true);
-      
-      toast({ 
-        title: "Image Captured", 
+
+      toast({
+        title: "Image Captured",
         description: "Reading the numbers from your report...",
       });
 
@@ -60,17 +46,26 @@ export function useCameraHandler({
           setOcrReviewData(result.fields);
         } else {
           toast({
-            title: "Scan failed",
-            description: "AI couldn't find data. Please try again with a clearer photo.",
+            title: "Couldn't read the report",
+            description: "Retake the photo with the numbers sharp and glare-free, or type the values into the fields below.",
             variant: "destructive"
           });
         }
       } catch (err) {
         logger.error('OCR error:', err);
+        // Config gates get their own copy so a platform flag or empty credit
+        // balance never masquerades as a broken scanner.
         const isCredit = err instanceof Error && err.name === 'AICreditExhaustedError';
+        const isDisabled = err instanceof Error && err.name === 'FeatureDisabledError';
         toast({
-          title: isCredit ? "No AI credits remaining" : "Scan failed",
-          description: isCredit ? err.message : "An error occurred during AI analysis.",
+          title: isCredit
+            ? "No AI credits remaining"
+            : isDisabled
+              ? "Photo import is switched off"
+              : "Couldn't read the report",
+          description: isCredit || isDisabled
+            ? err.message
+            : "Retake the photo, or type the values into the fields below.",
           variant: "destructive",
         });
       } finally {
@@ -80,38 +75,21 @@ export function useCameraHandler({
     }
   }, [showCamera, organizationId, toast]);
 
+  // Apply reviewed values and stay on the current step — the coach confirms
+  // any remaining fields and advances manually (no auto phase jump).
   const applyOcrData = useCallback(() => {
     if (ocrReviewData) {
       // Set flag to show analyzer fields after OCR data is applied
       updateFormData({ ...ocrReviewData, showAnalyzerFields: 'yes' });
       setOcrReviewData(null);
-      toast({ title: "Body composition data applied", description: "All fields have been populated." });
-      
-      if (activePhaseId === 'P2') {
-        setTimeout(() => {
-          if (isPartialAssessment) {
-            toast({ title: "Data applied", description: "You can now review the fields and click Update Report when ready." });
-          } else {
-            const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
-            if (nextVisibleIdx !== -1 && onPhaseChange) {
-              onPhaseChange(nextVisibleIdx);
-            }
-          }
-        }, 800);
-      }
+      toast({ title: "Body composition data applied", description: "Check the remaining fields, then continue when ready." });
     }
-  }, [ocrReviewData, updateFormData, activePhaseId, activePhaseIdx, visiblePhases, isPartialAssessment, onPhaseChange, toast]);
+  }, [ocrReviewData, updateFormData, toast]);
 
   const handlePostureCompanionComplete = useCallback((data: PostureCompanionData) => {
     updateFormData(data);
     toast({ title: "Posture data applied", description: "Analysis has been populated." });
   }, [updateFormData, toast]);
-
-  const handleBodyCompCompanionComplete = useCallback((data: Partial<FormData>) => {
-    // Store data for review - applyOcrData will set the flag when applied
-    setOcrReviewData(data);
-    toast({ title: "Body composition data received", description: "Review and apply the extracted data." });
-  }, [toast]);
 
   return {
     // State
@@ -119,8 +97,6 @@ export function useCameraHandler({
     setShowCamera,
     showPostureCompanion,
     setShowPostureCompanion,
-    showBodyCompCompanion,
-    setShowBodyCompCompanion,
     ocrReviewData,
     setOcrReviewData,
     isProcessingOcr,
@@ -131,7 +107,5 @@ export function useCameraHandler({
     handleCapture,
     applyOcrData,
     handlePostureCompanionComplete,
-    handleBodyCompCompanionComplete,
   };
 }
-

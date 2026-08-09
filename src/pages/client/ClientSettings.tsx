@@ -4,13 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { UserCheck, Mail, Phone, Cake, CalendarClock } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { RetestScheduleCard } from '@/components/RetestScheduleCard';
 import type { ClientDetailOutletContext } from './ClientDetailLayout';
 
 export default function ClientSettings() {
   const ctx = useOutletContext<ClientDetailOutletContext>();
-  const { profile: authProfile, orgSettings } = useAuth();
   const {
     clientName,
     displayClientName,
@@ -111,18 +108,6 @@ export default function ClientSettings() {
           Save Profile
         </Button>
       </section>
-
-      {authProfile?.organizationId && (
-        <section>
-          <RetestScheduleCard
-            profile={profile}
-            clientName={clientName}
-            organizationId={authProfile.organizationId}
-            orgDefaultIntervals={orgSettings?.defaultCadence?.intervals}
-            orgDefaultActivePillars={orgSettings?.defaultCadence?.activePillars}
-          />
-        </section>
-      )}
     </div>
   );
 }

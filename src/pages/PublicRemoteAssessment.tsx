@@ -54,7 +54,6 @@ function lifestyleToFields(lifestyle: LifestyleRemoteState, allowed: Set<string>
     ['nutritionHabits', lifestyle.nutritionHabits],
     ['hydrationHabits', lifestyle.hydrationHabits],
     ['stepsPerDay', lifestyle.stepsPerDay.trim()],
-    ['sedentaryHours', lifestyle.sedentaryHours.trim()],
     ['caffeineCupsPerDay', lifestyle.caffeineCupsPerDay.trim()],
     ['alcoholFrequency', lifestyle.alcoholFrequency],
     ['medicationsFlag', lifestyle.medicationsFlag],
@@ -192,9 +191,6 @@ export default function PublicRemoteAssessment() {
     if (currentScreen.kind === 'dateOfBirth') {
       return ASSESSMENT_COPY.REMOTE_INTAKE_DOB_TITLE;
     }
-    if (currentScreen.kind === 'goalDeadline') {
-      return ASSESSMENT_COPY.REMOTE_INTAKE_GOAL_DEADLINE_TITLE;
-    }
     if (currentScreen.kind === 'posture') {
       return ASSESSMENT_COPY.REMOTE_INTAKE_POSTURE_TITLE;
     }
@@ -207,9 +203,6 @@ export default function PublicRemoteAssessment() {
       return currentScreen.readOnly
         ? 'We already have this from your coach — tap Next to confirm.'
         : ASSESSMENT_COPY.REMOTE_INTAKE_DOB_HINT;
-    }
-    if (currentScreen.kind === 'goalDeadline') {
-      return ASSESSMENT_COPY.REMOTE_INTAKE_GOAL_DEADLINE_HINT;
     }
     if (currentScreen.kind === 'posture') {
       if (postureCapturedCount > 0) {
@@ -238,9 +231,6 @@ export default function PublicRemoteAssessment() {
       }
       if (goals.trainingFrequency.trim()) {
         fields.trainingFrequency = goals.trainingFrequency.trim();
-      }
-      if (goals.goalDeadline.trim()) {
-        fields.goalDeadline = goals.goalDeadline.trim();
       }
       for (const k of Object.keys(fields)) {
         if (!fields[k]) delete fields[k];
@@ -440,15 +430,6 @@ export default function PublicRemoteAssessment() {
             value={goals.trainingFrequency}
             onChange={(v) => setGoals((prev) => ({ ...prev, trainingFrequency: v }))}
             options={currentScreen.options}
-          />
-        );
-      case 'goalDeadline':
-        return (
-          <RemoteMobileDateWheelPicker
-            compact
-            variant="goalDeadline"
-            value={goals.goalDeadline}
-            onChange={(iso) => setGoals((prev) => ({ ...prev, goalDeadline: iso }))}
           />
         );
       case 'posture':

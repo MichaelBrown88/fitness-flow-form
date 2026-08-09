@@ -292,11 +292,23 @@ export interface PlatformMaintenanceSettings {
   is_maintenance_mode?: boolean;
 }
 
+/** Dismissible product announcement shown via FeatureAnnouncementBanner. */
+export interface PlatformAnnouncement {
+  /** Unique id — dismissals are tracked per-id in localStorage */
+  id: string;
+  message: string;
+  active: boolean;
+  ctaLabel?: string;
+  ctaHref?: string;
+}
+
 export interface PlatformConfig {
   /** Feature kill switches - disable AI features globally */
   features: PlatformFeatureFlags;
   /** Maintenance mode settings */
   maintenance: PlatformMaintenanceSettings;
+  /** Optional product announcement banner */
+  announcement?: PlatformAnnouncement;
   /** Last updated timestamp */
   updatedAt: Date;
   /** UID of the platform admin who made the change */

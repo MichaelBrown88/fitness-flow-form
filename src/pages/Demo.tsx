@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Navbar, Footer } from '@/components/landing';
-import { DEMO_SCORES, DEMO_GOALS, DEMO_PLAN, DEMO_FORM_DATA } from '@/constants/demoData';
+import { DEMO_SCORES, DEMO_FORM_DATA } from '@/constants/demoData';
 import { Seo } from '@/components/seo/Seo';
 import { ROUTES } from '@/constants/routes';
 import { requireSeoForPath } from '@/constants/seo';
@@ -67,7 +67,7 @@ export default function Demo() {
           >
             <ClientReport
               scores={DEMO_SCORES}
-              goals={DEMO_GOALS}
+              goals={DEMO_FORM_DATA.clientGoals as string[]}
               formData={DEMO_FORM_DATA as unknown as FormData}
               bodyComp={{ timeframeWeeks: '8-12' }}
               standalone={false}

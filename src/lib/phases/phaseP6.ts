@@ -34,25 +34,15 @@ export const phaseP6: PhaseDefinition = {
           options: ASSESSMENT_OPTIONS.clientGoals,
         },
         {
-          id: 'goalDeadline' as keyof FormData,
-          type: 'date' as FieldType,
-          label: ASSESSMENT_LABELS.P6.goalDeadline,
-          tooltip: ASSESSMENT_TOOLTIPS.P6.goalDeadline,
-        },
-        {
           id: 'trainingFrequency' as keyof FormData,
           type: 'select' as FieldType,
           label: ASSESSMENT_LABELS.P6.trainingFrequency,
           tooltip: ASSESSMENT_TOOLTIPS.P6.trainingFrequency,
           options: ASSESSMENT_OPTIONS.trainingFrequency,
         },
-        {
-          id: 'trainingExperience' as keyof FormData,
-          type: 'select' as FieldType,
-          label: ASSESSMENT_LABELS.P6.trainingExperience,
-          tooltip: ASSESSMENT_TOOLTIPS.P6.trainingExperience,
-          options: ASSESSMENT_OPTIONS.trainingExperience,
-        },
+        // trainingExperience removed — duplicated the required P0 trainingHistory
+        // question (same beginner/intermediate/advanced tiers); parseExperience
+        // falls back to trainingHistory automatically.
       ],
     },
   ],

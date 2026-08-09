@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { CameraCapture } from '@/components/camera/CameraCapture';
 import { CameraCaptureErrorBoundary } from '@/components/camera/CameraCaptureErrorBoundary';
 import { PostureCompanionModal } from '@/components/camera/PostureCompanionModal';
-import { BodyCompCompanionModal } from '@/components/camera/BodyCompCompanionModal';
 import { OcrReviewDialog } from './OcrReviewDialog';
 import { Loader2, AlertTriangle, RefreshCw, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,10 +35,6 @@ interface AssessmentModalsProps {
   setShowPostureCompanion: (show: boolean) => void;
   handlePostureCompanionComplete: (data: PostureCompanionData) => void;
   
-  showBodyCompCompanion: boolean;
-  setShowBodyCompCompanion: (show: boolean) => void;
-  handleBodyCompCompanionComplete: (data: Partial<FormData>) => void;
-  
   isProcessingOcr: boolean;
   processingMode: 'ocr' | 'posture' | null;
   postureRetakeWarning: string | null;
@@ -57,9 +52,6 @@ export const AssessmentModals = ({
   showPostureCompanion,
   setShowPostureCompanion,
   handlePostureCompanionComplete,
-  showBodyCompCompanion,
-  setShowBodyCompCompanion,
-  handleBodyCompCompanionComplete,
   isProcessingOcr,
   processingMode,
   postureRetakeWarning,
@@ -100,16 +92,6 @@ export const AssessmentModals = ({
         isOpen={showPostureCompanion}
         onClose={() => setShowPostureCompanion(false)}
         onComplete={handlePostureCompanionComplete}
-      />
-
-      {/* Body Comp Companion Modal */}
-      <BodyCompCompanionModal 
-        isOpen={showBodyCompCompanion}
-        onClose={() => setShowBodyCompCompanion(false)}
-        onStartDirectScan={() => {
-          setShowCamera('ocr');
-        }}
-        onComplete={handleBodyCompCompanionComplete}
       />
 
       {/* AI Processing Overlay */}

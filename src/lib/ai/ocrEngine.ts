@@ -309,6 +309,11 @@ export async function processBodyCompScan(imageSrc: string, organizationId?: str
     return { fields: geminiResult.fields, rawText: geminiResult.rawText, confidence: geminiResult.confidence, provider: geminiResult.provider };
     
   } catch (err: unknown) {
+    // Config gates must surface to the coach as-is — a swallowed credit error
+    // otherwise looks identical to a bad photo ("scan failed").
+    if (err instanceof AICreditExhaustedError || err instanceof FeatureDisabledError) {
+      throw err;
+    }
     logger.error('[OCR] Gemini failed:', 'OCR', err);
     await logAIUsage(coachUid, 'ocr_body_comp', 'error', 'gemini');
     return { fields: {}, rawText: '', confidence: 0, provider: 'gemini' };

@@ -22,7 +22,7 @@ export function useDashboardData() {
   const navigate = useNavigate();
 
   const [search, setSearch] = useState('');
-  const [view, setView] = useState<DashboardView>('assistant');
+  const [view, setView] = useState<DashboardView>('work');
 
   // Derive scope: non-coaching admins see all org data; everyone else sees own
   const isAdmin = profile?.role === 'org_admin';

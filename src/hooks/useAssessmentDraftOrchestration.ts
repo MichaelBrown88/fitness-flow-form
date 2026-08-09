@@ -20,8 +20,12 @@ export function useAssessmentDraftOrchestration(params: {
   isPartialAssessment: boolean;
   isResultsPhase: boolean;
   activePhaseIdx: number;
+  /** Active phase id — persisted with the draft so resume is order-change safe. */
+  activePhaseId?: string;
   updateFormData: (data: Partial<FormData>) => void;
   setActivePhaseIdx: (idx: number | ((prev: number) => number)) => void;
+  /** Maps a persisted phase id to its current index for id-preferred resume. */
+  resolvePhaseIdxById?: (phaseId: string) => number | null;
 }): ReturnType<typeof usePhaseFormDraftRecovery> {
   const {
     user,
@@ -32,11 +36,13 @@ export function useAssessmentDraftOrchestration(params: {
     isPartialAssessment,
     isResultsPhase,
     activePhaseIdx,
+    activePhaseId,
     updateFormData,
     setActivePhaseIdx,
+    resolvePhaseIdxById,
   } = params;
 
-  useAssessmentFirestoreDraftSync(formData, isResultsPhase, organizationId, activePhaseIdx);
+  useAssessmentFirestoreDraftSync(formData, isResultsPhase, organizationId, activePhaseIdx, activePhaseId);
   useAssessmentDraft(formData, isResultsPhase);
 
   const draftRecoveryActive = !isAssessmentSetupConfirmedInSession();
@@ -49,6 +55,7 @@ export function useAssessmentDraftOrchestration(params: {
     isPartialAssessment,
     updateFormData,
     setActivePhaseIdx,
+    resolvePhaseIdxById,
     draftRecoveryActive,
   });
 }

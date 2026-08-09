@@ -6,7 +6,10 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import type { PhaseSection } from '@/lib/phaseConfig';
 import { useAssessmentNavigation } from '@/hooks/useAssessmentNavigation';
-import { writeAssessmentPhaseIndex } from '@/lib/assessment/assessmentSessionStorage';
+import {
+  writeAssessmentPhaseId,
+  writeAssessmentPhaseIndex,
+} from '@/lib/assessment/assessmentSessionStorage';
 import type { FormData } from '@/contexts/FormContext';
 import type { OrgSettings } from '@/services/organizations';
 
@@ -44,10 +47,12 @@ export function useAssessmentFlow({ formData, orgSettings }: UseAssessmentFlowPr
       setActivePhaseIdx((prev) => {
         const next = typeof value === 'function' ? value(prev) : value;
         writeAssessmentPhaseIndex(next);
+        const phaseId = visiblePhases[next]?.id;
+        if (phaseId) writeAssessmentPhaseId(phaseId);
         return next;
       });
     },
-    [setActivePhaseIdx],
+    [setActivePhaseIdx, visiblePhases],
   );
 
   const toggleSection = useCallback(

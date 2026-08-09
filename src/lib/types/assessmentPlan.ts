@@ -3,14 +3,14 @@ import type { PhaseId } from '@/lib/phases/types';
 /** All coach-assessment phases in default full-assessment order (goals on P1 / pre-assessment). */
 export const DEFAULT_FULL_PHASE_IDS: PhaseId[] = ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P7'];
 
-/** Studio baseline included phases (no P6). */
+/** Studio baseline included phases (no P6). Fitness first for a true seated resting HR. */
 export const STUDIO_BASELINE_INCLUDED_PHASE_IDS: PhaseId[] = [
   'P0',
   'P1',
   'P3',
-  'P2',
   'P5',
   'P4',
+  'P2',
   'P7',
 ];
 

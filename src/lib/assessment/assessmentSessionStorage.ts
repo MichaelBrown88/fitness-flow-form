@@ -295,6 +295,34 @@ export function writeAssessmentPhaseIndex(idx: number): void {
   safeSetItem(STORAGE_KEYS.ASSESSMENT_PHASE, String(idx));
 }
 
+/**
+ * Persist the active phase id (e.g. 'P3') alongside the positional index.
+ * Resume prefers the id — a positional index silently lands on the wrong
+ * phase when the studio phase order changes between sessions.
+ */
+export function writeAssessmentPhaseId(id: string): void {
+  safeSetItem(STORAGE_KEYS.ASSESSMENT_PHASE_ID, id);
+}
+
+export function readSavedAssessmentPhaseId(): string | null {
+  try {
+    const saved = sessionStorage.getItem(STORAGE_KEYS.ASSESSMENT_PHASE_ID);
+    return saved && saved.trim() ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clear the saved phase index (and id) so a fresh assessment always starts at
+ * phase 0. Without this, a finished session leaves the results-phase index
+ * behind and a new client can open directly onto an empty report.
+ */
+export function removeAssessmentPhaseIndex(): void {
+  safeRemoveItem(STORAGE_KEYS.ASSESSMENT_PHASE);
+  safeRemoveItem(STORAGE_KEYS.ASSESSMENT_PHASE_ID);
+}
+
 // --- Session draft (DRAFT_ASSESSMENT) ---
 
 export function readDraftAssessmentRaw(): string | null {
@@ -345,12 +373,13 @@ export function removeIsDemoFlag(): void {
 
 // --- Composite helpers ---
 
-/** Form `resetForm` + similar: partial, prefill, edit, draft only. */
+/** Form `resetForm` + similar: partial, prefill, edit, draft, and saved phase index. */
 export function clearPartialPrefillEditDraft(): void {
   removePartialAssessment();
   removePrefillClient();
   removeEditAssessment();
   removeDraftAssessment();
+  removeAssessmentPhaseIndex();
 }
 
 /**
@@ -363,14 +392,16 @@ export function clearAssessmentEntryBleedKeys(): void {
   removeEditAssessment();
   removeAssessmentSetupConfirmed();
   removeDraftAssessment();
+  removeAssessmentPhaseIndex();
   clearBaselineSessionFlags();
 }
 
-/** Client-detail "new assessment": clears demo/prefill/edit without wiping draft or setup flag. */
+/** Client-detail "new assessment": clears demo/prefill/edit/phase without wiping draft or setup flag. */
 export function clearClientNavAssessmentBleedKeys(): void {
   removeIsDemoFlag();
   removePrefillClient();
   removeEditAssessment();
+  removeAssessmentPhaseIndex();
 }
 
 export interface BaselineAssessmentPrefill {

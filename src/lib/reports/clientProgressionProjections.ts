@@ -235,7 +235,8 @@ export function buildCardioProgressionRows(
   const rec12 = recTarget;
 
   return [
-    row(metricLabel('vo2'), vo2Current, vo2.at4, vo2.at12, 'ml/kg/min', 1),
+    // No lab units client-side — "Fitness level" plain framing carries the number.
+    row(metricLabel('vo2'), vo2Current, vo2.at4, vo2.at12, '', 1),
     row(metricLabel('rhr'), rhrCurrent, rhr4, rhr12, 'bpm', 0),
     row(metricLabel('hrr'), recCurrent, rec4, rec12, 'bpm', 0),
   ].filter((r): r is ClientReportProgressionRow => r != null);

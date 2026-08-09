@@ -17,7 +17,6 @@ export type LifestyleRemoteState = {
   nutritionHabits: string;
   hydrationHabits: string;
   stepsPerDay: string;
-  sedentaryHours: string;
   caffeineCupsPerDay: string;
   alcoholFrequency: string;
   medicationsFlag: string;
@@ -31,7 +30,6 @@ export const INITIAL_LIFESTYLE_REMOTE: LifestyleRemoteState = {
   nutritionHabits: '',
   hydrationHabits: '',
   stepsPerDay: '',
-  sedentaryHours: '',
   caffeineCupsPerDay: '',
   alcoholFrequency: '',
   medicationsFlag: '',
@@ -147,18 +145,6 @@ export function PublicRemoteLifestyleFields({
             value={value.stepsPerDay}
             onChange={(e) => patch({ stepsPerDay: e.target.value })}
             placeholder="e.g. 8000"
-          />
-        </div>
-      ) : null}
-      {allowedKeys.has('sedentaryHours') ? (
-        <div className="space-y-2">
-          <Label>{P1_LABELS.sedentaryHours}</Label>
-          <input
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            inputMode="numeric"
-            value={value.sedentaryHours}
-            onChange={(e) => patch({ sedentaryHours: e.target.value })}
-            placeholder="e.g. 8"
           />
         </div>
       ) : null}

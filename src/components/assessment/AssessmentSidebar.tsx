@@ -102,10 +102,10 @@ export const AssessmentSidebar = ({
 
   return (
     <>
-      {/* Desktop sidebar — compact progress bar layout */}
-      <aside className={`w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-border bg-background p-5 shrink-0 lg:sticky top-[64px] z-30 overflow-y-auto max-h-[calc(100vh-64px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden lg:block'}`}>
+      {/* Desktop/tablet sidebar — compact progress bar layout (md so the phase rail shows on iPad) */}
+      <aside className={`w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-background p-5 shrink-0 md:sticky top-[64px] z-30 overflow-y-auto max-h-[calc(100vh-64px)] ${sidebarOpen ? 'block fixed inset-0 z-50 pt-20' : 'hidden md:block'}`}>
         {/* Mobile close button */}
-        <div className="flex items-center justify-between lg:hidden mb-4">
+        <div className="flex items-center justify-between md:hidden mb-4">
           <h3 className="text-lg font-bold text-foreground">Navigation</h3>
           <Button variant="ghost" size="icon" onClick={() => setSidebarOpen(false)} className="h-9 w-9 rounded-full bg-muted">
             <X className="h-4 w-4 text-foreground-secondary" />
@@ -271,7 +271,7 @@ const MobilePhaseStrip: React.FC<MobilePhaseStripProps> = ({
   const activePhase = visiblePhases[activePhaseIdx];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-background border-t border-border safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background border-t border-border safe-area-bottom">
       {/* Progress bar at top */}
       <div className="h-1 bg-muted">
         <div

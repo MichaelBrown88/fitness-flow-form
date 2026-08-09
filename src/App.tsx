@@ -24,27 +24,19 @@ const Login = lazy(() => import("./pages/Login"));
 const SignOut = lazy(() => import("./pages/SignOut"));
 const DashboardLayout = lazy(() => import("./pages/dashboard/DashboardLayout"));
 const DashboardClients = lazy(() => import("./pages/dashboard/DashboardClients"));
-// DashboardAssistant route now redirects to /dashboard (floating panel) — lazy import removed
-const DashboardWork = lazy(() => import("./pages/dashboard/DashboardWork"));
-const DashboardArtifacts = lazy(() => import("./pages/dashboard/DashboardArtifacts"));
-const DashboardSchedule = lazy(() => import("./pages/dashboard/DashboardSchedule"));
-const DashboardCalendar = lazy(() => import("./pages/dashboard/DashboardCalendar"));
 const DashboardTeam = lazy(() => import("./pages/dashboard/DashboardTeam"));
 const AssessmentReport = lazy(() => import("./pages/AssessmentReport"));
 const PublicReportViewer = lazy(() => import("./pages/PublicReportViewer"));
 const ClientPortalEntry = lazy(() => import("./pages/ClientPortalEntry"));
 const Settings = lazy(() => import("./pages/Settings"));
-const Achievements = lazy(() => import("./pages/Achievements"));
 const Companion = lazy(() => import("./pages/Companion"));
 const ClientDetail = lazy(() => import("./pages/ClientDetail"));
 const ClientDetailLayout = lazy(() => import("./pages/client/ClientDetailLayout"));
 const ClientTimelineTab = lazy(() => import("./pages/client/ClientTimelineTab"));
 const ClientOverview = lazy(() => import("./pages/client/ClientOverview"));
 const ClientHistory = lazy(() => import("./pages/client/ClientHistory"));
-const ClientRoadmapTab = lazy(() => import("./pages/client/ClientRoadmapTab"));
 const ClientReportTab = lazy(() => import("./pages/client/ClientReportTab"));
 const ClientCoachNotesTab = lazy(() => import("./pages/client/ClientCoachNotesTab"));
-const ClientAchievementsTab = lazy(() => import("./pages/client/ClientAchievementsTab"));
 const ClientSettings = lazy(() => import("./pages/client/ClientSettings"));
 const OrgAdminLayout = lazy(() => import("./pages/org/OrgAdminLayout"));
 const OrgOverview = lazy(() => import("./pages/org/OrgOverview"));
@@ -52,19 +44,14 @@ const OrgTeam = lazy(() => import("./pages/org/OrgTeam"));
 const OrgRetention = lazy(() => import("./pages/org/OrgRetention"));
 // OrgBilling route now redirects to /billing — lazy import removed
 const OrgIntegrations = lazy(() => import("./pages/org/OrgIntegrations"));
-const AssessmentComparison = lazy(() => import("./pages/AssessmentComparison"));
 const Billing = lazy(() => import("./pages/Billing"));
 const BillingSuccess = lazy(() => import("./pages/BillingSuccess"));
 const Subscribe = lazy(() => import("./pages/Subscribe"));
-const ClientRoadmap = lazy(() => import("./pages/ClientRoadmap"));
-const PublicRoadmapViewer = lazy(() => import("./pages/PublicRoadmapViewer"));
-const PublicLifestyleCheckin = lazy(() => import("./pages/PublicLifestyleCheckin"));
 const PublicRemoteAssessment = lazy(() => import("./pages/PublicRemoteAssessment"));
 const RemoteIntakeEntry = lazy(() => import("./pages/RemoteIntakeEntry"));
 
 const RequestErasure = lazy(() => import("./pages/RequestErasure"));
 const SandboxTrial = lazy(() => import("./pages/SandboxTrial"));
-const ShareCardPage = lazy(() => import("./pages/share/ShareCardPage"));
 
 // Platform admin pages (separate from org admin)
 const PlatformLogin = lazy(() => import("./pages/admin/PlatformLogin"));
@@ -213,19 +200,6 @@ const App = () => (
                       path="/r/:token"
                       element={<RouteErrorBoundary title="Report unavailable" body="This report couldn't be loaded. The link may be invalid or expired." homeTo="/"><PublicReportViewer /></RouteErrorBoundary>}
                     />
-                    <Route
-                      path="/r/:token/roadmap"
-                      element={<RouteErrorBoundary title="ARC™ unavailable" body="This ARC™ couldn't be loaded. The link may be invalid or expired." homeTo="/"><PublicRoadmapViewer /></RouteErrorBoundary>}
-                    />
-                    {/* Token-scoped achievements (no auth required) */}
-                    <Route
-                      path="/r/:token/achievements"
-                      element={<Achievements />}
-                    />
-                    <Route
-                      path="/r/:token/lifestyle"
-                      element={<PublicLifestyleCheckin />}
-                    />
                     <Route path="/remote" element={<RemoteIntakeEntry />} />
                     <Route path="/remote/:token" element={<PublicRemoteAssessment />} />
                     <Route
@@ -233,38 +207,26 @@ const App = () => (
                       element={<RequestErasure />}
                     />
 
-                    {/* Pillar score share cards — no app chrome, social media dimensions */}
+                    {/* Legacy share routes — feature removed */}
                     <Route
-                      path="/share/:token/:pillar/:format"
-                      element={<ShareCardPage />}
-                    />
-
-                    {/* Legacy share route redirects to token-based URL */}
-                    <Route
-                      path="/share/:coachUid/:assessmentId"
+                      path="/share/*"
                       element={<Navigate to="/" replace />}
                     />
                     {/* Protected routes (auth required) */}
                     <Route path="/dashboard" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
-                      <Route index element={<DashboardWork />} />
+                      <Route index element={<Navigate to="clients" replace />} />
                       <Route path="clients" element={<DashboardClients />} />
                       <Route path="clients/:clientName" element={<ClientDetailLayout />}>
                         <Route index element={<ClientOverview />} />
                         <Route path="overview" element={<Navigate to="." replace />} />
                         <Route path="report" element={<ClientReportTab />} />
-                        <Route path="roadmap" element={<ClientRoadmapTab />} />
                         <Route path="coach-notes" element={<Navigate to="../timeline#notes" replace />} />
-                        <Route path="achievements" element={<ClientAchievementsTab />} />
                         <Route path="coaches-report" element={<Navigate to=".." replace />} />
                         <Route path="history" element={<Navigate to="../timeline" replace />} />
                         <Route path="timeline" element={<ClientTimelineTab />} />
                         <Route path="settings" element={<ClientSettings />} />
                       </Route>
-                      <Route path="assistant" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
-                      <Route path="work" element={<DashboardWork />} />
-                      <Route path="artifacts" element={<DashboardArtifacts />} />
-                      <Route path="schedule" element={<DashboardSchedule />} />
-                      <Route path="calendar" element={<DashboardCalendar />} />
+                      <Route path="work" element={<Navigate to="../clients" replace />} />
                       <Route path="team" element={<DashboardTeam />} />
                       <Route path="settings" element={<Settings />} />
                     </Route>
@@ -311,22 +273,6 @@ const App = () => (
                         </RequireAuth>
                       }
                     />
-                    <Route
-                      path="/achievements"
-                      element={
-                        <RequireAuth>
-                          <Achievements />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route
-                      path="/compare"
-                      element={
-                        <RequireAuth>
-                          <AssessmentComparison />
-                        </RequireAuth>
-                      }
-                    />
                     <Route path="/org/dashboard" element={<RequireAuth><OrgAdminLayout /></RequireAuth>}>
                       <Route index element={<OrgOverview />} />
                       <Route path="team" element={<OrgTeam />} />
@@ -355,14 +301,6 @@ const App = () => (
                       element={
                         <RequireAuth>
                           <Subscribe />
-                        </RequireAuth>
-                      }
-                    />
-                    <Route
-                      path="/coach/clients/:name/roadmap"
-                      element={
-                        <RequireAuth>
-                          <ClientRoadmap />
                         </RequireAuth>
                       }
                     />

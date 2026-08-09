@@ -12,6 +12,7 @@ import { generateBodyCompInterpretation } from '@/lib/recommendations';
 import { Loader2, Share2, MoreVertical, ArrowLeft, Edit2, Plus, Eye, AlertTriangle } from 'lucide-react';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
 import {
+  removeAssessmentPhaseIndex,
   removeEditAssessment,
   removeIsDemoFlag,
   removePartialAssessment,
@@ -66,9 +67,6 @@ const AssessmentReport = () => {
     handleEmailLink,
     handleSystemShare,
     handleWhatsAppShare,
-    handleGenerateSocialShareArtifacts,
-    socialShareArtifacts,
-    socialShareGenerating,
     shareLoading,
   } = useReportShare({
     assessmentId: id,
@@ -120,6 +118,7 @@ const AssessmentReport = () => {
             removeEditAssessment();
             removePrefillClient();
             removeIsDemoFlag();
+            removeAssessmentPhaseIndex();
             navigate(ROUTES.ASSESSMENT);
           }}>New assessment</Button>
         </div>
@@ -357,10 +356,6 @@ const AssessmentReport = () => {
         onEmailLink={handleEmailLink}
         onSystemShare={handleSystemShare}
         onWhatsAppShare={handleWhatsAppShare}
-        assessmentId={id}
-        socialShareGenerating={socialShareGenerating}
-        socialShareArtifacts={socialShareArtifacts}
-        onGenerateSocialShareArtifacts={handleGenerateSocialShareArtifacts}
       />
     </AppShell>
     </ErrorBoundary>

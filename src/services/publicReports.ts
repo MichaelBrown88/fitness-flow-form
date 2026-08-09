@@ -12,7 +12,7 @@ import {
   getDocs,
   onSnapshot,
 } from 'firebase/firestore';
-import type { Timestamp, Unsubscribe } from 'firebase/firestore';
+import type { Unsubscribe } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { getDb, getFirebaseAuth } from '@/services/firebase';
 import { sanitizeForFirestore } from '@/lib/utils/firebaseUtils';
@@ -21,7 +21,6 @@ import { logger } from '@/lib/utils/logger';
 import { validateOrganizationId } from '@/lib/utils/validateOrganizationId';
 import type { UserProfile } from '@/types/auth';
 import { computeScores } from '@/lib/scoring';
-import type { SocialShareArtifacts } from '@/constants/socialShareArtifacts';
 
 export interface SnapshotSummary {
   id: string;
@@ -55,8 +54,6 @@ export type PublicReportDoc = {
   changeNarrative?: string;
   /** Denormalized at publish for server-side share graphics (no scoring port to Functions). */
   latestOverallScore?: number;
-  /** Server-generated PNG URLs (signed); see generatePublicReportSocialShareArtifacts. */
-  socialShareArtifacts?: SocialShareArtifacts;
 };
 
 /**

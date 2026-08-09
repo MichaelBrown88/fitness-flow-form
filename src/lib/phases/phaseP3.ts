@@ -14,6 +14,12 @@ import {
   SECTION_TITLES
 } from '@/constants/assessment';
 
+/**
+ * One continuous fitness flow: resting HR is the first input of the same
+ * section as the test itself (no section cliff between RHR and the test).
+ * Rendered by the CardioRunSheet component (see SingleFieldFlow), which adds
+ * the protocol card, 3:00 test countdown, and 1:00 recovery countdown.
+ */
 export const phaseP3: PhaseDefinition = {
   id: 'P3',
   title: PHASE_TITLES.P3,
@@ -21,8 +27,8 @@ export const phaseP3: PhaseDefinition = {
   gateHint: PHASE_GATE_HINTS.P3,
   sections: [
     {
-      id: 'resting-hr',
-      title: 'Resting heart rate',
+      id: 'fitness-assessment',
+      title: SECTION_TITLES.P3['fitness-assessment'],
       fields: [
         {
           id: 'cardioRestingHr' as keyof FormData,
@@ -31,12 +37,6 @@ export const phaseP3: PhaseDefinition = {
           tooltip: ASSESSMENT_TOOLTIPS.P3.cardioRestingHr,
           required: true,
         },
-      ],
-    },
-    {
-      id: 'fitness-assessment',
-      title: SECTION_TITLES.P3['fitness-assessment'],
-      fields: [
         {
           id: 'cardioTestSelected' as keyof FormData,
           type: 'select' as FieldType,

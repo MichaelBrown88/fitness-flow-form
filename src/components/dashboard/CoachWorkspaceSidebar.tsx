@@ -2,7 +2,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '@/constants/routes';
 import {
   Activity,
-  FileText,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -20,8 +19,6 @@ import { cn } from '@/lib/utils';
 interface CoachWorkspaceSidebarProps {
   /** Total active clients in the org — used as the Clients nav badge. */
   clientCount: number;
-  /** Total shared artefacts (reports + roadmaps + achievements) — Artefacts badge. */
-  artefactCount: number;
   /** Whether to show the Team Members tab in the footer profile area. */
   showTeamTab: boolean;
   onNewClient: () => void;
@@ -39,7 +36,6 @@ interface NavItem {
 
 export function CoachWorkspaceSidebar({
   clientCount,
-  artefactCount,
   showTeamTab,
   onNewClient,
   onToggleCollapse,
@@ -52,9 +48,13 @@ export function CoachWorkspaceSidebar({
   };
 
   const workspaceNav: NavItem[] = [
-    { label: 'Today', to: ROUTES.DASHBOARD_WORK, icon: Activity, match: (p) => p.startsWith(ROUTES.DASHBOARD_WORK) },
-    { label: 'Clients', to: ROUTES.DASHBOARD_CLIENTS, icon: Users, badge: clientCount, match: (p) => p.startsWith(ROUTES.DASHBOARD_CLIENTS) },
-    { label: 'Artefacts', to: ROUTES.DASHBOARD_ARTIFACTS, icon: FileText, badge: artefactCount },
+    {
+      label: 'Clients',
+      to: ROUTES.DASHBOARD_CLIENTS,
+      icon: Users,
+      badge: clientCount,
+      match: (p) => p === ROUTES.DASHBOARD || p.startsWith(ROUTES.DASHBOARD_CLIENTS),
+    },
   ];
 
   const studioNav: NavItem[] = [
@@ -178,13 +178,11 @@ function NavSection({ label, items, pathname, className }: NavSectionProps) {
 interface CoachWorkspaceSidebarCollapsedProps {
   onNewClient: () => void;
   onToggleCollapse: () => void;
-  hasAttention: boolean;
 }
 
 export function CoachWorkspaceSidebarCollapsed({
   onNewClient,
   onToggleCollapse,
-  hasAttention,
 }: CoachWorkspaceSidebarCollapsedProps) {
   const openCommandMenu = () => window.dispatchEvent(new Event(UI_EVENTS.OPEN_COMMAND_MENU));
 
@@ -241,43 +239,14 @@ export function CoachWorkspaceSidebarCollapsed({
         <Tooltip>
           <TooltipTrigger asChild>
             <Link
-              to={ROUTES.DASHBOARD_WORK}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Today"
-            >
-              <Activity className="h-4 w-4" />
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right">Today</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
               to={ROUTES.DASHBOARD_CLIENTS}
               className="relative flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               aria-label="Clients"
             >
               <Users className="h-4 w-4" />
-              {hasAttention ? (
-                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-score-amber" />
-              ) : null}
             </Link>
           </TooltipTrigger>
-          <TooltipContent side="right">Clients{hasAttention ? ' · attention needed' : ''}</TooltipContent>
-        </Tooltip>
-
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Link
-              to={ROUTES.DASHBOARD_ARTIFACTS}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Artefacts"
-            >
-              <FileText className="h-4 w-4" />
-            </Link>
-          </TooltipTrigger>
-          <TooltipContent side="right">Artefacts</TooltipContent>
+          <TooltipContent side="right">Clients</TooltipContent>
         </Tooltip>
       </TooltipProvider>
     </aside>

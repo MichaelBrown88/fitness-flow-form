@@ -44,12 +44,15 @@ function qualityFromShoulderMobility(v: string | undefined): MobilityQuality {
 }
 
 function qualityFromFeet(v: string | undefined): MobilityQuality {
-  if (!v?.trim() || v === 'stable') return 'good';
+  // Empty means "not observed" — never infer quality from a blank field.
+  if (!v?.trim()) return '';
+  if (v === 'stable') return 'good';
   return 'fair';
 }
 
 function qualityFromKneeAlignment(v: string | undefined): MobilityQuality {
-  if (!v?.trim() || v === 'stable' || v === 'tracks-straight') return 'good';
+  if (!v?.trim()) return '';
+  if (v === 'stable' || v === 'tracks-straight') return 'good';
   return 'poor';
 }
 

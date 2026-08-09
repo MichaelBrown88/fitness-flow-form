@@ -168,12 +168,21 @@ export const LifestyleFactorsCard: React.FC<LifestyleFactorsCardProps> = ({ form
   );
 };
 
+function iconToneClasses(tone: Tone): string {
+  if (tone === 'good') return 'bg-score-green-light text-score-green-fg';
+  if (tone === 'concern') return 'bg-score-amber-light text-score-amber-fg';
+  if (tone === 'critical') return 'bg-score-red-light text-score-red-fg';
+  return 'bg-card-elevated text-foreground-secondary';
+}
+
 function FactorRow({ factor }: { factor: Factor }) {
   const Icon = factor.icon;
   return (
     <div className="grid grid-cols-[36px_minmax(0,1fr)_auto] items-center gap-3 border-b border-border py-2.5 last:border-b-0">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-card-elevated">
-        <Icon className="h-4 w-4 text-foreground-secondary" />
+      <span
+        className={`flex h-8 w-8 items-center justify-center rounded-lg ${iconToneClasses(factor.tone)}`}
+      >
+        <Icon className="h-4 w-4" aria-hidden />
       </span>
       <span className="flex min-w-0 flex-col gap-px">
         <span className="text-[10px] font-bold uppercase tracking-[0.10em] text-muted-foreground">

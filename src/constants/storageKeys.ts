@@ -27,6 +27,9 @@ export const STORAGE_KEYS = {
   // Assessment phase (for back/refresh persistence)
   ASSESSMENT_PHASE: 'assessment_phase',
 
+  /** Active phase id (e.g. 'P3') persisted alongside the positional index — id wins on resume so phase reorders can't land on the wrong phase */
+  ASSESSMENT_PHASE_ID: 'assessment_phase_id',
+
   /** Session flag: coach confirmed AssessmentSetupStep (draft + client); suppress capture-phase draft banners */
   ASSESSMENT_SETUP_CONFIRMED: 'assessmentSetupConfirmed',
 
@@ -49,11 +52,10 @@ export const STORAGE_KEYS = {
   /** '1' = show extra coach guidance during assessments; '0' = hide */
   COACH_GUIDANCE_IN_ASSESSMENT: 'coachGuidanceInAssessment',
 
-  /** Coach workspace assistant: JSON array of thread metadata + messages (scoped in code by uid/org). */
-  COACH_ASSISTANT_THREADS: 'coachAssistantThreads',
-  /** `data` | `assist` — persisted per device. */
-  COACH_ASSISTANT_INTERACTION_MODE: 'coachAssistantInteractionMode',
-  /** `1` = assistant workspace sidebar collapsed on large screens. */
+  /** localStorage: last grip test method chosen ('deadhang' | 'pinch') — default for the next session on this device. */
+  LAST_GRIP_METHOD: 'oneassess-last-grip-method',
+
+  /** `1` = coach workspace sidebar collapsed on large screens (key name is historical). */
   COACH_ASSISTANT_SIDEBAR_COLLAPSED: 'coachAssistantSidebarCollapsed',
 
   /** `1` = user dismissed the "verify your email" banner; persists across refreshes. */

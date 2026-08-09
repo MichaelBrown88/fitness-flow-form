@@ -1,7 +1,13 @@
 import type { FormData } from '@/contexts/FormContext';
 import type { ScoreSummary } from '@/lib/scoring';
+import { calculateAge } from '@/lib/scoring';
 import { buildClientProfile } from '@/lib/physiology/profile';
-import { weeklyWeightLossKg } from '@/lib/physiology/rates';
+import {
+  monthlyMuscleGainKg,
+  vo2max8WeekGainPct,
+  weeklyWeightLossKg,
+} from '@/lib/physiology/rates';
+import { calculateCardioAnalysis, mapFitnessGoalLevel } from '@/lib/utils/cardioAnalysis';
 import { safeParse } from '@/lib/utils/numbers';
 import {
   GOAL_BUILD_MUSCLE,
@@ -61,7 +67,19 @@ function buildWeightLossPhases(
   ];
 }
 
-function buildMusclePhases(ctx: ClientGoalContext): ClientReportPlanStep[] {
+function buildMusclePhases(
+  formData: FormData,
+  scores: ScoreSummary,
+  goals: string[] | undefined,
+  ctx: ClientGoalContext,
+): ClientReportPlanStep[] {
+  const profile = buildClientProfile(formData, scores);
+  const { levels } = mergeEffectiveGoalLevels(formData, goals, scores);
+  const targetKg = safeParse(levels.goalLevelMuscle) || 4;
+  const rate = monthlyMuscleGainKg(profile, { concurrentFatLoss: ctx.hasWeightLoss });
+  const kg4 = Math.min(targetKg * 0.45, rate.rate * 4).toFixed(1);
+  const kg12 = targetKg.toFixed(1);
+
   return [
     {
       title: 'Phase 1 — Foundation',
@@ -69,16 +87,39 @@ function buildMusclePhases(ctx: ClientGoalContext): ClientReportPlanStep[] {
     },
     {
       title: 'Phase 2 — Build volume',
-      body: 'Progressive overload on key patterns; expect early strength jumps, then visible muscle changes by month three.',
+      body: `Progressive overload on key patterns — about ${kg4} kg of lean muscle over four months is realistic at your training level.`,
     },
     {
       title: 'Phase 3 — Refine & peak',
-      body: 'Periodise harder blocks with deloads; tie gym progress to how you look, move, and recover day to day.',
+      body: `Periodise harder blocks with deloads, working toward ~${kg12} kg lean gain over the year if recovery and protein stay on track.`,
     },
   ];
 }
 
-function buildFitnessPhases(): ClientReportPlanStep[] {
+function buildFitnessPhases(
+  formData: FormData,
+  scores: ScoreSummary,
+  goals: string[] | undefined,
+): ClientReportPlanStep[] {
+  const { levels } = mergeEffectiveGoalLevels(formData, goals, scores);
+  const age = formData.dateOfBirth ? calculateAge(formData.dateOfBirth) : 35;
+  const gender = (formData.gender || 'male').toLowerCase() === 'female' ? 'female' : 'male';
+  const cardio = calculateCardioAnalysis(
+    age,
+    gender,
+    mapFitnessGoalLevel(levels.goalLevelFitness),
+    safeParse(formData.cardioRestingHr),
+    safeParse(formData.cardioPeakHr),
+    safeParse(formData.cardioPost1MinHr),
+    formData.recentActivity,
+    { pillarRole: 'primary' },
+  );
+  const vo2 = cardio.vo2.current;
+  const profile = buildClientProfile(formData, scores);
+  const vo2Rate = vo2 > 0 ? vo2max8WeekGainPct(profile, vo2) : null;
+  const pct4 = Math.round(vo2Rate ? vo2Rate.rate * 0.5 : 8);
+  const pct12 = Math.round(vo2Rate ? Math.min(vo2Rate.rate * 1.5, 20) : 15);
+
   return [
     {
       title: 'Phase 1 — Aerobic base',
@@ -86,16 +127,27 @@ function buildFitnessPhases(): ClientReportPlanStep[] {
     },
     {
       title: 'Phase 2 — Build capacity',
-      body: 'Add structured intervals and longer efforts; VO₂ and recovery scores should move meaningfully over four months.',
+      body: `Add structured intervals and longer efforts — roughly ${pct4}% improvement in your fitness level over four months is realistic.`,
     },
     {
       title: 'Phase 3 — Refine performance',
-      body: 'Blend hard and easy weeks, retest fitness, and lock in habits so gains stick for the full year.',
+      body: `Blend hard and easy weeks and retest along the way — the long arc points to ~${pct12}% fitness gain over the year if training stays consistent.`,
     },
   ];
 }
 
-function buildStrengthPhases(): ClientReportPlanStep[] {
+function buildStrengthPhases(
+  formData: FormData,
+  scores: ScoreSummary,
+  goals: string[] | undefined,
+): ClientReportPlanStep[] {
+  const { levels } = mergeEffectiveGoalLevels(formData, goals, scores);
+  const pct = levels.goalLevelStrength.includes('modest')
+    ? 12
+    : levels.goalLevelStrength.includes('ambitious')
+      ? 30
+      : 20;
+
   return [
     {
       title: 'Phase 1 — Foundation',
@@ -103,7 +155,7 @@ function buildStrengthPhases(): ClientReportPlanStep[] {
     },
     {
       title: 'Phase 2 — Load & progress',
-      body: 'Chase measurable PRs on endurance, core, and grip — expect the biggest jumps in months two to four.',
+      body: `Chase measurable PRs on endurance, core, and grip — around ${pct}% on key patterns is realistic for your experience over four months.`,
     },
     {
       title: 'Phase 3 — Consolidate',
@@ -129,6 +181,51 @@ function buildGeneralPhases(label: string): ClientReportPlanStep[] {
   ];
 }
 
+/**
+ * Compact self-guided takeaway — three habit bullets a client can act on alone.
+ * Rendered under the coached plan so someone who doesn't sign up still leaves
+ * with a starting point (the "reassess in 12 weeks" line lives in copy).
+ */
+export function buildClientSelfGuidedHabits(
+  formData: FormData | undefined,
+  goals: string[] | undefined,
+): string[] {
+  const ctx = formData ? parseClientGoals(formData, goals) : null;
+
+  switch (ctx?.primaryGoal) {
+    case GOAL_WEIGHT_LOSS:
+      return [
+        'Protein at every meal and a daily step target — the two levers that move the scale most reliably.',
+        'Strength train 2–3×/week so the weight you lose is fat, not muscle.',
+        'Weigh in weekly, same day and time — trend over weeks, not days.',
+      ];
+    case GOAL_BUILD_MUSCLE:
+      return [
+        'Train each major muscle group twice a week and add a little weight or a rep when you can.',
+        'Eat enough protein (roughly palm-sized portion each meal) and don\u2019t skip sleep — that\u2019s where muscle is built.',
+        'Track your main lifts so progress is visible week to week.',
+      ];
+    case GOAL_IMPROVE_FITNESS:
+      return [
+        'Two to three easy cardio sessions a week where you can still hold a conversation.',
+        'Add one harder interval session once the easy sessions feel routine.',
+        'Check your resting heart rate monthly — it dropping is the clearest sign this is working.',
+      ];
+    case GOAL_BUILD_STRENGTH:
+      return [
+        'Practise squat, hinge, push, and pull movements 2–3×/week — technique first, load second.',
+        'Add small amounts of weight when all sets feel solid, and rest fully between heavy sets.',
+        'Keep a simple log of your working weights so every session builds on the last.',
+      ];
+    default:
+      return [
+        'Aim for consistent sleep and a daily walk — recovery and movement drive everything else.',
+        'Train 2–3×/week, even short sessions; consistency beats intensity.',
+        'Pick one number from this report to improve and check it monthly.',
+      ];
+  }
+}
+
 export function buildClientGoalPhases(
   formData: FormData | undefined,
   scores: ScoreSummary | undefined,
@@ -145,11 +242,11 @@ export function buildClientGoalPhases(
     case GOAL_WEIGHT_LOSS:
       return buildWeightLossPhases(formData, scores, goals);
     case GOAL_BUILD_MUSCLE:
-      return buildMusclePhases(ctx);
+      return buildMusclePhases(formData, scores, goals, ctx);
     case GOAL_IMPROVE_FITNESS:
-      return buildFitnessPhases();
+      return buildFitnessPhases(formData, scores, goals);
     case GOAL_BUILD_STRENGTH:
-      return buildStrengthPhases();
+      return buildStrengthPhases(formData, scores, goals);
     default:
       if (horizons?.horizons?.[1]?.bullets[0]) {
         return [

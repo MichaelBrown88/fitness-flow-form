@@ -1,5 +1,5 @@
 /**
- * Client detail layout: shared data, breadcrumb, tabs (Overview | Client Report | ARC™ | Milestones | Coaches Report | History | Settings), Outlet, and dialogs. Tab routes unchanged (`/roadmap`, etc.).
+ * Client detail layout: shared data, breadcrumb, tabs (Overview | Client Report | Timeline | Settings), Outlet, and dialogs.
  */
 
 import { useState, useEffect, useRef } from 'react';
@@ -13,8 +13,6 @@ import { getAppShellSeoForPathname } from '@/constants/seo';
 import { UI_COMMAND_MENU } from '@/constants/ui';
 import { useClientDetail } from '@/hooks/useClientDetail';
 import { useAuth } from '@/hooks/useAuth';
-import { getRoadmapForClient } from '@/services/roadmaps';
-import type { RoadmapItem } from '@/lib/roadmap/types';
 import {
   ArrowLeft,
   UserPlus,
@@ -44,16 +42,7 @@ import { PauseClientDialog } from '@/components/client/PauseClientDialog';
 import { ArchiveClientDialog } from '@/components/client/ArchiveClientDialog';
 import type { UseClientDetailResult } from '@/hooks/useClientDetail';
 
-export type ClientDetailOutletContext = UseClientDetailResult & {
-  roadmapStatus: 'loading' | 'none' | 'draft' | 'sent';
-  /**
-   * True when the roadmap was built on scores that are older than the most recent
-   * assessment save. The coach dashboard surfaces this as a "plan may be outdated" hint.
-   */
-  isRoadmapStale: boolean;
-  /** ARC milestone items — available for inline progress display on overview. */
-  roadmapItems: RoadmapItem[];
-};
+export type ClientDetailOutletContext = UseClientDetailResult;
 
 function buildClientPath(name: string, sub?: string): string {
   const base = `/dashboard/clients/${encodeURIComponent(name)}`;
@@ -106,10 +95,6 @@ export default function ClientDetailLayout() {
 
   const isPaused = profile?.status === 'paused';
   const isArchived = profile?.status === 'archived';
-  const [roadmapStatus, setRoadmapStatus] = useState<'loading' | 'none' | 'draft' | 'sent'>('loading');
-  const [isRoadmapStale, setIsRoadmapStale] = useState(false);
-  const [roadmapItems, setRoadmapItems] = useState<RoadmapItem[]>([]);
-  const { effectiveOrgId } = useAuth();
 
   useEffect(() => {
     if (!loading && clientName) {
@@ -132,41 +117,6 @@ export default function ClientDetailLayout() {
       }
     }
   }, [loading, clientName, searchParams, setSearchParams, setTransferOpen, navigate]);
-
-  // Refetches when the user navigates between sub-tabs so saves on one
-  // tab (e.g. ARC) appear in another (e.g. Overview) without a full reload.
-  useEffect(() => {
-    if (!effectiveOrgId || !clientName) return;
-    let cancelled = false;
-    getRoadmapForClient(effectiveOrgId, clientName)
-      .then((roadmapDoc) => {
-        if (cancelled) return;
-        if (!roadmapDoc) {
-          setRoadmapStatus('none');
-          setRoadmapItems([]);
-          return;
-        }
-        setRoadmapStatus(roadmapDoc.shareToken ? 'sent' : 'draft');
-        setRoadmapItems(roadmapDoc.items ?? []);
-
-        // Drift detection: stale when the plan's assessmentId differs from the latest
-        // assessment that refreshed currentScores (i.e. new assessment run since plan was built).
-        const hasCurrentScores = !!roadmapDoc.currentScores && !!roadmapDoc.lastScoreRefreshedAt;
-        if (hasCurrentScores && roadmapDoc.baselineScores && roadmapDoc.currentScores) {
-          const baselineKeys = Object.keys(roadmapDoc.baselineScores);
-          const drifted = baselineKeys.some((key) => {
-            const baseline = roadmapDoc.baselineScores![key] ?? 0;
-            const current = roadmapDoc.currentScores![key] ?? 0;
-            return Math.abs(current - baseline) >= 10;
-          });
-          setIsRoadmapStale(drifted);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setRoadmapStatus('none');
-      });
-    return () => { cancelled = true; };
-  }, [effectiveOrgId, clientName, location.pathname]);
 
   // Reset scroll position when navigating between client sub-tabs or to a new client
   useEffect(() => {
@@ -281,8 +231,7 @@ export default function ClientDetailLayout() {
               tab page while letting it appear on the layout's nav row. */}
           <div id={TAB_ACTIONS_SLOT_ID} className="flex items-center gap-2" />
 
-          {/* Client management menu — distinct from the "More" tab above
-              (which holds nav to ARC™ / Milestones / Settings sub-pages). */}
+          {/* Client management menu. */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -297,7 +246,7 @@ export default function ClientDetailLayout() {
           <DropdownMenuContent align="end" className="w-52 rounded-lg">
             <DropdownMenuItem onClick={() => handleNewAssessment()} className="py-3 text-sm font-medium">
               <UserPlus className="mr-2 h-4 w-4" />
-              New assessment
+              Full assessment
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
               <Link to={buildClientPath(clientName, 'settings')} className="py-3 text-sm font-medium">
@@ -330,7 +279,7 @@ export default function ClientDetailLayout() {
         </div>
       </div>
 
-      <Outlet context={{ ...clientData, roadmapStatus, isRoadmapStale, roadmapItems } satisfies ClientDetailOutletContext} />
+      <Outlet context={clientData satisfies ClientDetailOutletContext} />
 
       <Dialog open={!!deleteDialog} onOpenChange={(open) => !open && setDeleteDialog(null)}>
         <DialogContent>

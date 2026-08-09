@@ -12,6 +12,7 @@ import { buildClientPillarSummary } from './sub-components/clientPillarSummary';
 import { aggregatePostureFindings } from '@/lib/posture/aggregatePostureInsights';
 import { PostureReportBlock } from './sub-components/PostureReportBlock';
 import { CLIENT_REPORT_COPY } from '@/constants/clientReport';
+import { parseClientGoals, resolvePillarRole, type PillarId } from '@/lib/goals/goalContext';
 import type { SectionId } from './clientReportSections';
 
 export interface ClientReportSectionContext {
@@ -74,6 +75,10 @@ function collectPostureImages(formData: FormData): Record<string, string> {
 export function renderClientReportSection(id: SectionId, ctx: ClientReportSectionContext): React.ReactNode {
   const { scores, previousScores, gapAnalysisData, formData } = ctx;
 
+  // Primary-goal pillar shows its target numbers expanded so the debrief needs no extra taps.
+  const goalCtx = parseClientGoals(formData);
+  const isPrimaryPillar = (pillar: PillarId) => resolvePillarRole(pillar, goalCtx) === 'primary';
+
   switch (id) {
     case 'body-comp': {
       const cat = findCategory(scores, 'bodyComp');
@@ -91,6 +96,7 @@ export function renderClientReportSection(id: SectionId, ctx: ClientReportSectio
           strengths={capList(cat.strengths ?? [])}
           focusAreas={capList(cat.weaknesses ?? [])}
           targets={<PillarGapRows pillar="body-comp" gap={gapAnalysisData[0]} />}
+          defaultTargetsOpen={isPrimaryPillar('bodyComp')}
         />
       );
     }
@@ -110,6 +116,7 @@ export function renderClientReportSection(id: SectionId, ctx: ClientReportSectio
           strengths={capList(cat.strengths ?? [])}
           focusAreas={capList(cat.weaknesses ?? [])}
           targets={<PillarGapRows pillar="strength" gap={gapAnalysisData[1]} />}
+          defaultTargetsOpen={isPrimaryPillar('strength')}
         />
       );
     }
@@ -129,6 +136,7 @@ export function renderClientReportSection(id: SectionId, ctx: ClientReportSectio
           strengths={capList(cat.strengths ?? [])}
           focusAreas={capList(cat.weaknesses ?? [])}
           targets={<PillarGapRows pillar="cardio" gap={gapAnalysisData[2]} />}
+          defaultTargetsOpen={isPrimaryPillar('cardio')}
         />
       );
     }
@@ -188,6 +196,7 @@ export function renderClientReportSection(id: SectionId, ctx: ClientReportSectio
           strengths={capList(cat.strengths ?? [], 2)}
           focusAreas={capList(cat.weaknesses ?? [], 2)}
           targets={<LifestyleTargetsRows formData={formData} />}
+          defaultTargetsOpen={isPrimaryPillar('lifestyle')}
         />
       );
     }

@@ -57,7 +57,6 @@ export type RemoteIntakeScreen =
       label: string;
       options: SelectOption[];
     }
-  | { id: 'goalDeadline'; kind: 'goalDeadline'; label: string }
   | { id: 'posture'; kind: 'posture' };
 
 type SelectOption = { value: string; label: string };
@@ -184,7 +183,7 @@ export function buildRemoteIntakeScreens(params: {
     }
   }
 
-  if (params.allowedKeys.has('stepsPerDay') && params.allowedKeys.has('sedentaryHours')) {
+  if (params.allowedKeys.has('stepsPerDay')) {
     screens.push({
       id: 'dailyMovement',
       kind: 'group',
@@ -192,7 +191,6 @@ export function buildRemoteIntakeScreens(params: {
       domain: 'lifestyle',
       fields: [
         { field: 'stepsPerDay', label: P1.stepsPerDay, placeholder: 'e.g. 8000' },
-        { field: 'sedentaryHours', label: P1.sedentaryHours, placeholder: 'e.g. 6' },
       ],
     });
   }
@@ -251,14 +249,6 @@ export function buildRemoteIntakeScreens(params: {
     });
   }
 
-  if (params.allowedKeys.has('goalDeadline')) {
-    screens.push({
-      id: 'goalDeadline',
-      kind: 'goalDeadline',
-      label: P6.goalDeadline,
-    });
-  }
-
   for (const q of parqQuestions) {
     if (q.conditional && params.gender !== q.conditional.showWhen.value) continue;
     screens.push({
@@ -279,13 +269,11 @@ export { initialBasicFromPrefill } from '@/lib/remote/remoteIntakePrefill';
 export type PreAssessmentGoalsState = {
   selectedGoals: string[];
   trainingFrequency: string;
-  goalDeadline: string;
 };
 
 export const INITIAL_PRE_ASSESSMENT_GOALS: PreAssessmentGoalsState = {
   selectedGoals: [],
   trainingFrequency: '',
-  goalDeadline: '',
 };
 
 export function isScreenValid(
@@ -323,8 +311,6 @@ export function isScreenValid(
       return goals.selectedGoals.length > 0;
     case 'trainingFrequency':
       return goals.trainingFrequency.trim().length > 0;
-    case 'goalDeadline':
-      return true;
     case 'posture':
       return true;
     default:
@@ -337,7 +323,7 @@ export function screenTitle(screen: RemoteIntakeScreen): string | undefined {
   if (screen.kind === 'group') return screen.title;
   if (screen.kind === 'parq') return screen.label;
   if (screen.kind === 'posture') return undefined;
-  if (screen.kind === 'dateOfBirth' || screen.kind === 'goalDeadline') return undefined;
+  if (screen.kind === 'dateOfBirth') return undefined;
   if (
     screen.kind === 'goals' ||
     screen.kind === 'trainingFrequency' ||
@@ -353,8 +339,7 @@ export function screenSubtitle(screen: RemoteIntakeScreen): string | undefined {
   if (
     screen.kind === 'welcome' ||
     screen.kind === 'posture' ||
-    screen.kind === 'dateOfBirth' ||
-    screen.kind === 'goalDeadline'
+    screen.kind === 'dateOfBirth'
   ) {
     return undefined;
   }

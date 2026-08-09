@@ -1,17 +1,13 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { CreditBalance } from '@/components/org/billing/CreditBalance';
 import { useAuth } from '@/hooks/useAuth';
-import { DASHBOARD_TASKS } from '@/constants/dashboardTasksCopy';
-import { dashboardWorkPath } from '@/constants/routes';
 import { WorkspaceGreetingMark } from '@/components/dashboard/WorkspaceGreetingMark';
 
 interface DashboardHeaderProps {
   coachFirstName: string;
   totalClients: number;
   totalAssessments: number;
-  overdueCount?: number;
-  /** Compact strip for assistant / artifacts shell */
+  /** Compact strip variant */
   variant?: 'default' | 'compact';
 }
 
@@ -26,7 +22,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   coachFirstName,
   totalClients,
   totalAssessments,
-  overdueCount = 0,
   variant = 'default',
 }) => {
   const { orgSettings } = useAuth();
@@ -46,18 +41,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             <span>
               {totalAssessments} {totalAssessments === 1 ? 'assessment' : 'assessments'}
             </span>
-            {overdueCount > 0 ? (
-              <>
-                <span className="text-border"> · </span>
-                <Link
-                  to={dashboardWorkPath('tasks')}
-                  className="font-semibold text-score-amber-fg underline-offset-2 transition-colors hover:underline dark:text-amber-400"
-                  title={DASHBOARD_TASKS.HEADER_PAST_CADENCE_LINK_TITLE}
-                >
-                  {DASHBOARD_TASKS.HEADER_PAST_CADENCE(overdueCount)}
-                </Link>
-              </>
-            ) : null}
           </p>
           {assessmentCredits !== undefined ? (
             <CreditBalance credits={assessmentCredits} className="shrink-0 scale-90 sm:scale-100" />
@@ -85,18 +68,6 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         <span>{totalClients} {totalClients === 1 ? 'client' : 'clients'}</span>
         <span className="text-border">·</span>
         <span>{totalAssessments} {totalAssessments === 1 ? 'assessment' : 'assessments'}</span>
-        {overdueCount > 0 && (
-          <>
-            <span className="text-border">·</span>
-            <Link
-              to={dashboardWorkPath('tasks')}
-              className="font-semibold text-score-amber-fg underline-offset-2 transition-colors hover:underline dark:text-amber-400"
-              title={DASHBOARD_TASKS.HEADER_PAST_CADENCE_LINK_TITLE}
-            >
-              {DASHBOARD_TASKS.HEADER_PAST_CADENCE(overdueCount)}
-            </Link>
-          </>
-        )}
       </p>
     </div>
   );

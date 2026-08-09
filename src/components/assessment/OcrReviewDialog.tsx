@@ -12,6 +12,7 @@ import {
 import { Scan, CheckCircle2 } from 'lucide-react';
 
 const OCR_FIELD_LABELS: Record<string, string> = {
+  heightCm: 'Height',
   inbodyScore: 'InBody Score',
   inbodyWeightKg: 'Weight',
   skeletalMuscleMassKg: 'Skeletal Muscle Mass',
@@ -58,6 +59,7 @@ export const OcrReviewDialog = ({
             </p>
             <div className="grid grid-cols-2 gap-4 max-h-[360px] overflow-y-auto p-2">
               {ocrReviewData && [
+                'heightCm',
                 'inbodyScore',
                 'inbodyWeightKg',
                 'skeletalMuscleMassKg',
@@ -75,7 +77,7 @@ export const OcrReviewDialog = ({
                 'segmentalLegRightKg'
               ].map(key => {
                 const value = ocrReviewData[key as keyof typeof ocrReviewData] ?? '';
-                const unit = key.toLowerCase().includes('kg') ? 'kg' : key.toLowerCase().includes('pct') ? '%' : key.toLowerCase().includes('water') ? 'L' : key.toLowerCase().includes('kcal') ? 'kcal' : '';
+                const unit = key.toLowerCase().includes('kg') ? 'kg' : key.toLowerCase().includes('pct') ? '%' : key.toLowerCase().includes('water') ? 'L' : key.toLowerCase().includes('kcal') ? 'kcal' : key.toLowerCase().endsWith('cm') ? 'cm' : '';
                 return (
                   <div key={key} className={`flex flex-col justify-between rounded-lg border bg-muted/50 p-3 transition-all ${!value ? 'border-amber-200 bg-amber-50/30' : 'border-border'}`}>
                     <span className="text-[10px] font-semibold text-muted-foreground mb-1.5">

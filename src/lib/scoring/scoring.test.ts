@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { clamp, calculateAge, lookupNormativeScore } from './scoringUtils';
 import { scoreBodyComp } from './bodyCompositionScoring';
+import { scoreLifestyle } from './lifestyleScoring';
 import { computeScores } from './computeScores';
 import { initialFormData } from '@/types/assessmentForm';
 import type { FormData } from '@/types/assessmentForm';
@@ -166,6 +167,55 @@ describe('scoreBodyComp', () => {
 
   it('id is bodyComp', () => {
     expect(scoreBodyComp(makeAnalyzerForm(), 30, 'male').id).toBe('bodyComp');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// scoreLifestyle
+// ---------------------------------------------------------------------------
+
+describe('scoreLifestyle', () => {
+  function lifestyleForm(overrides: Partial<FormData> = {}): FormData {
+    return { ...initialFormData, sleepArchetype: 'excellent', ...overrides };
+  }
+
+  it('penalises evening caffeine even with self-reported excellent sleep', () => {
+    const clean = scoreLifestyle(lifestyleForm({ lastCaffeineIntake: '09:00' }), 30, 'male');
+    const late = scoreLifestyle(lifestyleForm({ lastCaffeineIntake: '20:30' }), 30, 'male');
+    const cleanSleep = clean.details.find((d) => d.id === 'sleep')?.score ?? 0;
+    const lateSleep = late.details.find((d) => d.id === 'sleep')?.score ?? 0;
+    expect(cleanSleep).toBe(100);
+    expect(lateSleep).toBe(80);
+    expect(late.weaknesses.join(' ')).toMatch(/caffeine/i);
+  });
+
+  it('applies a smaller penalty for afternoon caffeine', () => {
+    const afternoon = scoreLifestyle(lifestyleForm({ lastCaffeineIntake: '15:00' }), 30, 'male');
+    const sleep = afternoon.details.find((d) => d.id === 'sleep')?.score ?? 0;
+    expect(sleep).toBe(90);
+  });
+
+  it('does not flag caffeine before 2pm', () => {
+    const morning = scoreLifestyle(lifestyleForm({ lastCaffeineIntake: '13:00' }), 30, 'male');
+    expect(morning.weaknesses.join(' ')).not.toMatch(/caffeine/i);
+  });
+
+  it('falls back to self-rated activity level when steps are missing', () => {
+    const active = scoreLifestyle(lifestyleForm({ activityLevel: 'very-active' }), 30, 'male');
+    const sedentary = scoreLifestyle(lifestyleForm({ activityLevel: 'sedentary' }), 30, 'male');
+    const activeScore = active.details.find((d) => d.id === 'activity')?.score ?? 0;
+    const sedentaryScore = sedentary.details.find((d) => d.id === 'activity')?.score ?? 0;
+    expect(activeScore).toBe(85);
+    expect(sedentaryScore).toBe(30);
+  });
+
+  it('prefers objective steps over the self-rated activity level', () => {
+    const result = scoreLifestyle(
+      lifestyleForm({ activityLevel: 'sedentary', stepsPerDay: '11000' }),
+      30,
+      'male',
+    );
+    expect(result.details.find((d) => d.id === 'activity')?.score).toBe(100);
   });
 });
 

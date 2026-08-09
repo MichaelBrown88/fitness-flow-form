@@ -1,6 +1,6 @@
 import React from 'react';
 import ParQQuestionnaire from '@/components/ParQQuestionnaire';
-import { Check, Smartphone, CheckCircle2 } from 'lucide-react';
+import { Check, Camera, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   RadioGroup,
@@ -23,7 +23,6 @@ interface FieldControlProps {
   field: PhaseField;
   onShowCamera?: (mode: 'ocr') => void;
   onShowPostureCompanion?: () => void;
-  onShowBodyCompCompanion?: () => void;
   onExitParQ?: () => void;
   onParQComplete?: () => void;
 }
@@ -32,7 +31,6 @@ export function FieldControl({
   field,
   onShowCamera,
   onShowPostureCompanion,
-  onShowBodyCompCompanion,
   onExitParQ,
   onParQComplete,
 }: FieldControlProps) {
@@ -96,14 +94,14 @@ export function FieldControl({
 
           <div className="p-8 bg-muted rounded-3xl border-2 border-dashed border-primary/20 flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in duration-500">
             <div className="bg-background p-4 rounded-3xl shadow-sm">
-              <Smartphone className="h-10 w-10 text-primary" />
+              <Camera className="h-10 w-10 text-primary" />
             </div>
             <div className="space-y-2">
-              <h4 className="text-xl font-bold text-foreground">AI Posture Analysis</h4>
+              <h4 className="text-xl font-bold text-foreground">Posture photos</h4>
               <p className="text-foreground-secondary text-sm font-medium max-w-xs mx-auto">
-                {formData.postureAiResults 
-                  ? "Scan complete! You can re-scan if needed or continue to the next step."
-                  : "Guided capture on this device or a second phone via QR — Gemini Live framing plus full analysis."}
+                {formData.postureAiResults
+                  ? "Photos captured — retake if needed or continue to the next step."
+                  : "Capture the four views with this device, or upload photos. Analysis runs automatically."}
               </p>
             </div>
             
@@ -112,8 +110,8 @@ export function FieldControl({
                 onClick={onShowPostureCompanion}
                 className="h-14 flex-1 gap-3 rounded-lg bg-primary text-xs font-bold text-primary-foreground shadow-sm"
               >
-                <Smartphone className="h-5 w-5" />
-                Start posture scan
+                <Camera className="h-5 w-5" />
+                Take posture photos
               </Button>
             </div>
 

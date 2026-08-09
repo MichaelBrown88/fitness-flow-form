@@ -80,9 +80,9 @@ export function shouldShowField(
       return true;
     }
     
-    // Manual measurement fields: only shown when coach opts in via "Add Body Measurements"
+    // Tape measurement fields are a mandatory part of body composition
     if (manualMeasurementFields.includes(fieldId)) {
-      return formData?.showBodyMeasurements === 'yes';
+      return true;
     }
   }
 

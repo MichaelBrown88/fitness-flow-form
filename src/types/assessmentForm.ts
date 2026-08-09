@@ -118,7 +118,7 @@ export interface FormData {
   bodyCompMethod: string; // 'analyzer' (default) | 'measurements' (legacy)
   // Optional toggles for body comp field visibility
   showAnalyzerFields: string; // 'yes' | 'no' - toggles visibility of analyzer fields when equipment is disabled
-  showBodyMeasurements: string; // 'yes' | 'no' - additive tape measurement fields
+  showBodyMeasurements: string; // legacy toggle — tape measurements are now always part of body comp
 
   /** Phase 2 — Posture & Movement Quality */
   postureInputMode: 'manual' | 'ai';
@@ -430,7 +430,9 @@ export const initialFormData: FormData = {
   assessmentIntakeMode: null,
   coachGuidanceEnabled: true,
   bodyCompMethod: 'analyzer',
-  showAnalyzerFields: 'yes',
+  // 'no' keeps manual P2 entry short (height + weight); the OCR apply or the
+  // "Enter analyzer numbers" opt-in flips this to 'yes' for the grouped screen.
+  showAnalyzerFields: 'no',
   showBodyMeasurements: 'no',
 };
 

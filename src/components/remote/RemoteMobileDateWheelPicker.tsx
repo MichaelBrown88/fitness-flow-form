@@ -23,8 +23,6 @@ const MONTH_NAMES = [
   'Dec',
 ] as const;
 
-export type RemoteDateWheelVariant = 'birthdate' | 'goalDeadline';
-
 type DateParts = { year: number; month: number; day: number };
 
 function parseIsoDate(iso: string): DateParts {
@@ -34,18 +32,6 @@ function parseIsoDate(iso: string): DateParts {
   }
   const fallbackYear = new Date().getFullYear() - 30;
   return { year: fallbackYear, month: 6, day: 15 };
-}
-
-function defaultParts(variant: RemoteDateWheelVariant, value: string): DateParts {
-  if (variant === 'goalDeadline' && !value.trim()) {
-    const today = new Date();
-    return {
-      year: today.getFullYear(),
-      month: today.getMonth() + 1,
-      day: today.getDate(),
-    };
-  }
-  return parseIsoDate(value);
 }
 
 function toIsoDate(year: number, month: number, day: number): string {
@@ -212,42 +198,33 @@ export interface RemoteMobileDateWheelPickerProps {
   value: string;
   onChange: (isoDate: string) => void;
   readOnly?: boolean;
-  variant?: RemoteDateWheelVariant;
-  /** Shorter wheels so DOB / deadline fit one mobile viewport. */
+  /** Shorter wheels so the DOB screen fits one mobile viewport. */
   compact?: boolean;
 }
 
-/** Inline day / month / year wheels (no modal). Value: `YYYY-MM-DD`. */
+/** Inline day / month / year birthdate wheels (no modal). Value: `YYYY-MM-DD`. */
 export function RemoteMobileDateWheelPicker({
   value,
   onChange,
   readOnly = false,
-  variant = 'birthdate',
   compact = false,
 }: RemoteMobileDateWheelPickerProps) {
   const itemHeight = compact ? ITEM_H_COMPACT : ITEM_H_DEFAULT;
   const visibleRows = compact ? VISIBLE_ROWS_COMPACT : VISIBLE_ROWS_DEFAULT;
   const wheelHeight = itemHeight * visibleRows;
-  const [parts, setParts] = useState<DateParts>(() => defaultParts(variant, value));
+  const [parts, setParts] = useState<DateParts>(() => parseIsoDate(value));
   const lastEmittedRef = useRef(value);
   const commitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const currentYear = new Date().getFullYear();
 
   const yearRange = useMemo(() => {
-    if (variant === 'goalDeadline') {
-      const minYear = currentYear;
-      const maxYear = currentYear + 5;
-      return {
-        years: Array.from({ length: maxYear - minYear + 1 }, (_, i) => minYear + i),
-      };
-    }
     const minYear = currentYear - 100;
     const maxYear = currentYear - 10;
     return {
       years: Array.from({ length: maxYear - minYear + 1 }, (_, i) => maxYear - i),
     };
-  }, [currentYear, variant]);
+  }, [currentYear]);
 
   const emitIso = useCallback(
     (next: DateParts) => {
@@ -276,8 +253,8 @@ export function RemoteMobileDateWheelPicker({
   useEffect(() => {
     if (value === lastEmittedRef.current) return;
     lastEmittedRef.current = value;
-    setParts(defaultParts(variant, value));
-  }, [value, variant]);
+    setParts(parseIsoDate(value));
+  }, [value]);
 
   useEffect(() => {
     return () => {
@@ -289,12 +266,12 @@ export function RemoteMobileDateWheelPicker({
 
   const didAutoFillBirthdateRef = useRef(false);
   useEffect(() => {
-    if (readOnly || value.trim().length > 0 || variant !== 'birthdate') return;
+    if (readOnly || value.trim().length > 0) return;
     if (didAutoFillBirthdateRef.current) return;
     didAutoFillBirthdateRef.current = true;
     const clamped = clampParts(parts);
     emitIso(clamped);
-  }, [emitIso, parts, readOnly, value, variant]);
+  }, [emitIso, parts, readOnly, value]);
 
   const safeParts = clampParts(parts);
   const maxDay = daysInMonth(safeParts.year, safeParts.month);

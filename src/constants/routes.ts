@@ -1,26 +1,15 @@
 export const ROUTES = {
   HOME: '/',
   DASHBOARD: '/dashboard',
-  /** AI assistant — accessible via pill tab or Cmd+K. */
-  DASHBOARD_ASSISTANT: '/dashboard/assistant',
-  /** Client directory (table) — primary roster surface. */
+  /** Client directory (table) — primary roster surface and default landing tab. */
   DASHBOARD_CLIENTS: '/dashboard/clients',
-  /** Today — reassessment queue + calendar; default landing tab. */
-  DASHBOARD_WORK: '/dashboard/work',
-  /** @deprecated Use DASHBOARD_WORK + ?view=tasks — kept for redirects/bookmarks. */
-  DASHBOARD_SCHEDULE: '/dashboard/schedule',
-  /** @deprecated Use DASHBOARD_WORK + ?view=calendar — kept for redirects/bookmarks. */
-  DASHBOARD_CALENDAR: '/dashboard/calendar',
   DASHBOARD_TEAM: '/dashboard/team',
-  /** Public share links (reports, roadmaps, achievements) — full-page grid. */
-  DASHBOARD_ARTIFACTS: '/dashboard/artifacts',
   ASSESSMENT: '/assessment',
   LOGIN: '/login',
   /** Coach studio settings — nested inside dashboard so the workspace sidebar is shown. */
   SETTINGS: '/dashboard/settings',
   /** Alias for billing upgrade CTAs (redirects in App router). */
   SETTINGS_BILLING: '/settings/billing',
-  ACHIEVEMENTS: '/achievements',
   ORG_DASHBOARD: '/org/dashboard',
   ORG_DASHBOARD_TEAM: '/org/dashboard/team',
   ORG_DASHBOARD_RETENTION: '/org/dashboard/retention',
@@ -31,9 +20,6 @@ export const ROUTES = {
   CLIENT_HISTORY: '/dashboard/clients/:id/history',
   CLIENT_SETTINGS: '/dashboard/clients/:id/settings',
   PUBLIC_REPORT: '/r/:token',
-  PUBLIC_REPORT_ACHIEVEMENTS: '/r/:token/achievements',
-  PUBLIC_REPORT_ROADMAP: '/r/:token/roadmap',
-  PUBLIC_REPORT_LIFESTYLE: '/r/:token/lifestyle',
   PUBLIC_REPORT_ERASURE: '/r/:token/erasure',
 
   ASSESSMENT_REPORT: '/coach/assessments/:id',
@@ -45,7 +31,6 @@ export const ROUTES = {
   BLOG: '/blog',
   COOKIES: '/cookies',
   DEMO: '/demo',
-  COMPARE: '/compare',
   BILLING: '/billing',
   BILLING_SUCCESS: '/billing/success',
   /** Guest Stripe Checkout return URLs (not the marketing pricing page). */
@@ -57,7 +42,6 @@ export const ROUTES = {
   /** Marketing alias; same onboarding flow as `/onboarding`. */
   SIGNUP: '/signup',
   TRY: '/try',
-  CLIENT_ROADMAP: '/coach/clients/:name/roadmap',
 
   /** Platform admin (separate from org admin) */
   ADMIN: '/admin',
@@ -66,19 +50,6 @@ export const ROUTES = {
   ADMIN_ORGANIZATIONS: '/admin/organizations',
   ADMIN_ORGANIZATION: (orgId: string) => `/admin/organizations/${orgId}` as const,
 } as const;
-
-/**
- * Legacy query on `ROUTES.DASHBOARD_WORK`: `view=calendar` scrolls the calendar column into view.
- * Prefer `#work-calendar` for the same behavior (see `dashboardWorkPath('calendar')`).
- */
-export const DASHBOARD_WORK_VIEW_QUERY = 'view' as const;
-
-export type DashboardWorkView = 'tasks' | 'calendar';
-
-export function dashboardWorkPath(view?: DashboardWorkView): string {
-  if (!view || view === 'tasks') return ROUTES.DASHBOARD_WORK;
-  return `${ROUTES.DASHBOARD_WORK}#work-calendar`;
-}
 
 /**
  * Deep links into Settings main + Organization sub-tabs (synced in Settings.tsx via search params).
@@ -103,10 +74,4 @@ export const COACH_ASSESSMENT_QUERY = {
   /** When set to `OPEN_SHARE_VALUE`, AssessmentReport opens the share dialog once loaded. */
   OPEN_SHARE_MODAL: 'share',
   OPEN_SHARE_VALUE: '1',
-} as const;
-
-/** Query keys for public client routes (support diagnostics). */
-export const PUBLIC_CLIENT_URL_QUERY = {
-  /** `?roadmapDebug=1` on `/r/:token/roadmap` shows roadmap load diagnostics. */
-  ROADMAP_DEBUG: 'roadmapDebug',
 } as const;

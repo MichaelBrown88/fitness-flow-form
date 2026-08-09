@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { updateOrgSettings, uploadOrgLogo, uploadOrgLogoDark, type OrgSettings, DEFAULT_EQUIPMENT_CONFIG } from '@/services/organizations';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Calendar, Bell, CreditCard } from 'lucide-react';
+import { Loader2, Upload, Palette, ShieldCheck, Box, Settings as SettingsIcon, User, Building2, Bell, CreditCard } from 'lucide-react';
 import { getAllGradients, getGradient, type GradientId } from '@/lib/design/gradients';
 import { BrandingPreview } from '@/components/settings/BrandingPreview';
 import { doc, setDoc } from 'firebase/firestore';
@@ -24,7 +24,6 @@ import { STRIPE_CONFIG } from '@/constants/platform';
 import { DEFAULT_REGION, REGION_TO_CURRENCY, type Region } from '@/constants/pricing';
 import { formatPrice, getLocaleForRegion } from '@/lib/utils/currency';
 import { getCustomBrandingPrice } from '@/lib/pricing/config';
-import { DefaultCadenceSettings } from '@/components/settings/DefaultCadenceSettings';
 import { NotificationSettings } from '@/components/settings/NotificationSettings';
 import { OrgSettingSwitch } from '@/components/settings/OrgSettingSwitch';
 import { ROUTES } from '@/constants/routes';
@@ -77,7 +76,7 @@ const Settings = () => {
 
   const orgTab = useMemo(() => {
     const t = orgTabParam ?? 'branding';
-    if (t === 'modules' || t === 'equipment' || t === 'schedule' || t === 'branding') return t;
+    if (t === 'modules' || t === 'equipment' || t === 'branding') return t;
     return 'branding';
   }, [orgTabParam]);
 
@@ -520,11 +519,10 @@ const Settings = () => {
               }}
               className="w-full"
             >
-              <TabsList className="w-full mb-6 p-1 h-auto bg-muted rounded-lg grid grid-cols-4 gap-1">
+              <TabsList className="w-full mb-6 p-1 h-auto bg-muted rounded-lg grid grid-cols-3 gap-1">
                 <TabsTrigger value="branding" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Branding</TabsTrigger>
                 <TabsTrigger value="modules" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Modules</TabsTrigger>
                 <TabsTrigger value="equipment" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Equipment</TabsTrigger>
-                <TabsTrigger value="schedule" className="py-2.5 px-3 rounded-lg text-xs sm:text-sm font-semibold data-[state=active]:bg-card">Schedule</TabsTrigger>
               </TabsList>
               <TabsContent value="branding" className="space-y-8 mt-0">
             {orgSettings?.customBrandingEnabled === false ? (
@@ -1015,20 +1013,6 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
-            </section>
-              </TabsContent>
-              <TabsContent value="schedule" className="mt-0">
-            {/* Default Retest Schedule */}
-            <section className="space-y-4">
-              <div className="flex items-center gap-2 text-foreground mb-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-bold">Default Retest Schedule</h2>
-              </div>
-              <DefaultCadenceSettings
-                orgSettings={orgSettings}
-                organizationId={profile.organizationId}
-                onSave={refreshSettings}
-              />
             </section>
               </TabsContent>
             </Tabs>

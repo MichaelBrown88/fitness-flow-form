@@ -3,7 +3,7 @@
  * Extracted from MultiStepForm to improve performance and separation of concerns
  */
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { phaseDefinitions, type PhaseSection, type PhaseId, type PhaseField } from '@/lib/phaseConfig';
 import type { FormData } from '@/contexts/FormContext';
 import type { OrgSettings } from '@/services/organizations';
@@ -15,6 +15,7 @@ import {
   parseEditAssessmentPayload,
   writePartialAssessment,
   readSavedAssessmentPhaseIndex,
+  readSavedAssessmentPhaseId,
   readPartialAssessmentRecord,
 } from '@/lib/assessment/assessmentSessionStorage';
 import { hasActiveBaselineSession, hasRemoteIntakeResumeSession } from '@/lib/assessment/baselineSession';
@@ -86,12 +87,18 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
 
   const [activePhaseIdx, setActivePhaseIdx] = useState(getInitialPhase);
 
+  // Id-preferred resume: the persisted index is positional, so a phase-order
+  // change between sessions would silently resume into the wrong phase.
+  // Once phases are known, reconcile the restored index against the saved
+  // phase id (runs once per mount; index remains the fallback).
+  const phaseIdReconciled = useRef(false);
+
   // Filter phases based on organization settings and partial assessment mode
   const visiblePhases = useMemo(() => {
     const assessmentToSectionMap: Record<string, string[]> = {
       parq: ['parq'],
       bodycomp: ['body-comp'],
-      fitness: ['resting-hr', 'fitness-assessment'],
+      fitness: ['fitness-assessment'],
       posture: ['posture'],
       overheadSquat: ['overhead-squat'],
       hinge: ['hinge-assessment'],
@@ -179,7 +186,7 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
       },
       'fitness': { 
         phaseIds: ['P0', 'P3', 'P7'], 
-        sectionIds: ['basic-client-info', 'parq', 'resting-hr', 'fitness-assessment'] 
+        sectionIds: ['basic-client-info', 'parq', 'fitness-assessment'] 
       },
       'strength': { 
         phaseIds: ['P0', 'P5', 'P7'], 
@@ -222,6 +229,20 @@ export function useAssessmentNavigation({ formData, orgSettings }: UseAssessment
       })
       .filter((p): p is NonNullable<typeof p> => p !== null);
   }, [formData.assessmentPlan, isPartialAssessment, partialCategory, orgSettings?.modules]);
+
+  useEffect(() => {
+    if (phaseIdReconciled.current || visiblePhases.length === 0) return;
+    phaseIdReconciled.current = true;
+    // Only reconcile when an index was actually restored — a fresh session
+    // must stay on phase 0 regardless of any stale id.
+    if (readSavedAssessmentPhaseIndex() === null) return;
+    const savedId = readSavedAssessmentPhaseId();
+    if (!savedId) return;
+    const idx = visiblePhases.findIndex((p) => p.id === savedId);
+    if (idx !== -1) {
+      setActivePhaseIdx((prev) => (prev === idx ? prev : idx));
+    }
+  }, [visiblePhases]);
 
   const isFieldVisible = useCallback((field: { id?: string; conditional?: { showWhen?: Record<string, unknown> } }, customData?: FormData) => {
     const data = customData || formData;

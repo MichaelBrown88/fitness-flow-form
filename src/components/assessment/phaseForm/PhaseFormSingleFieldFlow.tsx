@@ -1,7 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { PhaseField, PhaseSection } from '@/lib/phaseConfig';
-import { useFormContext } from '@/contexts/FormContext';
-import { useToast } from '@/hooks/use-toast';
 import { SingleFieldFlow } from '@/components/assessment/SingleFieldFlow';
 
 type IntakeSection = {
@@ -33,7 +31,6 @@ export interface PhaseFormSingleFieldFlowProps {
   isPartialAssessment: boolean;
   onShowCamera: (mode: 'ocr') => void;
   onShowPostureCompanion: () => void;
-  onShowBodyCompCompanion: () => void;
   onRequestPreResultsReview: () => void;
 }
 
@@ -57,12 +54,8 @@ export function PhaseFormSingleFieldFlow({
   isPartialAssessment,
   onShowCamera,
   onShowPostureCompanion,
-  onShowBodyCompCompanion,
   onRequestPreResultsReview,
 }: PhaseFormSingleFieldFlowProps) {
-  const { formData } = useFormContext();
-  const { toast } = useToast();
-
   if (activePhase.id === 'P7') return null;
 
   const allSections = getSectionsForPhase(activePhase);
@@ -105,26 +98,8 @@ export function PhaseFormSingleFieldFlow({
       setActiveFieldIdx={setActiveFieldIdx}
       onShowCamera={onShowCamera}
       onShowPostureCompanion={onShowPostureCompanion}
-      onShowBodyCompCompanion={onShowBodyCompCompanion}
       onGoToPreviousSection={handleGoToPreviousSection}
       onComplete={() => {
-        if (activeSection.id === 'resting-hr') {
-          const rhr = formData.cardioRestingHr;
-          const valid =
-            rhr !== undefined &&
-            rhr !== null &&
-            String(rhr).trim() !== '' &&
-            !Number.isNaN(Number(rhr));
-          if (!valid) {
-            toast({
-              title: 'Resting heart rate required',
-              description:
-                'Capture seated resting HR after at least 5 minutes quiet before the fitness test.',
-              variant: 'destructive',
-            });
-            return;
-          }
-        }
         const currentIndex = allSections.findIndex((s) => s.id === activeSection.id);
         if (currentIndex < allSections.length - 1) {
           setExpandedSections({ [allSections[currentIndex + 1].id]: true });

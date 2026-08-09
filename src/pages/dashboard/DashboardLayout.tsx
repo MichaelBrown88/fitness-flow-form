@@ -1,5 +1,5 @@
 /**
- * Coach workspace layout: sidebar, pills, conditional search, assistant provider, Outlet.
+ * Coach workspace layout: sidebar, conditional search, Outlet.
  */
 
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
@@ -13,60 +13,31 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Menu, Search, AlertTriangle } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { STORAGE_KEYS } from '@/constants/storageKeys';
-import { COACH_ASSISTANT_COPY } from '@/constants/coachAssistantCopy';
 import {
   writePrefillClientPayload,
 } from '@/lib/assessment/assessmentSessionStorage';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useAuth } from '@/hooks/useAuth';
-import { getRoadmapForClient } from '@/services/roadmaps';
-import { getClientProfile, resolveClientDisplayNameFromOrgClientDoc } from '@/services/clientProfiles';
+import { resolveClientDisplayNameFromOrgClientDoc } from '@/services/clientProfiles';
 import { formatClientDisplayName } from '@/lib/utils/clientDisplayName';
 import { useToast } from '@/hooks/use-toast';
 import { DashboardHeader } from '@/components/dashboard/sub-components/DashboardHeader';
-import { CoachWorkspacePills } from '@/components/dashboard/CoachWorkspacePills';
 import { CoachWorkspaceSidebar, CoachWorkspaceSidebarCollapsed } from '@/components/dashboard/CoachWorkspaceSidebar';
 import { CoachWorkspaceProfileFooter } from '@/components/dashboard/CoachWorkspaceProfileFooter';
 import { DashboardDialogs } from '@/components/dashboard/sub-components/DashboardDialogs';
 import { GettingStartedChecklist } from '@/components/dashboard/GettingStartedChecklist';
-import { generateTasks, type QueueEntry, type RoadmapNeededInfo, type ProfileGapInfo } from '@/lib/tasks/generateTasks';
 import { DASHBOARD_TASKS } from '@/constants/dashboardTasksCopy';
-import type { CoachTask } from '@/lib/tasks/generateTasks';
 import { staffPreferredFirstName } from '@/lib/utils/staffDisplayName';
 import { Seo } from '@/components/seo/Seo';
 import { getDashboardSeoForPathname } from '@/constants/seo';
-import { CoachAssistantProvider } from '@/contexts/CoachAssistantContext';
-import { useCoachAssistant } from '@/hooks/useCoachAssistant';
-import {
-  useCoachArtifacts,
-  type CoachAchievementShareRow,
-  type CoachArtifactRow,
-  type CoachRoadmapShareRow,
-  type CoachShareablePreview,
-} from '@/hooks/useCoachArtifacts';
-import { CoachArtifactPreviewSheet } from '@/components/dashboard/CoachArtifactPreviewSheet';
 import { NewClientModal } from '@/components/dashboard/NewClientModal';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { DASHBOARD_SHELL_COPY } from '@/constants/dashboardShellCopy';
 import { cn } from '@/lib/utils';
 import { useOrgHealthCheck } from '@/hooks/useOrgHealthCheck';
 import { OrgSetupWizard } from '@/components/onboarding/OrgSetupWizard';
-import { FloatingAssistantPanel, FloatingAssistantTrigger } from '@/components/dashboard/FloatingAssistantPanel';
 
 export type DashboardOutletContext = ReturnType<typeof useDashboardData> & {
-  tasks: CoachTask[];
-  openShareablePreview: (preview: CoachShareablePreview) => void;
-  reportShares: CoachArtifactRow[];
-  roadmapShares: CoachRoadmapShareRow[];
-  achievementShares: CoachAchievementShareRow[];
-  shareablesLoading: boolean;
-  shareablesError: string | null;
   onNewClient: () => void;
 };
 
@@ -90,18 +61,16 @@ export default function DashboardLayout() {
   const { loading: healthLoading, allHealthy } = useOrgHealthCheck();
   const dashboardClientQueryHandledRef = useRef<string>('');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [assistantSidebarCollapsed, setAssistantSidebarCollapsed] = useState(() => {
+  const [newClientModalOpen, setNewClientModalOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem(STORAGE_KEYS.COACH_ASSISTANT_SIDEBAR_COLLAPSED) === '1';
     } catch {
       return false;
     }
   });
-  const [shareablePreview, setShareablePreview] = useState<CoachShareablePreview | null>(null);
-  const [assistantPanelOpen, setAssistantPanelOpen] = useState(false);
-
-  const toggleAssistantSidebarCollapsed = useCallback(() => {
-    setAssistantSidebarCollapsed((prev) => {
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
       const next = !prev;
       try {
         localStorage.setItem(STORAGE_KEYS.COACH_ASSISTANT_SIDEBAR_COLLAPSED, next ? '1' : '0');
@@ -116,22 +85,10 @@ export default function DashboardLayout() {
     const p = location.pathname;
     const inWorkspace =
       p === ROUTES.DASHBOARD ||
-      p === ROUTES.DASHBOARD_ARTIFACTS ||
-      p.startsWith(ROUTES.DASHBOARD_ASSISTANT) ||
       p.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
-      p.startsWith(ROUTES.DASHBOARD_WORK) ||
       p.startsWith(ROUTES.DASHBOARD_TEAM);
     if (!inWorkspace) setMobileSidebarOpen(false);
   }, [location.pathname]);
-
-  // Auto-open the floating assistant panel when navigating to /dashboard/assistant
-  // and redirect to /dashboard so the panel overlays the Today tab.
-  useEffect(() => {
-    if (location.pathname.startsWith(ROUTES.DASHBOARD_ASSISTANT)) {
-      setAssistantPanelOpen(true);
-      navigate(ROUTES.DASHBOARD, { replace: true });
-    }
-  }, [location.pathname, navigate]);
 
   const {
     loading,
@@ -141,60 +98,6 @@ export default function DashboardLayout() {
     hasSharedReport,
     reassessmentQueue,
   } = dashboardData;
-
-  const [roadmapsNeeded, setRoadmapsNeeded] = useState<RoadmapNeededInfo[]>([]);
-  const [incompleteProfiles, setIncompleteProfiles] = useState<ProfileGapInfo[]>([]);
-
-  useEffect(() => {
-    if (!effectiveOrgId || !dataUser || !filteredClients || filteredClients.length === 0) return;
-    let cancelled = false;
-
-    const timeoutId = window.setTimeout(() => {
-      const run = async () => {
-        const needed: RoadmapNeededInfo[] = [];
-        const gaps: ProfileGapInfo[] = [];
-
-        const clientsWithAssessments = filteredClients.filter((c) => c.assessments.length > 0);
-        const checks = clientsWithAssessments.slice(0, 50).map(async (client) => {
-          try {
-            const roadmap = await getRoadmapForClient(effectiveOrgId, client.name);
-            if (!roadmap && client.latestDate) {
-              needed.push({ clientName: client.name, assessmentDate: client.latestDate });
-            }
-          } catch {
-            /* skip */
-          }
-        });
-
-        const profileChecks = filteredClients.slice(0, 50).map(async (client) => {
-          try {
-            const p = await getClientProfile(dataUser.uid, client.name, effectiveOrgId);
-            if (!p) return;
-            const missing: string[] = [];
-            if (!p.email) missing.push('email');
-            if (!p.phone) missing.push('phone');
-            if (!p.dateOfBirth) missing.push('date of birth');
-            if (missing.length > 2) gaps.push({ clientName: client.name, missingFields: missing });
-          } catch {
-            /* skip */
-          }
-        });
-
-        await Promise.all([...checks, ...profileChecks]);
-        if (!cancelled) {
-          setRoadmapsNeeded(needed);
-          setIncompleteProfiles(gaps);
-        }
-      };
-
-      void run();
-    }, 800);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timeoutId);
-    };
-  }, [effectiveOrgId, dataUser, filteredClients]);
 
   const trialDaysRemaining = useMemo(() => {
     const sub = orgSettings?.subscription;
@@ -264,57 +167,6 @@ export default function DashboardLayout() {
     };
   }, [effectiveOrgId, location.pathname, location.search, location.hash, navigate, toast]);
 
-  const tasks = useMemo(() => {
-    if (!reassessmentQueue) return [];
-    const queueEntries: QueueEntry[] = reassessmentQueue.queue.flatMap((client) =>
-      client.pillarSchedules
-        .filter((ps) => ps.status !== 'up-to-date')
-        .map((ps) => ({
-          clientName: client.clientName,
-          pillar: ps.pillar,
-          dueDate: ps.dueDate,
-          status: ps.status === 'overdue' ? 'overdue' : 'due_soon',
-          coachUid: client.coachUid ?? undefined,
-        })),
-    );
-    return generateTasks({
-      reassessmentQueue: queueEntries,
-      draftAssessments: [],
-      roadmapsDueForReview: [],
-      roadmapsNeeded,
-      incompleteProfiles,
-    });
-  }, [reassessmentQueue, roadmapsNeeded, incompleteProfiles]);
-
-  const assistantApi = useCoachAssistant({
-    coachUid: dataUser?.uid,
-    organizationId: effectiveOrgId ?? undefined,
-    tasks,
-    /** Full roster — assistant matching and AI context must not depend on the clients-tab search box. */
-    clients: dashboardData.clientGroups,
-    reassessmentQueue: dashboardData.reassessmentQueue,
-    orgSubscription: orgSettings?.subscription,
-    isOrgAdmin: dashboardData.isAdmin,
-    isActiveCoach: dashboardData.isActiveCoach,
-    coachMap: dashboardData.coachMap,
-  });
-
-  const {
-    reportRows,
-    roadmapRows,
-    achievementRows,
-    loading: shareablesLoading,
-    error: shareablesError,
-  } = useCoachArtifacts(dataUser?.uid, effectiveOrgId ?? undefined);
-
-  const openShareablePreview = useCallback((preview: CoachShareablePreview) => {
-    setShareablePreview(preview);
-  }, []);
-
-  const [newClientModalOpen, setNewClientModalOpen] = useState(false);
-
-  const overdueCountVal = reassessmentQueue?.summary?.overdue ?? 0;
-
   if (loading || !dataUser) {
     return (
       <div
@@ -337,30 +189,15 @@ export default function DashboardLayout() {
   const path = location.pathname;
   const isWorkspaceShell =
     path === ROUTES.DASHBOARD ||
-    path === ROUTES.DASHBOARD_ARTIFACTS ||
-    path.startsWith(ROUTES.DASHBOARD_ASSISTANT) ||
     path.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
-    path.startsWith(ROUTES.DASHBOARD_WORK) ||
     path.startsWith(ROUTES.DASHBOARD_TEAM) ||
     path.startsWith(ROUTES.SETTINGS);
-  // Artifacts tab manages its own scroll; other workspace tabs use the outer container.
-  // The assistant is now a floating panel, not a tab.
-  const isAssistantTab =
-    path === ROUTES.DASHBOARD_ARTIFACTS;
-  const showClientSearch =
-    path.startsWith(ROUTES.DASHBOARD_CLIENTS) ||
-    path.startsWith(ROUTES.DASHBOARD_TEAM);
-
-  const attentionCount = (reassessmentQueue?.queue ?? []).filter(
-    (item) => item.status === 'overdue' || item.status === 'due-soon',
-  ).length;
 
   const sidebarProps = {
     clientCount: dashboardData.analytics?.totalClients ?? 0,
-    artefactCount: reportRows.length + roadmapRows.length + achievementRows.length,
     showTeamTab: dashboardData.showTeamTab,
     onNewClient: () => setNewClientModalOpen(true),
-    onToggleCollapse: toggleAssistantSidebarCollapsed,
+    onToggleCollapse: toggleSidebarCollapsed,
   };
 
   // Org health check: show catch-up wizard for legacy orgs missing required fields.
@@ -378,7 +215,6 @@ export default function DashboardLayout() {
         noindex={dashboardSeo.noindex}
       />
       <OfflineBanner />
-      <CoachAssistantProvider value={assistantApi}>
         <AppShell
           title="Dashboard"
           hideTitle
@@ -394,7 +230,7 @@ export default function DashboardLayout() {
                 size="icon"
                 className="h-9 w-9 text-muted-foreground"
                 onClick={() => setMobileSidebarOpen(true)}
-                aria-label={COACH_ASSISTANT_COPY.MOBILE_SIDEBAR}
+                aria-label={DASHBOARD_SHELL_COPY.MOBILE_SIDEBAR}
               >
                 <Menu className="h-5 w-5" />
               </Button>
@@ -405,7 +241,7 @@ export default function DashboardLayout() {
             href="#workspace-main"
             className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-16 focus:z-[60] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:ring-2 focus:ring-ring"
           >
-            {COACH_ASSISTANT_COPY.SKIP_MAIN}
+            {DASHBOARD_SHELL_COPY.SKIP_MAIN}
           </a>
 
           <div
@@ -416,11 +252,10 @@ export default function DashboardLayout() {
           >
             {isWorkspaceShell ? (
               <>
-                {assistantSidebarCollapsed ? (
+                {sidebarCollapsed ? (
                   <CoachWorkspaceSidebarCollapsed
                     onNewClient={sidebarProps.onNewClient}
                     onToggleCollapse={sidebarProps.onToggleCollapse}
-                    hasAttention={attentionCount > 0}
                   />
                 ) : (
                   <CoachWorkspaceSidebar {...sidebarProps} className="hidden lg:flex" />
@@ -482,7 +317,6 @@ export default function DashboardLayout() {
                   coachFirstName={coachFirstName}
                   totalClients={analytics?.totalClients ?? 0}
                   totalAssessments={analytics?.totalAssessments ?? 0}
-                  overdueCount={reassessmentQueue?.summary?.overdue ?? 0}
                 />
               )}
 
@@ -495,28 +329,19 @@ export default function DashboardLayout() {
                 <div
                   className={cn(
                     'flex flex-col flex-1 min-h-0 min-w-0 text-foreground',
-                    isAssistantTab
-                      ? 'overflow-hidden'
-                      : isWorkspaceShell
-                        ? 'overflow-y-auto overscroll-contain'
-                        : 'overflow-x-hidden pt-3 sm:pt-4',
+                    isWorkspaceShell
+                      ? 'overflow-y-auto overscroll-contain'
+                      : 'overflow-x-hidden pt-3 sm:pt-4',
                   )}
                   id="workspace-main"
                 >
                   {/* Search moved inline to UnifiedClientTable filter row */}
 
-                  <div className={cn('flex flex-col min-w-0', isAssistantTab ? 'flex-1 min-h-0' : isWorkspaceShell ? 'flex-1' : 'flex-none')}>
+                  <div className={cn('flex flex-col min-w-0', isWorkspaceShell ? 'flex-1' : 'flex-none')}>
                     <Outlet
                       context={
                         {
                           ...dashboardData,
-                          tasks,
-                          openShareablePreview,
-                          reportShares: reportRows,
-                          roadmapShares: roadmapRows,
-                          achievementShares: achievementRows,
-                          shareablesLoading,
-                          shareablesError,
                           onNewClient: () => setNewClientModalOpen(true),
                         } satisfies DashboardOutletContext
                       }
@@ -543,8 +368,6 @@ export default function DashboardLayout() {
             showTrialSubscribeNudge={orgSettings?.subscription?.planKind === 'gym_trial'}
             showBrandingNudge={orgSettings?.customBrandingEnabled === false}
           />
-
-          <CoachArtifactPreviewSheet preview={shareablePreview} onClose={() => setShareablePreview(null)} />
 
           <NewClientModal
             open={newClientModalOpen}
@@ -574,20 +397,7 @@ export default function DashboardLayout() {
             setDeleteSnapshotDialog={dashboardData.setDeleteSnapshotDialog}
             onDeleteSnapshot={dashboardData.handleDeleteSnapshot}
           />
-
-          {/* Global floating assistant — accessible from every dashboard view */}
-          {isWorkspaceShell && !assistantPanelOpen && (
-            <FloatingAssistantTrigger
-              onClick={() => setAssistantPanelOpen(true)}
-              hasActivity={assistantApi.sending}
-            />
-          )}
-          <FloatingAssistantPanel
-            open={assistantPanelOpen}
-            onOpenChange={setAssistantPanelOpen}
-          />
         </AppShell>
-      </CoachAssistantProvider>
     </ErrorBoundary>
   );
 }

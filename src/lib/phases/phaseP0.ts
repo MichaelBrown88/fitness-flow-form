@@ -46,32 +46,6 @@ export const phaseP0: PhaseDefinition = {
           tooltip: ASSESSMENT_TOOLTIPS.P0.recentActivity,
           options: ASSESSMENT_OPTIONS.recentActivity
         },
-        {
-          id: 'primaryTrainingStyles' as keyof FormData,
-          type: 'multiselect' as FieldType,
-          label: ASSESSMENT_LABELS.P0.primaryTrainingStyles,
-          tooltip: ASSESSMENT_TOOLTIPS.P0.primaryTrainingStyles,
-          options: ASSESSMENT_OPTIONS.primaryTrainingStyles,
-          conditional: {
-            showWhen: {
-              field: 'recentActivity',
-              value: 'currently-training',
-            },
-          },
-        },
-        {
-          id: 'primaryTrainingStyleOther' as keyof FormData,
-          type: 'text' as FieldType,
-          label: ASSESSMENT_LABELS.P0.primaryTrainingStyleOther,
-          placeholder: 'e.g., Swimming, Martial Arts, Dance',
-          tooltip: ASSESSMENT_TOOLTIPS.P0.primaryTrainingStyleOther,
-          conditional: {
-            showWhen: {
-              field: 'primaryTrainingStyles',
-              includes: 'other'
-            }
-          }
-        },
       ],
     },
     {

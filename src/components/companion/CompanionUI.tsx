@@ -403,7 +403,7 @@ export function CompanionUI({
                       <span className="text-[11px] font-medium">Voice guide connecting…</span>
                     </div>
                   ) : null}
-                  {!requireVoiceGuideForStart && geminiConnectionStatus !== 'open' ? (
+                  {!requireVoiceGuideForStart ? (
                     <p className="text-[11px] font-medium leading-snug text-white/75 px-1">
                       Voice coach unavailable — on-screen guidance still works.
                     </p>

@@ -14,7 +14,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { subscribeToPlatformConfig } from '@/services/platform/platformConfig';
-import type { PlatformConfig, PlatformFeatureFlags, PlatformMaintenanceSettings } from '@/types/platform';
+import type {
+  PlatformAnnouncement,
+  PlatformConfig,
+  PlatformFeatureFlags,
+  PlatformMaintenanceSettings,
+} from '@/types/platform';
 import { DEFAULT_PLATFORM_CONFIG } from '@/types/platform';
 
 export interface UseFeatureFlagsResult {
@@ -24,6 +29,8 @@ export interface UseFeatureFlagsResult {
   features: PlatformFeatureFlags;
   /** Maintenance settings */
   maintenance: PlatformMaintenanceSettings;
+  /** Optional product announcement banner */
+  announcement: PlatformAnnouncement | null;
   /** Whether the initial config has loaded */
   loading: boolean;
   /** Full platform config (for advanced use cases) */
@@ -58,6 +65,7 @@ export function useFeatureFlags(): UseFeatureFlagsResult {
     isFeatureEnabled,
     features: config.features,
     maintenance: config.maintenance,
+    announcement: config.announcement ?? null,
     loading,
     config,
   };

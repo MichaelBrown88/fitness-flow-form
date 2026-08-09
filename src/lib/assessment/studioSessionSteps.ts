@@ -8,11 +8,16 @@ import { hasRemoteIntakeResumeSession } from '@/lib/assessment/baselineSession';
 
 export type StudioSessionStep = 'intake-review';
 
-/** Physical battery order for in-studio tests (excludes P0/P1 pre-assessment). */
-export const STUDIO_PHYSICAL_PHASE_ORDER: PhaseId[] = ['P3', 'P2', 'P5', 'P4', 'P7'];
+/**
+ * Physical battery order for in-studio tests (excludes P0/P1 pre-assessment).
+ * Fitness first: resting HR is captured while the client is still seated after
+ * the interview. Then floor work (strength, movement + posture photos), then
+ * the station block (tape measurements + analyzer) before the review.
+ */
+export const STUDIO_PHYSICAL_PHASE_ORDER: PhaseId[] = ['P3', 'P5', 'P4', 'P2', 'P7'];
 
 /** Full baseline plan phase ids (no P6 — goals on P1 / pre-assessment). */
-export const STUDIO_BASELINE_PHASE_IDS: PhaseId[] = ['P0', 'P1', 'P3', 'P2', 'P5', 'P4', 'P7'];
+export const STUDIO_BASELINE_PHASE_IDS: PhaseId[] = ['P0', 'P1', 'P3', 'P5', 'P4', 'P2', 'P7'];
 
 const REMOTE_POSTURE_VIEWS = ['front', 'side-left', 'back', 'side-right'] as const;
 

@@ -6,11 +6,9 @@ import {
   User,
   Settings,
   LayoutDashboard,
-  LayoutGrid,
   X,
   Building2,
   CreditCard,
-  CalendarRange,
 } from 'lucide-react';
 import { ROUTES } from '@/constants/routes';
 import { UI_COMMAND_MENU } from '@/constants/ui';
@@ -162,20 +160,6 @@ export function CommandMenu() {
               >
                 <User className="h-4 w-4 text-muted-foreground" />
                 {UI_COMMAND_MENU.CLIENTS}
-              </Command.Item>
-              <Command.Item
-                onSelect={() => go(ROUTES.DASHBOARD_WORK)}
-                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
-              >
-                <CalendarRange className="h-4 w-4 text-muted-foreground" />
-                {UI_COMMAND_MENU.WORK}
-              </Command.Item>
-              <Command.Item
-                onSelect={() => go(ROUTES.DASHBOARD_ARTIFACTS)}
-                className="flex items-center gap-3 px-3 py-2.5 text-sm text-foreground-secondary rounded-lg cursor-pointer data-[selected=true]:bg-muted"
-              >
-                <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                {UI_COMMAND_MENU.ARTIFACTS}
               </Command.Item>
               {showOrgAdminNav && (
                 <Command.Item

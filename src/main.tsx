@@ -37,7 +37,6 @@ initAppCheck();
 // DEV-only tools stay guarded; migration tools (importPlatformData, deleteV1Paths) load always
 import('@/lib/setup/admin/platformDataReconciler');
 if (import.meta.env.DEV) {
-  import('@/services/achievements'); // registers populateClientData on window
   import('@/services/diagnoseClient'); // registers diagnoseClient, fixClientAnimations on window
   import('@/services/backfillSnapshotPosture'); // registers backfillSnapshotPosture on window
 }

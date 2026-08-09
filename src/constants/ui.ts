@@ -206,7 +206,6 @@ export const UI_STATUS = {
 
 // Dashboard Tab Labels
 export const UI_TABS = {
-  ASSISTANT: 'Assistant',
   CLIENTS: 'Clients',
   WORK: 'Today',
   SCHEDULE: 'Tasks',

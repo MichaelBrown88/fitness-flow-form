@@ -33,7 +33,6 @@ export const phaseP1: PhaseDefinition = {
         { id: 'hydrationHabits' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P1.hydrationHabits, tooltip: ASSESSMENT_TOOLTIPS.P1.hydrationHabits, options: ASSESSMENT_OPTIONS.hydrationHabits },
         // Optional fields — shown by default, coach can disable per org
         { id: 'stepsPerDay' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P1.stepsPerDay, placeholder: ASSESSMENT_PLACEHOLDERS.P1.stepsPerDay, tooltip: ASSESSMENT_TOOLTIPS.P1.stepsPerDay, orgConfigKey: 'stepsPerDay' },
-        { id: 'sedentaryHours' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P1.sedentaryHours, placeholder: ASSESSMENT_PLACEHOLDERS.P1.sedentaryHours, tooltip: ASSESSMENT_TOOLTIPS.P1.sedentaryHours, orgConfigKey: 'sedentaryHours' },
         { id: 'caffeineCupsPerDay' as keyof FormData, type: 'number' as FieldType, label: ASSESSMENT_LABELS.P1.caffeineCupsPerDay, placeholder: ASSESSMENT_PLACEHOLDERS.P1.caffeineCupsPerDay, tooltip: ASSESSMENT_TOOLTIPS.P1.caffeineCupsPerDay, orgConfigKey: 'caffeine' },
         { id: 'lastCaffeineIntake' as keyof FormData, type: 'time' as FieldType, label: ASSESSMENT_LABELS.P1.lastCaffeineIntake, tooltip: ASSESSMENT_TOOLTIPS.P1.lastCaffeineIntake, orgConfigKey: 'caffeine', conditional: { showWhen: { field: 'caffeineCupsPerDay', exists: true, notValue: '0' } } },
         {
@@ -74,12 +73,6 @@ export const phaseP1: PhaseDefinition = {
           label: ASSESSMENT_LABELS.P6.trainingFrequency,
           tooltip: ASSESSMENT_TOOLTIPS.P6.trainingFrequency,
           options: ASSESSMENT_OPTIONS.trainingFrequency,
-        },
-        {
-          id: 'goalDeadline' as keyof FormData,
-          type: 'date' as FieldType,
-          label: ASSESSMENT_LABELS.P6.goalDeadline,
-          tooltip: ASSESSMENT_TOOLTIPS.P6.goalDeadline,
         },
       ],
     }

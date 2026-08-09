@@ -24,6 +24,8 @@ interface PillarCardProps {
   graphic?: React.ReactNode;
   /** Gap rows, lifestyle targets, or similar. */
   targets?: React.ReactNode;
+  /** Open the targets table on first render — used for the client's primary-goal pillar. */
+  defaultTargetsOpen?: boolean;
   /** @deprecated Use `targets` */
   gapAnalysis?: React.ReactNode;
   /** Defaults to snapshot heading; use for posture scan photos only on client report. */
@@ -63,11 +65,12 @@ export const PillarCard: React.FC<PillarCardProps> = ({
   focusAreas,
   graphic,
   targets,
+  defaultTargetsOpen = false,
   gapAnalysis,
   graphicSectionTitle,
   className,
 }) => {
-  const [targetsOpen, setTargetsOpen] = useState(false);
+  const [targetsOpen, setTargetsOpen] = useState(defaultTargetsOpen);
   const hasScore = typeof score === 'number';
   const diff =
     hasScore && previousScore != null ? Math.round(score!) - Math.round(previousScore) : null;

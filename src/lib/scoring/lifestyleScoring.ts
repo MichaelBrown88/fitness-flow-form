@@ -3,6 +3,15 @@ import { LIFESTYLE_FEEDBACK_DB } from '../clinical-data';
 import { safeParse } from '../utils/numbers';
 import type { ScoreCategory, ScoreDetail } from './types';
 
+/** Parse an 'HH:MM' time string into an hour number, or null when absent/invalid. */
+function parseCaffeineHour(value: string | undefined): number | null {
+  if (!value) return null;
+  const match = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  return hour >= 0 && hour <= 23 ? hour : null;
+}
+
 export function scoreLifestyle(form: FormData, age: number, gender: string): ScoreCategory {
   // Support both new archetype and legacy fields
   const sleepArchetype = (form.sleepArchetype || '').toLowerCase();
@@ -12,9 +21,11 @@ export function scoreLifestyle(form: FormData, age: number, gender: string): Sco
   const hydration = (form.hydrationHabits || '').toLowerCase();
   const nutrition = (form.nutritionHabits || '').toLowerCase();
   const steps = safeParse(form.stepsPerDay);
-  const sedentary = safeParse(form.sedentaryHours);
+  const sedentary = safeParse(form.sedentaryHours); // legacy field — no longer collected
+  const activityLevel = (form.activityLevel || '').toLowerCase();
+  const caffeineHour = parseCaffeineHour(form.lastCaffeineIntake);
 
-  const hasLifestyleData = !!(sleepArchetype || sleepQ || sleepC || stress || hydration || nutrition || steps > 0 || sedentary > 0);
+  const hasLifestyleData = !!(sleepArchetype || sleepQ || sleepC || stress || hydration || nutrition || steps > 0 || sedentary > 0 || activityLevel);
 
   if (!hasLifestyleData) {
     return {
@@ -48,6 +59,19 @@ export function scoreLifestyle(form: FormData, age: number, gender: string): Sco
     else if (sleepC === 'very-inconsistent') sleepScore = Math.max(0, sleepScore - 20);
   }
 
+  // Caffeine timing penalty: caffeine's ~5-6h half-life means afternoon/evening
+  // servings cut into sleep depth even when self-reported sleep feels fine.
+  let lateCaffeine: 'afternoon' | 'evening' | null = null;
+  if (sleepScore > 0 && caffeineHour !== null) {
+    if (caffeineHour >= 18) {
+      sleepScore = Math.max(0, sleepScore - 20);
+      lateCaffeine = 'evening';
+    } else if (caffeineHour >= 14) {
+      sleepScore = Math.max(0, sleepScore - 10);
+      lateCaffeine = 'afternoon';
+    }
+  }
+
   // Stress score (archetype-based: very-low=balanced, low=coping, moderate=affected, high=overwhelmed)
   let stressScore = 0;
   if (stress === 'very-low') stressScore = 100;
@@ -70,14 +94,21 @@ export function scoreLifestyle(form: FormData, age: number, gender: string): Sco
   else if (nutrition === 'fair') nutritionScore = 60;
   else if (nutrition === 'poor') nutritionScore = 40;
 
-  // Activity score
+  // Activity score: steps are the objective signal; the self-rated activity
+  // level fills in when steps are missing. Sedentary hours are legacy data.
   let activityScore = 0;
-  if (steps > 0 || sedentary > 0) {
+  if (steps > 0) {
     if (steps >= 10000) activityScore = 100;
     else if (steps >= 8000) activityScore = 85;
     else if (steps >= 6000) activityScore = 70;
     else if (steps >= 4000) activityScore = 55;
     else activityScore = 40;
+  } else if (activityLevel) {
+    if (activityLevel === 'extremely-active') activityScore = 100;
+    else if (activityLevel === 'very-active') activityScore = 85;
+    else if (activityLevel === 'moderately-active') activityScore = 70;
+    else if (activityLevel === 'lightly-active') activityScore = 50;
+    else if (activityLevel === 'sedentary') activityScore = 30;
   }
   if (sedentary >= 10) activityScore = Math.max(30, activityScore - 20);
   else if (sedentary >= 8) activityScore = Math.max(40, activityScore - 15);
@@ -108,7 +139,7 @@ export function scoreLifestyle(form: FormData, age: number, gender: string): Sco
   }
 
   const details: ScoreDetail[] = [
-    { id: 'sleep', label: 'Sleep Quality', value: sleepQ || '-', score: Math.round(sleepScore) },
+    { id: 'sleep', label: 'Sleep Quality', value: lateCaffeine ? `${sleepQ || sleepArchetype || '-'} (late caffeine)` : (sleepQ || '-'), score: Math.round(sleepScore) },
     { id: 'stress', label: 'Stress Management', value: stress || '-', score: Math.round(stressScore) },
     { id: 'hydration', label: 'Hydration', value: hydration || '-', score: Math.round(hydrationScore) },
     { id: 'nutrition', label: 'Nutrition', value: nutrition || '-', score: Math.round(nutritionScore) },
@@ -125,6 +156,8 @@ export function scoreLifestyle(form: FormData, age: number, gender: string): Sco
 
   if (sleepScore >= 75) strengths.push('Good sleep habits');
   else weaknesses.push('Sleep quality needs improvement');
+  if (lateCaffeine === 'evening') weaknesses.push('Evening caffeine is likely cutting into sleep depth');
+  else if (lateCaffeine === 'afternoon') weaknesses.push('Afternoon caffeine may be affecting sleep quality');
   if (stressScore >= 75) strengths.push('Well-managed stress');
   else weaknesses.push('Stress management needed');
   if (hydrationScore >= 75) strengths.push('Good hydration');

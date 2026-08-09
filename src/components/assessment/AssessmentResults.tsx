@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,15 +15,12 @@ import {
   Link as LinkIcon,
   CheckCircle2,
   User,
-  Target,
 } from 'lucide-react';
 const ClientReport = lazy(() => import('@/components/reports/ClientReport'));
 import { useAuth } from '@/hooks/useAuth';
 import { type FormData } from '@/contexts/FormContext';
 import { type ScoreSummary } from '@/lib/scoring';
 import { PHASE_FORM_COPY } from '@/constants/phaseFormCopy';
-import { getRoadmapForClient } from '@/services/roadmaps';
-import type { Trackable, RoadmapItem } from '@/lib/roadmap/types';
 
 interface AssessmentResultsProps {
   formData: FormData;
@@ -59,30 +56,8 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
   shareLoading,
 }) => {
   const navigate = useNavigate();
-  const { profile, effectiveOrgId } = useAuth();
+  const { profile } = useAuth();
   const [shared, setShared] = React.useState(false);
-  const [arcTrackables, setArcTrackables] = useState<(Trackable & { itemTitle: string })[]>([]);
-
-  // Fetch ARC milestones after save completes so the coach sees progress movement
-  useEffect(() => {
-    if (!savingId || !effectiveOrgId || !formData.fullName) return;
-    let cancelled = false;
-    getRoadmapForClient(effectiveOrgId, formData.fullName.trim())
-      .then(doc => {
-        if (cancelled || !doc?.items) return;
-        const all: (Trackable & { itemTitle: string })[] = [];
-        for (const item of doc.items) {
-          if (item.trackables) {
-            for (const t of item.trackables) {
-              all.push({ ...t, itemTitle: item.title });
-            }
-          }
-        }
-        setArcTrackables(all);
-      })
-      .catch(() => { /* non-critical */ });
-    return () => { cancelled = true; };
-  }, [savingId, effectiveOrgId, formData.fullName]);
 
   const wrapShare = (fn: (v: 'client' | 'coach') => void) => () => {
     fn('client');
@@ -188,46 +163,6 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
         </div>
       )}
 
-      {arcTrackables.length > 0 && (
-        <div className="rounded-xl border border-border/60 bg-card px-5 py-4 space-y-3">
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">ARC™ Milestone Progress</h3>
-            <span className="text-[10px] font-bold text-muted-foreground ml-auto">
-              {arcTrackables.filter(t => t.target > t.baseline ? t.current >= t.target : t.current <= t.target).length}/{arcTrackables.length} reached
-            </span>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {arcTrackables.slice(0, 6).map(t => {
-              const range = Math.abs(t.target - t.baseline);
-              const progress = range > 0
-                ? Math.min(100, Math.max(0, Math.round((Math.abs(t.current - t.baseline) / range) * 100)))
-                : t.current >= t.target ? 100 : 0;
-              const isAchieved = t.target > t.baseline ? t.current >= t.target : t.current <= t.target;
-              return (
-                <div key={t.id} className="flex items-center gap-3 rounded-lg bg-muted/40 px-3 py-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2 mb-1">
-                      <span className="text-xs font-semibold text-foreground truncate">{t.label}</span>
-                      <span className="text-[10px] font-bold text-muted-foreground whitespace-nowrap tabular-nums">
-                        {t.current}{t.unit ? ` ${t.unit}` : ''} → {t.target}{t.unit ? ` ${t.unit}` : ''}
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full bg-border/60 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${isAchieved ? 'bg-score-green' : 'bg-primary'}`}
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-                  {isAchieved && <CheckCircle2 className="h-3.5 w-3.5 text-score-green shrink-0" />}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
       <Suspense fallback={
         <div className="space-y-6 py-8">
           <div className="space-y-3">
@@ -244,11 +179,12 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
           <Skeleton className="h-48 rounded-2xl" />
         </div>
       }>
+        {/* Coach debrief renders the same v2 the client sees — share/new-assessment actions live above. */}
         <ClientReport
           scores={scores}
           goals={Array.isArray(formData.clientGoals) ? formData.clientGoals : []}
           formData={formData}
-          standalone={false}
+          standalone
           organizationId={profile?.organizationId}
         />
       </Suspense>

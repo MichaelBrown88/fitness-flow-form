@@ -449,7 +449,7 @@ export function useOnboarding(): UseOnboardingResult {
         packageTrack: finalData.branding?.packageTrack ?? 'solo',
         clientCount: interestSeats,
         amountCents: region === 'GB' ? 0 : amountCents,
-        amountFils: currency === 'KWD' ? amountCents : undefined,
+        ...(currency === 'KWD' ? { amountFils: amountCents } : {}),
         billingEmail,
       };
 
@@ -467,7 +467,7 @@ export function useOnboarding(): UseOnboardingResult {
         packageTrack: 'gym' as const,
         clientCount: interestSeats,
         amountCents,
-        amountFils: currency === 'KWD' ? amountCents : undefined,
+        ...(currency === 'KWD' ? { amountFils: amountCents } : {}),
         billingEmail,
       };
 

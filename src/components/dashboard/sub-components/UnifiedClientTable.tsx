@@ -43,6 +43,8 @@ interface UnifiedClientTableProps {
   orgDefaultActivePillars?: PartialAssessmentCategory[];
   onViewHistory?: (clientName: string) => void;
   onStartAssessment?: (clientName: string) => void;
+  /** Opens the New Client modal (global "New assessment" = new client). Falls back to /assessment. */
+  onNewClient?: () => void;
   /** Bulk pause/archive writes (real org id, not impersonation read scope) */
   writeOrganizationId?: string;
   coachUid?: string;
@@ -166,6 +168,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
   orgDefaultActivePillars,
   onViewHistory,
   onStartAssessment,
+  onNewClient,
   writeOrganizationId,
   coachUid,
   profile,
@@ -380,7 +383,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                       <Button
                         type="button"
                         className="rounded-lg font-bold"
-                        onClick={() => navigate(ROUTES.ASSESSMENT)}
+                        onClick={() => (onNewClient ? onNewClient() : navigate(ROUTES.ASSESSMENT))}
                       >
                         {UI_DASHBOARD_CLIENTS.EMPTY_CTA}
                       </Button>
@@ -517,7 +520,7 @@ export const UnifiedClientTable: React.FC<UnifiedClientTableProps> = ({
                 <Button
                   type="button"
                   className="font-bold w-full sm:w-auto"
-                  onClick={() => navigate(ROUTES.ASSESSMENT)}
+                  onClick={() => (onNewClient ? onNewClient() : navigate(ROUTES.ASSESSMENT))}
                 >
                   {UI_DASHBOARD_CLIENTS.EMPTY_CTA}
                 </Button>

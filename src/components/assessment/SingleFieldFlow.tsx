@@ -1,17 +1,18 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useRef } from 'react';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Camera, ChevronLeft, ChevronRight, Ruler } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 import { type PhaseField, type PhaseSection } from '@/lib/phaseConfig';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { shouldShowField } from '@/lib/utils/equipmentFieldFilter';
+import { hasActiveBaselineSession } from '@/lib/assessment/baselineSession';
 import { FieldControl } from './FieldControl';
 import {
   MovementPatternCapture,
   type MovementPatternSectionId,
 } from '@/components/assessment/movement/MovementPatternCapture';
+import { CardioRunSheet } from '@/components/assessment/cardio/CardioRunSheet';
 
 const MOVEMENT_PATTERN_SECTIONS = new Set<MovementPatternSectionId>([
   'overhead-squat',
@@ -34,7 +35,6 @@ interface SingleFieldFlowProps {
   onComplete: () => void;
   onShowCamera?: (mode: 'ocr') => void;
   onShowPostureCompanion?: () => void;
-  onShowBodyCompCompanion?: () => void;
   onGoToPreviousSection?: () => void;
 }
 
@@ -45,12 +45,10 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
   onComplete,
   onShowCamera,
   onShowPostureCompanion,
-  onShowBodyCompCompanion,
   onGoToPreviousSection
 }) => {
   const { formData, updateFormData } = useFormContext();
   const { orgSettings } = useAuth();
-  const isMobile = useIsMobile();
 
   // Filter visible fields and group paired ones
   const steps = useMemo(() => {
@@ -108,6 +106,28 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
 
   const currentStep = steps[activeFieldIdx];
   const isLastField = activeFieldIdx === steps.length - 1;
+
+  // Baseline sessions prefill name/email from the New Client modal — skip the
+  // leading already-answered steps instead of re-asking. Runs once per section
+  // mount (ref guard) and only when entering at the first field.
+  const prefillSkipDone = useRef(false);
+  useEffect(() => {
+    if (prefillSkipDone.current) return;
+    prefillSkipDone.current = true;
+    if (section.id !== 'basic-client-info' || activeFieldIdx !== 0) return;
+    if (!hasActiveBaselineSession()) return;
+    let idx = 0;
+    while (
+      idx < steps.length - 1 &&
+      steps[idx].every((field) => {
+        const val = formData[field.id];
+        return val !== undefined && val !== null && val !== '' && (!Array.isArray(val) || val.length > 0);
+      })
+    ) {
+      idx += 1;
+    }
+    if (idx > 0) setActiveFieldIdx(idx);
+  }, [section.id, activeFieldIdx, steps, formData, setActiveFieldIdx]);
   
   const hasValue = useMemo(() => {
     if (!currentStep) return false;
@@ -147,6 +167,17 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
     );
   }
 
+  // P3 renders as one continuous run sheet (RHR → protocol → timer → peak → recovery)
+  if (section.id === 'fitness-assessment') {
+    return (
+      <CardioRunSheet
+        sectionTitle={section.title}
+        onComplete={onComplete}
+        onBack={onGoToPreviousSection}
+      />
+    );
+  }
+
   // ── PAR-Q bypass: the component manages its own multi-step flow ─
   const isParQField = currentStep.length === 1 && currentStep[0].type === 'parq';
   if (isParQField) {
@@ -155,7 +186,6 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
         field={currentStep[0]}
         onShowCamera={onShowCamera}
         onShowPostureCompanion={onShowPostureCompanion}
-        onShowBodyCompCompanion={onShowBodyCompCompanion}
         onExitParQ={handleBack}
         onParQComplete={onComplete}
       />
@@ -170,13 +200,10 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
     ? currentStep[0].side
     : null;
 
-  // Auto-photo helper for body comp: launches camera or phone companion
+  // Body comp scan always uses this device's camera — the direct OCR path.
+  // (The phone-QR companion routing was a dead end on tablets; see plan Phase B.)
   const handleSnapPhoto = () => {
-    if (!isMobile && onShowBodyCompCompanion) {
-      onShowBodyCompCompanion();
-    } else {
-      onShowCamera?.('ocr');
-    }
+    onShowCamera?.('ocr');
   };
 
   return (
@@ -239,28 +266,23 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
                 field={field}
                 onShowCamera={onShowCamera}
                 onShowPostureCompanion={onShowPostureCompanion}
-                onShowBodyCompCompanion={onShowBodyCompCompanion}
                 onExitParQ={handleBack}
               />
             </div>
           ))}
         </div>
 
-        {/* Body comp: optional "Add Body Measurements" toggle at bottom */}
-        {isBodyCompSection && isLastField && (
-          <div className="mt-6 pt-4 border-t border-border">
-            {formData.showBodyMeasurements !== 'yes' ? (
-              <Button
-                variant="ghost"
-                onClick={() => updateFormData({ showBodyMeasurements: 'yes' })}
-                className="h-9 px-4 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground-secondary gap-2"
-              >
-                <Ruler className="h-3.5 w-3.5" />
-                Add Body Measurements (optional)
-              </Button>
-            ) : (
-              <p className="text-[10px] text-muted-foreground font-medium">Body measurements are included below.</p>
-            )}
+        {/* Body comp: optional manual analyzer entry opt-in at bottom */}
+        {isBodyCompSection && isLastField && formData.showAnalyzerFields !== 'yes' && (
+          <div className="mt-6 pt-4 border-t border-border flex flex-wrap items-center gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => updateFormData({ showAnalyzerFields: 'yes' })}
+              className="h-9 px-4 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground-secondary gap-2"
+            >
+              <Camera className="h-3.5 w-3.5" />
+              Enter analyzer numbers (optional)
+            </Button>
           </div>
         )}
 

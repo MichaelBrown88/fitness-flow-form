@@ -2,7 +2,7 @@
  * Client Console — Overview tab.
  *
  * The coach's command centre for a single client. Hero / Journey /
- * Attention+ARC / Pillar snapshots / Quick actions / Activity timeline.
+ * Attention / Pillar snapshots / Quick actions / Activity timeline.
  *
  * Journey is the headline data viz: STARTING POINT → CURRENT → GOAL,
  * each rendered with a compact pillar radar snapshot. The trend chart underneath
@@ -21,7 +21,6 @@ import {
   Dumbbell,
   Eye,
   Heart,
-  Map,
   Plus,
   Scale,
   Sun,
@@ -35,7 +34,6 @@ import { determineArchetype } from '@/lib/clientArchetypes';
 import { MiniPillarRadar } from '@/components/reports/MiniPillarRadar';
 import { PillarScoreBadge } from '@/components/reports/PillarScoreBadge';
 import type { PillarKey } from '@/lib/reports/radarData';
-import type { Trackable } from '@/lib/roadmap/types';
 import type { Timestamp } from 'firebase/firestore';
 import type { FormData } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
@@ -145,9 +143,6 @@ export default function ClientOverview() {
     handleNewAssessment,
     snapshots,
     profile,
-    roadmapItems,
-    roadmapStatus,
-    isRoadmapStale,
   } = ctx;
 
   // ─── Compute derived state ───────────────────────────────────────
@@ -219,46 +214,26 @@ export default function ClientOverview() {
   const currentRadar = useMemo(() => scoresToRadarArray(scores), [scores]);
   const currentOverall = stats?.latestScore ?? scores?.overall ?? 0;
 
-  // ARC trackables (flattened, with parent title preserved).
-  const arcTrackables = useMemo(() => {
-    const out: (Trackable & { itemTitle: string })[] = [];
-    for (const item of roadmapItems ?? []) {
-      for (const t of item.trackables ?? []) {
-        out.push({ ...t, itemTitle: item.title });
-      }
-    }
-    return out;
-  }, [roadmapItems]);
-
-  // Stated goals from the latest assessment (P6 phase). Carried alongside
-  // the ARC-driven targets so the Goal card can show what the client said
-  // they want even before an ARC has been built.
+  // Stated goals from the latest assessment — the Goal card shows what the
+  // client said they want.
   const statedGoals = useMemo<string[]>(() => {
     const goals = currentAssessment?.formData?.clientGoals;
     return Array.isArray(goals) ? goals : [];
   }, [currentAssessment]);
 
-  // Goal scores: prefer ARC milestone-driven targets when present.
-  // Otherwise expose stated client goals so the card communicates intent
-  // even before an ARC exists. Source: 'arc' = numeric targets driven by
-  // the plan; 'stated' = qualitative goals from the assessment; 'none' =
-  // neither set yet.
+  // Goal card state: 'stated' = qualitative goals from the assessment;
+  // 'none' = no goals set yet.
   const goalScores = useMemo<{
     scores: number[];
     overall: number;
-    source: 'arc' | 'stated' | 'none';
+    source: 'stated' | 'none';
     statedGoals: string[];
   }>(() => {
-    if (arcTrackables.length > 0) {
-      // Visual proxy until per-pillar target scores are persisted on the ARC.
-      const perPillar = PILLAR_ORDER.map(() => 80);
-      return { scores: perPillar, overall: 80, source: 'arc', statedGoals };
-    }
     if (statedGoals.length > 0) {
       return { scores: [], overall: 0, source: 'stated', statedGoals };
     }
     return { scores: [], overall: 0, source: 'none', statedGoals: [] };
-  }, [arcTrackables, statedGoals]);
+  }, [statedGoals]);
 
   // Last assessment date (any assessment).
   const lastAssessmentDate = useMemo(() => {
@@ -362,7 +337,6 @@ export default function ClientOverview() {
         scoreChange={stats?.scoreChange ?? 0}
         radarScores={currentRadar}
         lastAssessedAt={lastAssessmentDate}
-        roadmapStatus={roadmapStatus}
         showAxisScores={showCoachAxis}
       />
 
@@ -380,28 +354,10 @@ export default function ClientOverview() {
         }))}
       />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <AttentionCard
-          missingPillars={baselineMissing}
-          isRoadmapStale={isRoadmapStale}
-          daysSinceAssessment={daysAgo(lastAssessmentDate)}
-          onStartPillar={(id) => {
-            // Auto-include every other baseline-missing pillar — coach can
-            // de-select inside the form if they only want to do one today.
-            // 9/10 same-session = same-pillar batch (per the multi-pillar
-            // grouping spec).
-            const all = baselineMissing.map((p) => p.id);
-            const ordered = [id, ...all.filter((p) => p !== id)];
-            void handleNewAssessment(ordered);
-          }}
-        />
-        <ArcStatusCard
-          status={roadmapStatus}
-          stale={isRoadmapStale}
-          trackables={arcTrackables}
-          onView={() => navigate(`/dashboard/clients/${encodeURIComponent(clientName)}/roadmap`)}
-        />
-      </div>
+      <AttentionCard
+        missingPillars={baselineMissing}
+        onStartAssessment={() => void handleNewAssessment()}
+      />
 
       <CoachNotesCard
         stats={coachNotesStats}
@@ -418,7 +374,6 @@ export default function ClientOverview() {
 
       <QuickActionsBar
         onNewAssessment={() => void handleNewAssessment()}
-        onArc={() => navigate(`/dashboard/clients/${encodeURIComponent(clientName)}/roadmap`)}
         onHistory={() => navigate(`/dashboard/clients/${encodeURIComponent(clientName)}/timeline`)}
       />
 
@@ -437,7 +392,6 @@ interface HeroStripProps {
   scoreChange: number;
   radarScores: number[];
   lastAssessedAt: Date | null;
-  roadmapStatus: 'loading' | 'none' | 'draft' | 'sent';
   showAxisScores: boolean;
 }
 
@@ -449,19 +403,9 @@ function HeroStrip({
   scoreChange,
   radarScores,
   lastAssessedAt,
-  roadmapStatus,
   showAxisScores,
 }: HeroStripProps) {
   const t = tone(currentOverall);
-  const arcLabel =
-    roadmapStatus === 'sent' ? 'ARC™ active' :
-    roadmapStatus === 'draft' ? 'ARC™ in draft' :
-    roadmapStatus === 'loading' ? 'ARC™ loading…' :
-    'No ARC™ yet';
-  const arcDot =
-    roadmapStatus === 'sent' ? 'bg-score-green' :
-    roadmapStatus === 'draft' ? 'bg-score-amber' :
-    'bg-muted-foreground';
 
   return (
     <section className="rounded-[28px] border border-border bg-card p-7 shadow-[0_1px_2px_rgba(15,15,15,0.04),0_4px_14px_rgba(15,15,15,0.04)] sm:p-8">
@@ -497,10 +441,6 @@ function HeroStrip({
             <span className="inline-flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-score-green" />
               {lastAssessedAt ? `Last assessed ${relativeWhen(lastAssessedAt)}` : 'Not yet assessed'}
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className={cn('h-1.5 w-1.5 rounded-full', arcDot)} />
-              {arcLabel}
             </span>
           </div>
         </div>
@@ -552,7 +492,7 @@ interface JourneySectionProps {
   goal: {
     scores: number[];
     overall: number;
-    source: 'arc' | 'stated' | 'none';
+    source: 'stated' | 'none';
     statedGoals: string[];
   };
   trendPoints: { at: Date; score: number }[];
@@ -603,7 +543,7 @@ function JourneySection({
         <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
           AXIS over time
         </p>
-        <TrendChart points={trendPoints} goal={goal.source === 'arc' ? goal.overall : null} />
+        <TrendChart points={trendPoints} goal={null} />
       </div>
     </section>
   );
@@ -658,30 +598,15 @@ function JourneyCard({ eyebrow, score, when, scores, variant, available, fallbac
 
 // ─── Goal card ───────────────────────────────────────────────────────
 //
-// Three states:
-//  - 'arc'    → ARC milestones drive numeric targets (per-pillar radar + score)
-//  - 'stated' → client has stated qualitative goals (chips), ARC pending
+// Two states:
+//  - 'stated' → client has stated qualitative goals (chips)
 //  - 'none'   → no goals set yet (placeholder + "Set goal →")
 
 function GoalCard({
   goal,
 }: {
-  goal: { scores: number[]; overall: number; source: 'arc' | 'stated' | 'none'; statedGoals: string[] };
+  goal: { scores: number[]; overall: number; source: 'stated' | 'none'; statedGoals: string[] };
 }) {
-  if (goal.source === 'arc') {
-    return (
-      <JourneyCard
-        eyebrow="Goal"
-        score={goal.overall}
-        when="milestone-driven"
-        scores={goal.scores.length > 0 ? goal.scores : [0, 0, 0, 0, 0]}
-        variant="outline"
-        available
-        fallback=""
-      />
-    );
-  }
-
   if (goal.source === 'stated') {
     return (
       <div className="flex flex-col gap-2.5 rounded-2xl border border-border bg-card-elevated p-5">
@@ -699,7 +624,7 @@ function GoalCard({
           ))}
         </div>
         <p className="text-[12px] text-muted-foreground">
-          Build ARC™ to turn these into measurable targets.
+          Goals from the client's assessment shape their report and plan.
         </p>
       </div>
     );
@@ -848,12 +773,10 @@ function TrendChart({ points, goal }: { points: { at: Date; score: number }[]; g
 
 interface AttentionCardProps {
   missingPillars: typeof BASELINE_PILLARS;
-  isRoadmapStale: boolean;
-  daysSinceAssessment: number | null;
-  onStartPillar: (id: 'bodycomp' | 'posture' | 'fitness' | 'strength' | 'lifestyle') => void;
+  onStartAssessment: () => void;
 }
 
-function AttentionCard({ missingPillars, isRoadmapStale, daysSinceAssessment, onStartPillar }: AttentionCardProps) {
+function AttentionCard({ missingPillars, onStartAssessment }: AttentionCardProps) {
   const items: { tone: 'red' | 'amber' | 'green'; node: ReactNode }[] = [];
 
   if (missingPillars.length > 0) {
@@ -863,43 +786,17 @@ function AttentionCard({ missingPillars, isRoadmapStale, daysSinceAssessment, on
         <div>
           <p className="mb-2 text-sm font-semibold text-foreground">
             {missingPillars.length} pillar{missingPillars.length === 1 ? '' : 's'} not yet assessed
+            {' '}({missingPillars.map((p) => p.label).join(', ')})
           </p>
-          <div className="flex flex-wrap gap-2">
-            {missingPillars.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => onStartPillar(p.id)}
-                className="inline-flex items-center gap-1 rounded-full border border-score-amber bg-score-amber-light/60 px-3 py-1 text-[12px] font-semibold text-score-amber-fg transition hover:bg-score-amber-light"
-              >
-                Start {p.label}
-                <ArrowRight className="h-3 w-3" />
-              </button>
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={onStartAssessment}
+            className="inline-flex items-center gap-1 rounded-full border border-score-amber bg-score-amber-light/60 px-3 py-1 text-[12px] font-semibold text-score-amber-fg transition hover:bg-score-amber-light"
+          >
+            Start assessment
+            <ArrowRight className="h-3 w-3" />
+          </button>
         </div>
-      ),
-    });
-  }
-
-  if (isRoadmapStale) {
-    items.push({
-      tone: 'amber',
-      node: (
-        <p className="text-sm text-foreground">
-          <span className="font-semibold">ARC™ may be stale</span> — current scores have drifted from the plan baseline. Worth a refresh.
-        </p>
-      ),
-    });
-  }
-
-  if (daysSinceAssessment != null && daysSinceAssessment > 60) {
-    items.push({
-      tone: 'amber',
-      node: (
-        <p className="text-sm text-foreground">
-          <span className="font-semibold">Assessment overdue</span> — last full assessment was {daysSinceAssessment} days ago.
-        </p>
       ),
     });
   }
@@ -925,7 +822,7 @@ function AttentionCard({ missingPillars, isRoadmapStale, daysSinceAssessment, on
       </header>
       {allClear ? (
         <p className="text-sm text-foreground-secondary">
-          Nothing needs you right now. Latest assessment is fresh, the ARC™ is on track, and baseline pillars are covered.
+          Nothing needs you right now — baseline pillars are covered.
         </p>
       ) : (
         <ul className="flex flex-col gap-3.5">
@@ -945,130 +842,6 @@ function AttentionCard({ missingPillars, isRoadmapStale, daysSinceAssessment, on
         </ul>
       )}
     </section>
-  );
-}
-
-// ─── ARC™ status card ────────────────────────────────────────────────
-
-function ArcStatusCard({
-  status,
-  stale,
-  trackables,
-  onView,
-}: {
-  status: 'loading' | 'none' | 'draft' | 'sent';
-  stale: boolean;
-  trackables: (Trackable & { itemTitle: string })[];
-  onView: () => void;
-}) {
-  const top = trackables.slice(0, 3);
-
-  return (
-    <section className="rounded-[24px] border border-border bg-card p-6 shadow-[0_1px_2px_rgba(15,15,15,0.04),0_4px_14px_rgba(15,15,15,0.04)]">
-      <header className="mb-4 flex items-center justify-between gap-2">
-        <p className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-          <Map className="h-3.5 w-3.5" />
-          ARC™
-        </p>
-        <ArcStatusPill status={status} stale={stale} />
-      </header>
-
-      {status === 'none' ? (
-        <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-foreground-secondary">
-            No ARC™ yet — build the first plan from the latest assessment + client goals.
-          </p>
-          <Button size="sm" onClick={onView} className="h-9 gap-1.5 rounded-full">
-            <Plus className="h-3.5 w-3.5" /> Build ARC™
-          </Button>
-        </div>
-      ) : top.length === 0 ? (
-        <p className="text-sm text-foreground-secondary">
-          ARC™ is in place but no milestones are populated yet.
-        </p>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {top.map((t, i) => (
-            <ArcTrackableRow key={`${t.id}-${i}`} trackable={t} />
-          ))}
-          <button
-            type="button"
-            onClick={onView}
-            className="inline-flex items-center gap-1.5 self-start text-[12px] font-semibold text-foreground hover:underline"
-          >
-            View full ARC™
-            <ChevronRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-    </section>
-  );
-}
-
-function ArcStatusPill({ status, stale }: { status: 'loading' | 'none' | 'draft' | 'sent'; stale: boolean }) {
-  if (stale) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-score-amber-light px-2.5 py-0.5 text-[11px] font-bold text-score-amber-fg">
-        <AlertTriangle className="h-3 w-3" /> drift
-      </span>
-    );
-  }
-  if (status === 'sent') {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-score-green-light px-2.5 py-0.5 text-[11px] font-bold text-score-green-fg">
-        <CheckCircle2 className="h-3 w-3" /> active
-      </span>
-    );
-  }
-  if (status === 'draft') {
-    return (
-      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-bold text-foreground-secondary">
-        draft
-      </span>
-    );
-  }
-  if (status === 'loading') {
-    return <span className="text-[11px] text-muted-foreground">loading…</span>;
-  }
-  return (
-    <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-bold text-muted-foreground">
-      not built
-    </span>
-  );
-}
-
-function ArcTrackableRow({ trackable }: { trackable: Trackable & { itemTitle: string } }) {
-  const baseline = trackable.baseline ?? 0;
-  const target = trackable.target ?? 0;
-  const current = trackable.current ?? baseline;
-  const span = Math.abs(target - baseline) || 1;
-  const progress = Math.max(0, Math.min(1, Math.abs(current - baseline) / span));
-  const onTrack = progress >= 0.25;
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[13px] font-semibold tracking-[-0.005em] text-foreground">
-          {trackable.label ?? trackable.itemTitle}
-        </span>
-        <span className="text-[12px] font-semibold tabular-nums text-foreground-secondary">
-          {current}
-          {trackable.unit ? <span className="ml-0.5 text-[10px] font-medium text-muted-foreground">{trackable.unit}</span> : null}
-          <span className="mx-1 text-muted-foreground/60">→</span>
-          {target}
-          {trackable.unit ? <span className="ml-0.5 text-[10px] font-medium text-muted-foreground">{trackable.unit}</span> : null}
-        </span>
-      </div>
-      <div className="relative h-2 overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn(
-            'h-full rounded-full transition-[width] duration-700 ease-out',
-            onTrack ? 'bg-score-green' : 'bg-score-amber',
-          )}
-          style={{ width: `${Math.round(progress * 100)}%` }}
-        />
-      </div>
-    </div>
   );
 }
 
@@ -1244,11 +1017,9 @@ function DeltaPill({ diff }: { diff: number | undefined }) {
 
 function QuickActionsBar({
   onNewAssessment,
-  onArc,
   onHistory,
 }: {
   onNewAssessment: () => void;
-  onArc: () => void;
   onHistory: () => void;
 }) {
   return (
@@ -1260,9 +1031,6 @@ function QuickActionsBar({
         <div className="flex flex-wrap gap-2">
           <Button onClick={onNewAssessment} size="sm" className="h-9 gap-1.5 rounded-full">
             <Plus className="h-3.5 w-3.5" /> New assessment
-          </Button>
-          <Button onClick={onArc} variant="outline" size="sm" className="h-9 gap-1.5 rounded-full">
-            <Map className="h-3.5 w-3.5" /> Open ARC™
           </Button>
           <Button onClick={onHistory} variant="outline" size="sm" className="h-9 gap-1.5 rounded-full">
             <Activity className="h-3.5 w-3.5" /> History

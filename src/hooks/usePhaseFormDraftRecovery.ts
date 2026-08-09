@@ -3,6 +3,7 @@ import type { User } from 'firebase/auth';
 import type { FormData } from '@/contexts/FormContext';
 import {
   shouldSuppressLocalDraftRecovery,
+  writeAssessmentPhaseId,
   writeAssessmentPhaseIndex,
   writeSessionDraftAssessmentJson,
 } from '@/lib/assessment/assessmentSessionStorage';
@@ -17,6 +18,7 @@ export type CloudDraftOfferState = {
   updatedAtMs: number;
   formData: FormData;
   activePhaseIdx: number | null;
+  activePhaseId: string | null;
 };
 
 /**
@@ -31,6 +33,8 @@ export function usePhaseFormDraftRecovery(params: {
   isPartialAssessment: boolean;
   updateFormData: (data: Partial<FormData>) => void;
   setActivePhaseIdx: (idx: number | ((prev: number) => number)) => void;
+  /** Maps a persisted phase id to its current index — id wins over the positional index on resume. */
+  resolvePhaseIdxById?: (phaseId: string) => number | null;
   /**
    * When false, skip draft detection and handlers (capture phase after AssessmentSetupStep).
    */
@@ -51,6 +55,7 @@ export function usePhaseFormDraftRecovery(params: {
     isPartialAssessment,
     updateFormData,
     setActivePhaseIdx,
+    resolvePhaseIdxById,
     draftRecoveryActive = true,
   } = params;
 
@@ -96,6 +101,7 @@ export function usePhaseFormDraftRecovery(params: {
             updatedAtMs: cloudMs,
             formData: cloud.formData,
             activePhaseIdx: cloud.activePhaseIdx,
+            activePhaseId: cloud.activePhaseId,
           });
           setDraftBanner(null);
         }
@@ -112,9 +118,15 @@ export function usePhaseFormDraftRecovery(params: {
   const handleResumeCloudDraft = useCallback(() => {
     if (!draftRecoveryActive || !cloudDraftOffer) return;
     updateFormData(cloudDraftOffer.formData as Partial<FormData>);
-    const p = cloudDraftOffer.activePhaseIdx;
+    // Prefer the phase id over the positional index — the index goes stale
+    // when the studio phase order changes between draft save and resume.
+    const idFromDraft = cloudDraftOffer.activePhaseId;
+    const idxFromId =
+      idFromDraft && resolvePhaseIdxById ? resolvePhaseIdxById(idFromDraft) : null;
+    const p = idxFromId ?? cloudDraftOffer.activePhaseIdx;
     if (typeof p === 'number' && p >= 0) {
       writeAssessmentPhaseIndex(p);
+      if (idFromDraft) writeAssessmentPhaseId(idFromDraft);
       setActivePhaseIdx(p);
     }
     writeSessionDraftAssessmentJson(
@@ -126,7 +138,7 @@ export function usePhaseFormDraftRecovery(params: {
     );
     setCloudDraftOffer(null);
     setDraftBanner(null);
-  }, [draftRecoveryActive, cloudDraftOffer, updateFormData, setActivePhaseIdx]);
+  }, [draftRecoveryActive, cloudDraftOffer, updateFormData, setActivePhaseIdx, resolvePhaseIdxById]);
 
   const handleDismissCloudDraft = useCallback(() => {
     if (!draftRecoveryActive) return;

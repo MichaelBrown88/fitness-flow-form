@@ -2,7 +2,18 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { STORAGE_KEYS } from '@/constants/storageKeys';
+import { hasActiveBaselineSession } from '@/lib/assessment/baselineSession';
 import type { PhaseField } from '@/types/assessment';
+
+function readStoredGripMethod(): 'deadhang' | 'pinch' | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.LAST_GRIP_METHOD);
+    return raw === 'deadhang' || raw === 'pinch' ? raw : null;
+  } catch {
+    return null;
+  }
+}
 
 export type FieldValue = string | number | string[] | null;
 
@@ -33,6 +44,17 @@ export function useFieldControl({ field }: UseFieldControlProps) {
       }
     }
   }, [field.id, localValue, orgSettings?.equipmentConfig?.cardioEquipment?.enabled, updateFormData]);
+
+  // Default grip method to the last one used on this device (gym-floor time saver)
+  useEffect(() => {
+    if (field.id === 'gripTestMethod' && !localValue) {
+      const stored = readStoredGripMethod();
+      if (stored) {
+        updateFormData({ gripTestMethod: stored });
+        setLocalValue(stored);
+      }
+    }
+  }, [field.id, localValue, updateFormData]);
 
   // Dynamic status/options
   const fieldOptions = useMemo(() => {
@@ -82,7 +104,22 @@ export function useFieldControl({ field }: UseFieldControlProps) {
       updates.postureAiResults = null;
     }
 
-    if (field.id === 'clientGoals' && Array.isArray(value) && value.includes('body-recomposition') && formData.trainingHistory === 'advanced') {
+    if (field.id === 'gripTestMethod' && (value === 'deadhang' || value === 'pinch')) {
+      try {
+        localStorage.setItem(STORAGE_KEYS.LAST_GRIP_METHOD, value);
+      } catch {
+        /* non-fatal */
+      }
+    }
+
+    // Skip the long advisory toast mid-session — it blocks the gym-floor flow
+    if (
+      field.id === 'clientGoals' &&
+      Array.isArray(value) &&
+      value.includes('body-recomposition') &&
+      formData.trainingHistory === 'advanced' &&
+      !hasActiveBaselineSession()
+    ) {
       toast({
         title: "Recommendation for Advanced Lifters",
         description: "At your level, chasing both goals often results in achieving neither. We recommend a distinct 'Build' phase followed by a 'Cut' phase.",

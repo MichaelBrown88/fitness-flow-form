@@ -26,22 +26,32 @@ function optionLabel(field: AssessmentOptionKey, value: string | undefined): str
   return match?.label ?? value.replace(/-/g, ' ');
 }
 
-const MOVEMENT_OHS_FIELDS: AssessmentOptionKey[] = [
-  'ohsSquatDepth',
-  'ohsTorsoLean',
-  'ohsShoulderMobility',
-  'ohsKneeAlignment',
-  'ohsHipShift',
-  'ohsFeetPosition',
+/** Form field paired with the ASSESSMENT_OPTIONS key that holds its labels
+ *  (left/right lunge fields share the same option list). */
+interface MovementFieldSpec {
+  field: keyof FormData & string;
+  optionKey: AssessmentOptionKey;
+}
+
+const MOVEMENT_OHS_FIELDS: MovementFieldSpec[] = [
+  { field: 'ohsSquatDepth', optionKey: 'ohsSquatDepth' },
+  { field: 'ohsTorsoLean', optionKey: 'ohsTorsoLean' },
+  { field: 'ohsShoulderMobility', optionKey: 'ohsShoulderMobility' },
+  { field: 'ohsKneeAlignment', optionKey: 'ohsKneeAlignment' },
+  { field: 'ohsHipShift', optionKey: 'ohsHipShift' },
+  { field: 'ohsFeetPosition', optionKey: 'ohsFeetPosition' },
 ];
 
-const MOVEMENT_HINGE_FIELDS: AssessmentOptionKey[] = ['hingeDepth', 'hingeBackRounding'];
+const MOVEMENT_HINGE_FIELDS: MovementFieldSpec[] = [
+  { field: 'hingeDepth', optionKey: 'hingeDepth' },
+  { field: 'hingeBackRounding', optionKey: 'hingeBackRounding' },
+];
 
-const MOVEMENT_LUNGE_FIELDS: AssessmentOptionKey[] = [
-  'lungeLeftBalance',
-  'lungeRightBalance',
-  'lungeLeftKneeAlignment',
-  'lungeRightKneeAlignment',
+const MOVEMENT_LUNGE_FIELDS: MovementFieldSpec[] = [
+  { field: 'lungeLeftBalance', optionKey: 'lungeBalance' },
+  { field: 'lungeRightBalance', optionKey: 'lungeBalance' },
+  { field: 'lungeLeftKneeAlignment', optionKey: 'lungeKneeAlignment' },
+  { field: 'lungeRightKneeAlignment', optionKey: 'lungeKneeAlignment' },
 ];
 
 function isConcernValue(value: string): boolean {
@@ -64,21 +74,21 @@ function isConcernValue(value: string): boolean {
 
 function buildPatternGroup(
   title: string,
-  fields: AssessmentOptionKey[],
+  fields: MovementFieldSpec[],
   formData: FormData,
 ): ClientPillarNarrativeItem | null {
   const lines: string[] = [];
-  for (const field of fields) {
-    const raw = formData[field as keyof FormData];
+  for (const { field, optionKey } of fields) {
+    const raw = formData[field];
     if (typeof raw !== 'string' || !raw.trim()) continue;
     const name = P4_LABELS[field] ?? field;
-    const obs = optionLabel(field, raw);
+    const obs = optionLabel(optionKey, raw);
     if (obs) lines.push(`${name}: ${obs}`);
   }
   if (lines.length === 0) return null;
 
-  const hasConcern = fields.some((f) => {
-    const v = formData[f as keyof FormData];
+  const hasConcern = fields.some(({ field }) => {
+    const v = formData[field];
     return typeof v === 'string' && isConcernValue(v);
   });
 

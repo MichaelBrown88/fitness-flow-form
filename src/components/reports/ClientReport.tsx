@@ -20,10 +20,9 @@ import {
   buildClientPriorityFallbacks,
 } from './client/sub-components/clientPillarSummary';
 import { buildClientScoreHeadline } from '@/lib/reports/clientScoreHeadline';
-import { buildProjectedOutlook } from '@/lib/goals/projectedOutlook';
 import { buildClientReportModel } from '@/lib/reports/buildClientReportModel';
 import { ClientReportV2Layout } from './client/v2/ClientReportV2Layout';
-import { ASSESSMENT_OPTIONS } from '@/constants/assessment';
+import { ClientRoadmapSection } from './client/v2/ClientRoadmapSection';
 import { CLIENT_REPORT_COPY } from '@/constants/clientReport';
 
 export default function ClientReport({
@@ -34,8 +33,6 @@ export default function ClientReport({
   previousScores,
   previousFormData,
   standalone = true,
-  reportShareToken,
-  roadmapShareToken,
   showBaselineNarrative = false,
   organizationId,
   coachActions,
@@ -48,9 +45,6 @@ export default function ClientReport({
   previousScores?: ScoreSummary | null;
   previousFormData?: FormData;
   standalone?: boolean;
-  /** Public report token for `/r/:token/roadmap` links. */
-  reportShareToken?: string;
-  roadmapShareToken?: string;
   showBaselineNarrative?: boolean;
   organizationId?: string;
   coachActions?: {
@@ -169,30 +163,6 @@ export default function ClientReport({
     [safeScores],
   );
 
-  const projectedOutlook = useMemo(
-    () => buildProjectedOutlook(formData, safeScores, goals),
-    [formData, safeScores, goals],
-  );
-
-  const compactOutlookBullets = useMemo(() => {
-    const horizons = projectedOutlook?.horizons;
-    if (horizons && horizons.length > 0) {
-      return horizons
-        .slice(0, 2)
-        .flatMap((h) => h.bullets.slice(0, 1))
-        .slice(0, 2);
-    }
-    return (projectedOutlook?.bullets ?? []).slice(0, 2);
-  }, [projectedOutlook]);
-
-  const goalChipLabels = useMemo(() => {
-    const ids = goals?.length ? goals : formData?.clientGoals ?? [];
-    return ids
-      .map((id) => ASSESSMENT_OPTIONS.clientGoals.find((g) => g.value === id)?.label ?? id)
-      .filter(Boolean)
-      .slice(0, 4);
-  }, [goals, formData?.clientGoals]);
-
   const scrollToPillar = useCallback((sectionId: string) => {
     const el = document.querySelector(`[data-section-id="${sectionId}"]`);
     if (el) {
@@ -248,14 +218,13 @@ export default function ClientReport({
                 previousRadarData={previousRadarData}
                 priorityStrengths={priorityStrengths}
                 priorityFocusAreas={priorityFocusAreas}
-                outlookHeadline={projectedOutlook?.headline}
-                outlookBullets={compactOutlookBullets}
                 onPillarSelect={scrollToPillar}
                 orgName={reportMeta?.orgName}
                 coachName={reportMeta?.coachName}
                 assessmentNumber={reportMeta?.assessmentNumber}
                 formData={formData}
-                goalLabels={[]}
+                goalLabels={reportModel.goalLabels}
+                goalPromise={reportModel.goalPromise}
                 clientFacingRadar={false}
                 showActions={Boolean(coachActions)}
                 onShare={coachActions?.onShare}
@@ -268,11 +237,21 @@ export default function ClientReport({
         )}
 
         {!standalone && (
-          <ClientReportScrollLayout
-            sectionCtx={sectionCtx}
-            setSectionRef={setSectionRef}
-            showPartialAssessmentBanner={false}
-          />
+          <>
+            <ClientReportScrollLayout
+              sectionCtx={sectionCtx}
+              setSectionRef={setSectionRef}
+              showPartialAssessmentBanner={false}
+            />
+            {reportModel.roadmapCards.length > 0 && (
+              <div className="mt-4">
+                <ClientRoadmapSection
+                  cards={reportModel.roadmapCards}
+                  target={reportModel.roadmapTarget}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

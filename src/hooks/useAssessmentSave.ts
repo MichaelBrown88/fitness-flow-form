@@ -163,7 +163,6 @@ export function useAssessmentSave({
       let assessmentId: string;
       let shareToken: string | null = null;
       let category: string | null = null;
-      let publicReportSynced = true;
       let multiPillarToastShown = false;
       
         // Check for edit mode first
@@ -309,7 +308,6 @@ export function useAssessmentSave({
           assessmentId = repAssessment.assessmentId;
           shareToken = result.shareToken;
           category = repAssessment.category as PartialCategory;
-          publicReportSynced = false;
 
           // Stamp profile dates for every pillar that actually saved.
           const { createOrUpdateClientProfile } = await import('@/services/clientProfiles');
@@ -383,7 +381,6 @@ export function useAssessmentSave({
           );
           assessmentId = result.assessmentId;
           shareToken = result.shareToken;
-          publicReportSynced = result.publicReportSynced;
 
           // No-op: persistence detected no changes — skip the success pipeline entirely.
           // finally{} still fires to reset saving state.
@@ -428,7 +425,6 @@ export function useAssessmentSave({
           const result = await saveCoachAssessment(user.uid, user.email, formData, scores.overall, profile?.organizationId, profile);
           assessmentId = result.assessmentId;
           shareToken = result.shareToken;
-          publicReportSynced = result.publicReportSynced;
 
           // No-op: persistence detected no changes — skip the success pipeline entirely.
           // finally{} still fires to reset saving state.
@@ -506,13 +502,9 @@ export function useAssessmentSave({
         });
       }
 
-      if (!publicReportSynced) {
-        toast({
-          title: 'Assessment saved',
-          description: "Client report link may be outdated — reshare to refresh.",
-          variant: 'destructive',
-        });
-      }
+      // Public report sync is handled server-side by the
+      // syncPublicReportOnStateChange Cloud Function on every current/state
+      // write — no client-side warning needed.
 
       // Set firstAssessmentCompleted flag (one-time, non-blocking)
       if (!profile?.firstAssessmentCompleted) {
@@ -554,148 +546,9 @@ export function useAssessmentSave({
         }
       }
 
-      // Evaluate achievements, refresh ARC™ drift scores, and send notifications (non-blocking)
+      // Post-save notifications (non-blocking)
       if (profile?.organizationId && assessmentId && shareToken) {
-        // Resolve stable clientId once — used by both achievements and drift refresh
-        let resolvedClientId: string = assessmentId;
-        try {
-          const { resolveClientId } = await import('@/services/clientProfiles');
-          resolvedClientId = (await resolveClientId(profile.organizationId, clientName)) ?? assessmentId;
-        } catch (resolveErr) {
-          logger.warn('[Assessment] Could not resolve clientId (non-fatal):', resolveErr);
-        }
-
-        // Step 1: Evaluate achievements using org-scoped storage
-        try {
-          const { getDoc: getDocSnap } = await import('firebase/firestore');
-          const { getOrgAssessmentDoc } = await import('@/lib/database/collections');
-          const summarySnap = await getDocSnap(
-            getOrgAssessmentDoc(profile.organizationId, assessmentId)
-          );
-          const summaryRaw = summarySnap.data() as
-            | { assessmentCount?: unknown; previousScore?: unknown }
-            | undefined;
-          const actualCount =
-            typeof summaryRaw?.assessmentCount === 'number' ? summaryRaw.assessmentCount : 1;
-          const previousOverallScore =
-            typeof summaryRaw?.previousScore === 'number' ? summaryRaw.previousScore : undefined;
-
-          let previousCategoryScores: Array<{ id: string; score: number; assessed: boolean }> | undefined;
-          let previousFullProfileScore: number | null | undefined;
-          try {
-            const { getSnapshots } = await import('@/services/assessmentHistory');
-            const snapshots = await getSnapshots(user.uid, clientName, 2, profile.organizationId);
-            if (snapshots.length >= 2 && snapshots[1].formData) {
-              const { computeScores } = await import('@/lib/scoring');
-              const prevScores = computeScores(snapshots[1].formData);
-              previousFullProfileScore = prevScores.fullProfileScore;
-              previousCategoryScores = prevScores.categories.map((c) => ({
-                id: c.id,
-                score: c.score,
-                assessed: c.assessed,
-              }));
-            }
-          } catch (prevErr) {
-            logger.debug('[Assessment] Could not fetch previous category scores (non-fatal):', prevErr);
-          }
-
-          const { evaluateAchievements } = await import('@/services/achievements');
-          const categoryScores = scores.categories.map((c) => ({
-            id: c.id,
-            score: c.score,
-            assessed: c.assessed,
-          }));
-
-          const unlocked = await evaluateAchievements({
-            organizationId: profile.organizationId,
-            clientId: resolvedClientId,
-            shareToken,
-            overallScore: scores.overall,
-            fullProfileScore: scores.fullProfileScore,
-            categoryScores,
-            previousOverallScore,
-            previousFullProfileScore,
-            previousCategoryScores,
-            assessmentCount: actualCount,
-          });
-
-          // Send achievement unlock notifications via token-scoped path
-          if (unlocked.length > 0) {
-            try {
-              const { writeNotification } = await import('@/services/notificationWriter');
-              for (const ach of unlocked) {
-                await writeNotification({
-                  shareToken,
-                  type: 'system',
-                  title: `Achievement Unlocked: ${ach.title}`,
-                  body: ach.description,
-                  priority: 'low',
-                });
-              }
-            } catch (notifErr) {
-              logger.warn('[Assessment] Failed to send achievement notifications (non-fatal):', notifErr);
-            }
-          }
-
-          logger.debug(`[Assessment] Achievements evaluated via token ${shareToken} (${unlocked.length} unlocked)`);
-        } catch (achErr) {
-          logger.warn('[Assessment] Failed to evaluate achievements (non-fatal):', achErr);
-        }
-
-        // Step 2: Refresh ARC™ drift scores + check phase completion (non-blocking)
-        try {
-          const { refreshRoadmapScores, getRoadmapForClient } = await import('@/services/roadmaps');
-          const driftScores: Record<string, number> = {};
-          scores.categories.forEach((c) => { driftScores[c.id] = c.score; });
-          await refreshRoadmapScores(
-            profile.organizationId,
-            clientName,
-            driftScores,
-            resolvedClientId,
-            scores,
-          );
-          logger.debug('[Assessment] ARC™ scores refreshed for drift detection');
-
-          // Check if all phase targets are now met → notify client + coach
-          const roadmap = await getRoadmapForClient(
-            profile.organizationId,
-            clientName,
-            resolvedClientId,
-          );
-          if (roadmap?.phaseTargets && roadmap.activePhase) {
-            const targets = roadmap.phaseTargets[roadmap.activePhase] ?? [];
-            const allMet =
-              targets.length > 0 &&
-              targets.every((t) => (driftScores[t.category] ?? 0) >= t.targetScore);
-            if (allMet) {
-              const { writeNotification } = await import('@/services/notificationWriter');
-              const phaseName =
-                roadmap.activePhase.charAt(0).toUpperCase() + roadmap.activePhase.slice(1);
-              await Promise.all([
-                writeNotification({
-                  shareToken,
-                  type: 'phase_complete',
-                  title: `${phaseName} phase complete!`,
-                  body: `You've hit every target in the ${phaseName} phase. Your coach will review and advance your plan.`,
-                  priority: 'high',
-                }),
-                writeNotification({
-                  recipientUid: user.uid,
-                  type: 'phase_complete',
-                  title: `${formData.fullName || clientName} completed the ${phaseName} phase`,
-                  body: `All ${phaseName} phase targets have been reached — consider advancing their plan.`,
-                  priority: 'high',
-                  actionUrl: `/client/${encodeURIComponent(clientName)}/roadmap`,
-                }),
-              ]);
-              logger.debug(`[Assessment] Phase complete notifications sent (${roadmap.activePhase})`);
-            }
-          }
-        } catch (driftErr) {
-          logger.warn('[Assessment] Failed to refresh ARC™ scores (non-fatal):', driftErr);
-        }
-
-        // Step 2b: Score drop alert — notify coach if overall score fell by 5+ points
+        // Score drop alert — notify coach if overall score fell by 5+ points
         try {
           const { getDoc: getDocForScore } = await import('firebase/firestore');
           const { getOrgAssessmentDoc: getOrgAssessmentDocRef } = await import(

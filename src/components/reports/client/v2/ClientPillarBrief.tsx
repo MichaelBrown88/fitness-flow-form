@@ -5,8 +5,10 @@ import type { PillarKey } from '@/lib/reports/radarData';
 import { CLIENT_REPORT_COPY } from '@/constants/clientReport';
 import { sanitizeClientReportCopy } from '@/lib/reports/sanitizeClientReportCopy';
 import { ClientProgressionTable } from './ClientProgressionTable';
-import { ClientPillarNarrative } from './ClientPillarNarrative';
+import { LifestyleFactorsCard } from '@/components/reports/client/sub-components/LifestyleFactorsCard';
+import { ClientMovementFindings } from './ClientMovementFindings';
 import { ClientReportCallout } from './ClientReportCallout';
+import type { FormData } from '@/contexts/FormContext';
 import { cn } from '@/lib/utils';
 
 const SCORING_TO_PILLAR: Record<ClientReportPillarModel['scoringId'], PillarKey> = {
@@ -19,18 +21,15 @@ const SCORING_TO_PILLAR: Record<ClientReportPillarModel['scoringId'], PillarKey>
 
 interface ClientPillarBriefProps {
   pillar: ClientReportPillarModel;
+  formData?: FormData;
 }
 
-export function ClientPillarBrief({ pillar }: ClientPillarBriefProps) {
+export function ClientPillarBrief({ pillar, formData }: ClientPillarBriefProps) {
   const pillarKey = SCORING_TO_PILLAR[pillar.scoringId];
   const scoreDelta =
     pillar.previousScore != null ? pillar.score - pillar.previousScore : null;
   const isSupporting =
     pillar.pillarRole === 'supporting' || pillar.pillarRole === 'off-path';
-  const narrativeHeading =
-    pillar.sectionId === 'movement-quality'
-      ? CLIENT_REPORT_COPY.v2MovementStoryHeading
-      : CLIENT_REPORT_COPY.v2LifestyleStoryHeading;
 
   return (
     <article
@@ -71,20 +70,27 @@ export function ClientPillarBrief({ pillar }: ClientPillarBriefProps) {
         </div>
       </div>
 
-      {pillar.contentMode === 'narrative' ? (
-        <ClientPillarNarrative
-          heading={narrativeHeading}
-          intro={pillar.narrativeIntro}
-          items={pillar.narrativeItems}
-        />
-      ) : (
+      {pillar.contentMode === 'lifestyle-factors' ? (
+        <div className="mt-5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {CLIENT_REPORT_COPY.v2LifestyleFactorsHeading}
+          </p>
+          <div className="mt-3">
+            <LifestyleFactorsCard formData={formData} />
+          </div>
+        </div>
+      ) : null}
+      {pillar.contentMode === 'movement-findings' && pillar.movementFindings ? (
+        <ClientMovementFindings findings={pillar.movementFindings} />
+      ) : null}
+      {pillar.contentMode === 'progression' ? (
         <div className="mt-5">
           <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             {CLIENT_REPORT_COPY.v2ProgressionHeading}
           </p>
           <ClientProgressionTable rows={pillar.progressionRows} />
         </div>
-      )}
+      ) : null}
 
       {(pillar.goingWell.length > 0 || pillar.focusNext.length > 0) && (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">

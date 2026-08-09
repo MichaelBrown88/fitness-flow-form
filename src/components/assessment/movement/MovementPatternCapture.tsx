@@ -29,7 +29,6 @@ const OHS_BENIGN: PartialForm = {
   ohsKneeAlignment: 'stable',
   ohsFeetPosition: 'stable',
   ohsHasPain: 'no',
-  ohsPainLevel: '',
 };
 
 const OHS_CHIPS: IssueChip[] = [
@@ -45,7 +44,6 @@ const HINGE_BENIGN: PartialForm = {
   hingeDepth: 'good',
   hingeBackRounding: 'none',
   hingeHasPain: 'no',
-  hingePainLevel: '',
 };
 
 const HINGE_CHIPS: IssueChip[] = [
@@ -61,7 +59,6 @@ const LUNGE_BENIGN: PartialForm = {
   lungeLeftTorso: 'neutral',
   lungeRightTorso: 'neutral',
   lungeHasPain: 'no',
-  lungePainLevel: '',
 };
 
 const LUNGE_CHIPS: IssueChip[] = [
@@ -77,18 +74,14 @@ function configForSection(sectionId: MovementPatternSectionId): {
   benign: PartialForm;
   chips: IssueChip[];
   painField: keyof FormData;
-  painLevelField: keyof FormData;
   painOptions: readonly { value: string; label: string }[];
-  painLevelOptions: readonly { value: string; label: string }[];
 } {
   if (sectionId === 'hinge-assessment') {
     return {
       benign: HINGE_BENIGN,
       chips: HINGE_CHIPS,
       painField: 'hingeHasPain',
-      painLevelField: 'hingePainLevel',
       painOptions: ASSESSMENT_OPTIONS.hingeHasPain,
-      painLevelOptions: ASSESSMENT_OPTIONS.hingePainLevel,
     };
   }
   if (sectionId === 'lunge-assessment') {
@@ -96,18 +89,14 @@ function configForSection(sectionId: MovementPatternSectionId): {
       benign: LUNGE_BENIGN,
       chips: LUNGE_CHIPS,
       painField: 'lungeHasPain',
-      painLevelField: 'lungePainLevel',
       painOptions: ASSESSMENT_OPTIONS.lungeHasPain,
-      painLevelOptions: ASSESSMENT_OPTIONS.lungePainLevel,
     };
   }
   return {
     benign: OHS_BENIGN,
     chips: OHS_CHIPS,
     painField: 'ohsHasPain',
-    painLevelField: 'ohsPainLevel',
     painOptions: ASSESSMENT_OPTIONS.ohsHasPain,
-    painLevelOptions: ASSESSMENT_OPTIONS.ohsPainLevel,
   };
 }
 
@@ -128,13 +117,14 @@ export function MovementPatternCapture({
   onBack,
 }: MovementPatternCaptureProps) {
   const { formData, updateFormData } = useFormContext();
-  const { benign, chips, painField, painLevelField, painOptions, painLevelOptions } =
-    useMemo(() => configForSection(sectionId), [sectionId]);
+  const { benign, chips, painField, painOptions } = useMemo(
+    () => configForSection(sectionId),
+    [sectionId],
+  );
 
   const [selectedIssues, setSelectedIssues] = useState<Set<string>>(() => new Set());
   const [markedGood, setMarkedGood] = useState(false);
 
-  const hasPain = formData[painField] === 'yes';
   const canContinue = markedGood || selectedIssues.size > 0;
 
   const toggleIssue = (id: string) => {
@@ -161,11 +151,7 @@ export function MovementPatternCapture({
   };
 
   const setPain = (value: string) => {
-    if (value === 'no') {
-      updateFormData({ [painField]: 'no', [painLevelField]: '' } as PartialForm);
-    } else {
-      updateFormData({ [painField]: 'yes' } as PartialForm);
-    }
+    updateFormData({ [painField]: value === 'no' ? 'no' : 'yes' } as PartialForm);
   };
 
   return (
@@ -234,24 +220,6 @@ export function MovementPatternCapture({
               </button>
             ))}
           </div>
-          {hasPain ? (
-            <div className="flex flex-wrap gap-2 pt-2">
-              {painLevelOptions.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => updateFormData({ [painLevelField]: opt.value } as PartialForm)}
-                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    formData[painLevelField] === opt.value
-                      ? 'border-primary bg-primary/10 text-foreground'
-                      : 'border-border bg-muted/40 text-muted-foreground hover:bg-muted'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </div>
 
         <div className="mt-10 flex items-center justify-between border-t border-border/60 pt-8">
