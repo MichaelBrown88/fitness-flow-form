@@ -10,6 +10,7 @@ import { useEffect, useRef } from 'react';
 import {
   readDraftAssessmentRaw,
   removeDraftAssessment,
+  removeAssessmentPhaseIndex,
   hasEditAssessmentInSession,
   writeSessionDraftAssessmentJson,
 } from '@/lib/assessment/assessmentSessionStorage';
@@ -61,9 +62,12 @@ export function getDraft(): DraftData | null {
   }
 }
 
-/** Remove the saved draft. */
+/** Remove the saved draft and the stored phase position that belongs to it. */
 export function clearDraft(): void {
   removeDraftAssessment();
+  // A stale phase index without its draft would open the next assessment
+  // mid-flow (or on the empty results phase) instead of at the start.
+  removeAssessmentPhaseIndex();
 }
 
 // ── Hook ─────────────────────────────────────────────────────────

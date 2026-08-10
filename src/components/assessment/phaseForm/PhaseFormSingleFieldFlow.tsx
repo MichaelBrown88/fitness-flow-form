@@ -104,13 +104,14 @@ export function PhaseFormSingleFieldFlow({
         if (currentIndex < allSections.length - 1) {
           setExpandedSections({ [allSections[currentIndex + 1].id]: true });
         } else if (activePhaseIdx < totalPhases - 1) {
-          if (isPartialAssessment) {
+          const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
+          const nextIsResults = nextVisibleIdx === -1 || visiblePhases[nextVisibleIdx]?.id === 'P7';
+          if (isPartialAssessment || nextIsResults) {
+            // Finishing the last data phase goes through the review checkpoint —
+            // never straight into results without a chance to double-check.
             onRequestPreResultsReview();
           } else {
-            const nextVisibleIdx = visiblePhases.findIndex((p, i) => i > activePhaseIdx);
-            if (nextVisibleIdx !== -1) {
-              setActivePhaseIdx(nextVisibleIdx);
-            }
+            setActivePhaseIdx(nextVisibleIdx);
           }
         }
       }}

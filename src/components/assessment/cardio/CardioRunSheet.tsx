@@ -1,14 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useFormContext, type FormData } from '@/contexts/FormContext';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Square, Timer } from 'lucide-react';
 import { ASSESSMENT_OPTIONS } from '@/constants/assessment';
 import { CARDIO_RUN_SHEET_COPY as COPY } from '@/constants/phaseFormCopy';
-import { useCountdown } from './useCountdown';
+import { useCountdown, useStopwatch, formatCountdown } from './useCountdown';
 import { CardioTimerBlock } from './CardioTimerBlock';
 
-const TEST_SECONDS = 180;
 const RECOVERY_SECONDS = 60;
 
 interface CardioRunSheetProps {
@@ -46,8 +45,9 @@ function HrInput({
 }
 
 /**
- * P3 as one continuous run sheet: resting HR → protocol → 3:00 test timer →
- * peak HR → 1:00 recovery timer → recovery HR → section complete.
+ * P3 as one continuous run sheet: resting HR → protocol → start/stop test
+ * (stopping auto-starts the 1:00 recovery countdown) → peak HR →
+ * recovery HR → section complete.
  */
 export function CardioRunSheet({ sectionTitle, onComplete, onBack }: CardioRunSheetProps) {
   const { formData, updateFormData } = useFormContext();
@@ -56,12 +56,22 @@ export function CardioRunSheet({ sectionTitle, onComplete, onBack }: CardioRunSh
   const [restingHr, setRestingHr] = useState(String(formData.cardioRestingHr ?? ''));
   const [peakHr, setPeakHr] = useState(String(formData.cardioPeakHr ?? ''));
   const [recoveryHr, setRecoveryHr] = useState(String(formData.cardioPost1MinHr ?? ''));
+  const [testCompleted, setTestCompleted] = useState(false);
 
-  const testTimer = useCountdown(TEST_SECONDS);
+  const testTimer = useStopwatch();
   const recoveryTimer = useCountdown(RECOVERY_SECONDS);
 
   const hasCardioEquipment = orgSettings?.equipmentConfig?.cardioEquipment?.enabled === true;
   const protocol = formData.cardioTestSelected;
+
+  // Equipment-based protocols aren't offered when the studio has none configured.
+  const protocolOptions = useMemo(
+    () =>
+      hasCardioEquipment
+        ? ASSESSMENT_OPTIONS.cardioTestSelected
+        : ASSESSMENT_OPTIONS.cardioTestSelected.filter((opt) => opt.value === 'ymca-step'),
+    [hasCardioEquipment],
+  );
 
   // No cardio equipment configured → the step test is the only viable protocol,
   // so pre-select it instead of asking (external default sync, guarded to once-empty).
@@ -73,7 +83,21 @@ export function CardioRunSheet({ sectionTitle, onComplete, onBack }: CardioRunSh
 
   const commit = (patch: Partial<FormData>) => updateFormData(patch);
   const isNum = (v: string) => v.trim() !== '' && !Number.isNaN(Number(v));
-  const canComplete = isNum(restingHr) && isNum(peakHr) && isNum(recoveryHr);
+  const canComplete = Boolean(protocol) && isNum(restingHr) && isNum(peakHr) && isNum(recoveryHr);
+
+  const handleStartTest = () => {
+    setTestCompleted(false);
+    recoveryTimer.reset();
+    testTimer.start();
+  };
+
+  const handleStopTest = () => {
+    testTimer.stop();
+    setTestCompleted(true);
+    // The recovery minute begins the moment the test ends — chain it
+    // automatically so the coach can focus on the client.
+    recoveryTimer.start();
+  };
 
   const handleComplete = () => {
     if (!canComplete) return;
@@ -118,7 +142,7 @@ export function CardioRunSheet({ sectionTitle, onComplete, onBack }: CardioRunSh
           <section className="space-y-3">
             {step(2, COPY.PROTOCOL_LABEL)}
             <div className="flex flex-wrap gap-2 pl-9">
-              {ASSESSMENT_OPTIONS.cardioTestSelected.map((opt) => (
+              {protocolOptions.map((opt) => (
                 <button
                   key={opt.value}
                   type="button"
@@ -142,12 +166,47 @@ export function CardioRunSheet({ sectionTitle, onComplete, onBack }: CardioRunSh
             {step(3, COPY.TEST_LABEL)}
             <p className="pl-9 text-xs text-muted-foreground">{COPY.TEST_HINT}</p>
             <div className="pl-9">
-              <CardioTimerBlock
-                countdown={testTimer}
-                startLabel={COPY.TEST_START}
-                runningHint={COPY.TEST_RUNNING}
-                doneHint={COPY.TEST_DONE}
-              />
+              <div className="flex flex-wrap items-center gap-4">
+                <div
+                  className={`flex items-center gap-2 rounded-xl border px-4 py-2 font-mono text-3xl font-bold tabular-nums ${
+                    testTimer.running
+                      ? 'border-primary/40 bg-primary/5 text-foreground'
+                      : testCompleted
+                        ? 'border-score-green-muted bg-score-green-light text-score-green-fg'
+                        : 'border-border bg-muted/40 text-foreground-secondary'
+                  }`}
+                  role="timer"
+                  aria-live="polite"
+                >
+                  <Timer className="h-5 w-5 opacity-60" aria-hidden />
+                  {formatCountdown(testTimer.elapsedSeconds)}
+                </div>
+                {!testTimer.running ? (
+                  <Button
+                    type="button"
+                    onClick={handleStartTest}
+                    className="h-11 gap-2 rounded-lg px-5 font-bold"
+                  >
+                    <Play className="h-4 w-4" />
+                    {COPY.TEST_START}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleStopTest}
+                    className="h-11 gap-2 rounded-lg px-5 font-bold"
+                  >
+                    <Square className="h-4 w-4" />
+                    {COPY.TEST_STOP}
+                  </Button>
+                )}
+                {testTimer.running ? (
+                  <p className="text-sm font-medium text-muted-foreground">{COPY.TEST_RUNNING}</p>
+                ) : testCompleted ? (
+                  <p className="text-sm font-semibold text-score-green-fg">{COPY.TEST_DONE}</p>
+                ) : null}
+              </div>
             </div>
           </section>
 
@@ -197,15 +256,20 @@ export function CardioRunSheet({ sectionTitle, onComplete, onBack }: CardioRunSh
             <ChevronLeft className="mr-2 h-5 w-5" />
             {COPY.BACK}
           </Button>
-          <Button
-            type="button"
-            onClick={handleComplete}
-            disabled={!canComplete}
-            className="h-12 rounded-lg px-8 font-bold"
-          >
-            {COPY.COMPLETE}
-            <ChevronRight className="ml-2 h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-3">
+            {!protocol ? (
+              <p className="text-xs font-medium text-muted-foreground">{COPY.COMPLETE_HINT_PROTOCOL}</p>
+            ) : null}
+            <Button
+              type="button"
+              onClick={handleComplete}
+              disabled={!canComplete}
+              className="h-12 rounded-lg px-8 font-bold"
+            >
+              {COPY.COMPLETE}
+              <ChevronRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

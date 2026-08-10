@@ -169,6 +169,10 @@ export function useDashboardActions(
       ? category.filter((c) => c && c !== 'full')
       : (category && category !== 'full' ? [category] : []);
 
+    // Clear bleed keys first (this also removes any stale PARTIAL flag),
+    // then write the partial marker for this run if needed.
+    clearAssessmentEntryBleedKeys();
+    clearDraft();
     if (categories.length > 0) {
       writePartialAssessment({
         clientName,
@@ -178,8 +182,6 @@ export function useDashboardActions(
     } else {
       removePartialAssessment();
     }
-    clearAssessmentEntryBleedKeys();
-    clearDraft();
 
     // Always include client name; enrich from latest assessment if available
     const prefill: Record<string, unknown> = { fullName: clientName };

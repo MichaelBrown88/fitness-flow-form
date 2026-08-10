@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useFormContext } from '@/contexts/FormContext';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -148,13 +148,29 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({
     }
   }, [currentQuestionIndex, validQuestionIndex]);
 
+  // Auto-advance: answering yes/no is a complete action — move to the next
+  // question without a second tap. The last question still needs an explicit
+  // "Section Complete" so a stray tap can't finish the screening.
+  const autoAdvanceTimer = useRef<number | null>(null);
+  useEffect(() => {
+    return () => {
+      if (autoAdvanceTimer.current !== null) clearTimeout(autoAdvanceTimer.current);
+    };
+  }, []);
+
   const handleAnswer = (answer: string) => {
-    if (currentQuestion) {
-      setAnswer(currentQuestion.id, answer);
+    if (!currentQuestion) return;
+    setAnswer(currentQuestion.id, answer);
+    if (!currentQuestion.isNotes && !isLastQuestion && answer !== '') {
+      if (autoAdvanceTimer.current !== null) clearTimeout(autoAdvanceTimer.current);
+      autoAdvanceTimer.current = window.setTimeout(() => {
+        setCurrentQuestionIndex(prev => Math.min(prev + 1, visibleQuestions.length - 1));
+      }, 250);
     }
   };
 
   const goToPrevious = () => {
+    if (autoAdvanceTimer.current !== null) clearTimeout(autoAdvanceTimer.current);
     if (validQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
     } else if (onExitParQ) {
@@ -182,10 +198,10 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({
             <span className="text-lg leading-none mt-0.5">⚠️</span>
             <div>
               <p className="text-sm font-semibold text-rose-900">
-                Medical Clearance Required
+                Flagged for medical clearance
               </p>
               <p className="text-xs text-rose-700 leading-relaxed mt-0.5">
-                One or more responses indicate a potential health risk. Please consult a healthcare professional before starting any physical activity.
+                One or more answers point to a potential health risk. You can continue the assessment — hold off on intense testing until a healthcare professional gives clearance.
               </p>
             </div>
           </div>

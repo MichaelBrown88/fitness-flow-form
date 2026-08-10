@@ -23,20 +23,28 @@ export function useAssessmentShareHandlers({
   toast,
 }: ShareHandlersParams) {
   const handleShare = useCallback(async (view: ShareView) => {
+    if (!user || !savingId) {
+      toast({
+        title: 'Report still saving',
+        description: 'Give it a moment, then try sharing again.',
+        variant: 'destructive',
+      });
+      return;
+    }
     try {
       setShareLoading(true);
-      let shareUrl = window.location.origin;
-      if (user && savingId) {
-        await ensureShareArtifacts(view);
-        shareUrl = `${window.location.origin}/share/${user.uid}/${savingId}`;
-      }
+      // Share the same public /r/:token URL that Copy link uses — the legacy
+      // /share/:uid/:id route no longer exists.
+      const artifacts = await ensureShareArtifacts(view);
       if (navigator.share) {
-        await navigator.share({ title: 'Assessment Report', url: shareUrl });
+        await navigator.share({ title: 'Assessment Report', url: artifacts.shareUrl });
       } else {
-        await copyTextToClipboard(shareUrl);
+        await copyTextToClipboard(artifacts.shareUrl);
         toast({ title: 'Link copied' });
       }
     } catch (error) {
+      // Ignore user-cancelled native share sheets
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       toast({ title: 'Share failed', variant: 'destructive' });
     } finally {
       setShareLoading(false);

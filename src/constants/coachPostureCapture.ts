@@ -25,6 +25,10 @@ export const COACH_POSTURE_CAPTURE_COPY = {
   DONE_CLOSE: 'Done',
   CLOSE_ARIA: 'Close posture capture',
   CAMERA_STARTING: 'Starting camera…',
+  CAMERA_ERROR_TITLE: "Camera couldn't start",
+  CAMERA_ERROR_BODY:
+    'Allow camera access for this site in the browser settings, or close this and upload photos instead.',
+  CAMERA_RETRY: 'Try again',
   UPLOAD_FAILED_TITLE: "Couldn't save that view",
   UPLOAD_FAILED_BODY: 'Check the connection and retake the view from the posture screen.',
 } as const;

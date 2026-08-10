@@ -34,6 +34,9 @@ export const CoachPostureCapturePanel: React.FC<CoachPostureCapturePanelProps> =
   const [viewIdx, setViewIdx] = useState(0);
   const [captured, setCaptured] = useState<string | null>(null);
   const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState(false);
+  // Bumping the key remounts <Webcam> to re-request the stream after an error.
+  const [cameraAttempt, setCameraAttempt] = useState(0);
   const [done, setDone] = useState(false);
   const { toast } = useToast();
 
@@ -106,14 +109,36 @@ export const CoachPostureCapturePanel: React.FC<CoachPostureCapturePanelProps> =
           </div>
         ) : captured ? (
           <img src={captured} alt={viewLabel} className="h-full w-full object-contain" />
+        ) : cameraError ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white">
+            <p className="text-sm font-semibold">{COPY.CAMERA_ERROR_TITLE}</p>
+            <p className="max-w-sm text-sm text-white/70">{COPY.CAMERA_ERROR_BODY}</p>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCameraError(false);
+                setCameraReady(false);
+                setCameraAttempt((n) => n + 1);
+              }}
+              className="mt-2 rounded-full border-white/30 bg-transparent px-6 text-white hover:bg-white/10 hover:text-white"
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              {COPY.CAMERA_RETRY}
+            </Button>
+          </div>
         ) : (
           <>
             <Webcam
+              key={cameraAttempt}
               ref={webcamRef}
               audio={false}
               screenshotFormat="image/jpeg"
               videoConstraints={{ facingMode: 'environment', width: 1280, height: 720 }}
               onUserMedia={() => setCameraReady(true)}
+              onUserMediaError={(err) => {
+                logger.error('[COACH_POSTURE] Camera failed to start', 'PostureCapture', err);
+                setCameraError(true);
+              }}
               className="h-full w-full object-contain"
             />
             {cameraReady ? (
@@ -148,7 +173,7 @@ export const CoachPostureCapturePanel: React.FC<CoachPostureCapturePanelProps> =
               {COPY.USE_PHOTO}
             </Button>
           </>
-        ) : (
+        ) : cameraError ? null : (
           <button
             type="button"
             onClick={handleShutter}

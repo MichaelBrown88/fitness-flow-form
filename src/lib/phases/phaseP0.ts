@@ -26,8 +26,10 @@ export const phaseP0: PhaseDefinition = {
       title: SECTION_TITLES.P0['basic-client-info'],
       fields: [
         { id: 'fullName' as keyof FormData, type: 'text' as FieldType, label: ASSESSMENT_LABELS.P0.fullName, required: true, placeholder: ASSESSMENT_PLACEHOLDERS.P0.fullName, tooltip: ASSESSMENT_TOOLTIPS.P0.fullName },
-        { id: 'email' as keyof FormData, type: 'email' as FieldType, label: ASSESSMENT_LABELS.P0.email, required: true, placeholder: ASSESSMENT_PLACEHOLDERS.P0.email, tooltip: ASSESSMENT_TOOLTIPS.P0.email },
-        { id: 'phone' as keyof FormData, type: 'tel' as FieldType, label: ASSESSMENT_LABELS.P0.phone, required: true, placeholder: ASSESSMENT_PLACEHOLDERS.P0.phone, tooltip: ASSESSMENT_TOOLTIPS.P0.phone },
+        // Optional: walk-ins may not want to hand over contact details yet, and
+        // the send-link path already captures email before the studio visit.
+        { id: 'email' as keyof FormData, type: 'email' as FieldType, label: ASSESSMENT_LABELS.P0.email, required: false, placeholder: ASSESSMENT_PLACEHOLDERS.P0.email, tooltip: ASSESSMENT_TOOLTIPS.P0.email },
+        { id: 'phone' as keyof FormData, type: 'tel' as FieldType, label: ASSESSMENT_LABELS.P0.phone, required: false, placeholder: ASSESSMENT_PLACEHOLDERS.P0.phone, tooltip: ASSESSMENT_TOOLTIPS.P0.phone },
         { id: 'dateOfBirth' as keyof FormData, type: 'date' as FieldType, label: ASSESSMENT_LABELS.P0.dateOfBirth, required: true, tooltip: ASSESSMENT_TOOLTIPS.P0.dateOfBirth },
         { id: 'gender' as keyof FormData, type: 'select' as FieldType, label: ASSESSMENT_LABELS.P0.gender, required: true, options: ASSESSMENT_OPTIONS.gender, tooltip: ASSESSMENT_TOOLTIPS.P0.gender },
         {

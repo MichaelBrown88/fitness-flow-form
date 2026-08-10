@@ -145,6 +145,34 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
     }
   };
 
+  // ── Auto-advance single-select questions ─────────────────────────
+  // One tap should answer AND move on. Only for lone single-choice fields,
+  // only when the value actually changed on this step (revisiting a filled
+  // field via Back must not bounce forward), and never on the last field —
+  // finishing a section stays an explicit tap.
+  const isAutoAdvanceStep =
+    !!currentStep &&
+    currentStep.length === 1 &&
+    (currentStep[0].type === 'select' || currentStep[0].type === 'choice') &&
+    !isLastField;
+  const stepKeyRef = useRef('');
+  const entryValueRef = useRef<unknown>(undefined);
+  const stepKey = `${section.id}:${activeFieldIdx}`;
+  if (stepKeyRef.current !== stepKey) {
+    stepKeyRef.current = stepKey;
+    entryValueRef.current = currentStep ? formData[currentStep[0].id] : undefined;
+  }
+  useEffect(() => {
+    if (!isAutoAdvanceStep || !currentStep) return;
+    const val = formData[currentStep[0].id];
+    if (val === undefined || val === null || val === '') return;
+    if (val === entryValueRef.current) return;
+    const timer = window.setTimeout(() => {
+      setActiveFieldIdx(prev => prev + 1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [formData, isAutoAdvanceStep, currentStep, setActiveFieldIdx]);
+
   const handleBack = () => {
     if (activeFieldIdx > 0) {
       setActiveFieldIdx(prev => prev - 1);
@@ -194,6 +222,21 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
 
   const movementPattern = currentStep[0].pattern;
   const isBodyCompSection = section.id === 'body-comp';
+  // The OCR photo fills analyzer numbers — don't offer it while the coach is
+  // on the tape-measurement step, where a printout photo makes no sense.
+  const isTapeMeasurementStep = currentStep[0].pairId === 'tape-measurements';
+
+  // Photo mode promises an AI posture analysis — don't let the section
+  // complete with zero captures. Switching to manual observation is the
+  // escape hatch if the camera is unavailable.
+  const hasPostureImages =
+    Object.keys(formData.postureImages ?? {}).length > 0 ||
+    Object.keys(formData.postureImagesStorage ?? {}).length > 0;
+  const postureMissingPhotos =
+    section.id === 'posture' &&
+    isLastField &&
+    formData.postureInputMode === 'ai' &&
+    !hasPostureImages;
 
   // Check if all fields in this step share the same side (for group-level badge)
   const sharedSide = currentStep.length > 1 && currentStep.every(f => f.side && f.side === currentStep[0].side)
@@ -237,7 +280,7 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
         )}
 
         {/* Body comp: inline "Snap a Photo" button above fields */}
-        {isBodyCompSection && onShowCamera && (
+        {isBodyCompSection && !isTapeMeasurementStep && onShowCamera && (
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <Button
               onClick={handleSnapPhoto}
@@ -298,18 +341,25 @@ export const SingleFieldFlow: React.FC<SingleFieldFlowProps> = ({
             Back
           </Button>
 
-          <Button
-            onClick={handleNext}
-            disabled={!hasValue && currentStep.some(f => f.required)}
-            className={`h-12 px-8 rounded-lg font-bold transition-all ${
-              hasValue || !currentStep.some(f => f.required)
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'bg-muted text-muted-foreground cursor-not-allowed'
-            }`}
-          >
-            {isLastField ? 'Section Complete' : 'Next Step'}
-            <ChevronRight className="ml-2 h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-3">
+            {postureMissingPhotos && (
+              <p className="max-w-[220px] text-xs font-medium text-muted-foreground">
+                Capture or upload the posture views first — or switch to manual observation.
+              </p>
+            )}
+            <Button
+              onClick={handleNext}
+              disabled={postureMissingPhotos || (!hasValue && currentStep.some(f => f.required))}
+              className={`h-12 px-8 rounded-lg font-bold transition-all ${
+                !postureMissingPhotos && (hasValue || !currentStep.some(f => f.required))
+                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                  : 'bg-muted text-muted-foreground cursor-not-allowed'
+              }`}
+            >
+              {isLastField ? 'Section Complete' : 'Next Step'}
+              <ChevronRight className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>

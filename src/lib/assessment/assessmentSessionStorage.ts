@@ -393,6 +393,9 @@ export function clearAssessmentEntryBleedKeys(): void {
   removeAssessmentSetupConfirmed();
   removeDraftAssessment();
   removeAssessmentPhaseIndex();
+  // A leftover pillar-reassess flag would put a brand-new baseline into
+  // partial mode (wrong phases, wrong save type) — always clear it here.
+  removePartialAssessment();
   clearBaselineSessionFlags();
 }
 

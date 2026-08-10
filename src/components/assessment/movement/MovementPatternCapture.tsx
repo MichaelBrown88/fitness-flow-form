@@ -19,6 +19,8 @@ interface IssueChip {
   id: string;
   label: string;
   patch: PartialForm;
+  /** Chips sharing a group are mutually exclusive (e.g. shifts left vs right). */
+  exclusiveGroup?: string;
 }
 
 const OHS_BENIGN: PartialForm = {
@@ -37,7 +39,8 @@ const OHS_CHIPS: IssueChip[] = [
   { id: 'lean', label: 'Leans forward', patch: { ohsTorsoLean: 'moderate-lean' } },
   { id: 'shoulders', label: 'Shoulders struggle overhead', patch: { ohsShoulderMobility: 'limited' } },
   { id: 'feet', label: 'Feet roll inward', patch: { ohsFeetPosition: 'pronation' } },
-  { id: 'shift', label: 'Shifts to one side', patch: { ohsHipShift: 'left' } },
+  { id: 'shift-left', label: 'Shifts left', patch: { ohsHipShift: 'left' }, exclusiveGroup: 'shift' },
+  { id: 'shift-right', label: 'Shifts right', patch: { ohsHipShift: 'right' }, exclusiveGroup: 'shift' },
 ];
 
 const HINGE_BENIGN: PartialForm = {
@@ -110,6 +113,26 @@ function mergePatches(base: PartialForm, chips: IssueChip[], selected: Set<strin
   return out;
 }
 
+/** Re-derive which chips were previously selected from persisted form values. */
+function chipsFromFormData(formData: FormData, chips: IssueChip[]): Set<string> {
+  const selected = new Set<string>();
+  for (const chip of chips) {
+    const matches = Object.entries(chip.patch).every(
+      ([key, value]) => formData[key as keyof FormData] === value,
+    );
+    if (matches) selected.add(chip.id);
+  }
+  return selected;
+}
+
+/** True when the section was previously completed as all-benign (ignoring pain). */
+function isMarkedGoodInFormData(formData: FormData, benign: PartialForm, painField: keyof FormData): boolean {
+  return Object.entries(benign).every(([key, value]) => {
+    if (key === painField) return true;
+    return formData[key as keyof FormData] === value;
+  });
+}
+
 export function MovementPatternCapture({
   sectionId,
   sectionTitle,
@@ -122,8 +145,14 @@ export function MovementPatternCapture({
     [sectionId],
   );
 
-  const [selectedIssues, setSelectedIssues] = useState<Set<string>>(() => new Set());
-  const [markedGood, setMarkedGood] = useState(false);
+  // Rehydrate from persisted form values so revisiting a section shows the
+  // previous observations instead of an apparently blank capture pad.
+  const [selectedIssues, setSelectedIssues] = useState<Set<string>>(
+    () => chipsFromFormData(formData, chips),
+  );
+  const [markedGood, setMarkedGood] = useState(
+    () => selectedIssues.size === 0 && isMarkedGoodInFormData(formData, benign, painField),
+  );
 
   const canContinue = markedGood || selectedIssues.size > 0;
 
@@ -131,22 +160,41 @@ export function MovementPatternCapture({
     setMarkedGood(false);
     setSelectedIssues((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        // Deselect any chip in the same exclusive group (e.g. shifts left vs right)
+        const group = chips.find((c) => c.id === id)?.exclusiveGroup;
+        if (group) {
+          for (const c of chips) {
+            if (c.exclusiveGroup === group) next.delete(c.id);
+          }
+        }
+        next.add(id);
+      }
       return next;
     });
+  };
+
+  /** Never overwrite an explicit pain answer with the benign default. */
+  const withPainPreserved = (patch: PartialForm): PartialForm => {
+    const existingPain = formData[painField];
+    if (existingPain === 'yes' || existingPain === 'no') {
+      return { ...patch, [painField]: existingPain };
+    }
+    return patch;
   };
 
   const handleLooksGood = () => {
     setMarkedGood(true);
     setSelectedIssues(new Set());
-    updateFormData({ ...benign });
+    updateFormData(withPainPreserved({ ...benign }));
     onComplete();
   };
 
   const handleContinue = () => {
     const patch = mergePatches(benign, chips, selectedIssues);
-    updateFormData(patch);
+    updateFormData(withPainPreserved(patch));
     onComplete();
   };
 

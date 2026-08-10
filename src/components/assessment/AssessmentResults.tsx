@@ -64,6 +64,10 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
     setShared(true);
   };
 
+  // Sharing needs the saved assessment id — keep actions disabled until the
+  // Firestore save completes so nothing points at a non-existent report.
+  const shareDisabled = shareLoading || !savingId;
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {saving && !savingId ? (
@@ -93,14 +97,14 @@ const AssessmentResults: React.FC<AssessmentResultsProps> = ({
               onClick={wrapShare(onCopyLink)}
               size="lg" 
               className="bg-primary text-primary-foreground gap-2 shadow-lg hover:bg-primary/90 rounded-lg rounded-r-none px-4 h-12 focus:z-10" 
-              disabled={shareLoading}
+              disabled={shareDisabled}
             >
               {shareLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
               Copy Link
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg rounded-l-none px-2 h-12 focus:z-10" disabled={shareLoading}>
+                <Button size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg rounded-l-none px-2 h-12 focus:z-10" disabled={shareDisabled}>
                   <Share2 className="h-4 w-4" />
                   <span className="sr-only">More share options</span>
                 </Button>

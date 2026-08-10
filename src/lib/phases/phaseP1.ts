@@ -73,6 +73,8 @@ export const phaseP1: PhaseDefinition = {
           label: ASSESSMENT_LABELS.P6.trainingFrequency,
           tooltip: ASSESSMENT_TOOLTIPS.P6.trainingFrequency,
           options: ASSESSMENT_OPTIONS.trainingFrequency,
+          // Only meaningful for clients who are currently training.
+          conditional: { showWhen: { field: 'recentActivity', value: 'currently-training' } },
         },
       ],
     }

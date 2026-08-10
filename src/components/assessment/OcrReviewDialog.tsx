@@ -13,7 +13,7 @@ import { Scan, CheckCircle2 } from 'lucide-react';
 
 const OCR_FIELD_LABELS: Record<string, string> = {
   heightCm: 'Height',
-  inbodyScore: 'InBody Score',
+  inbodyScore: 'Analyzer Score',
   inbodyWeightKg: 'Weight',
   skeletalMuscleMassKg: 'Skeletal Muscle Mass',
   bodyFatMassKg: 'Body Fat Mass',
