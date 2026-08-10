@@ -179,6 +179,9 @@ const ParQQuestionnaire: React.FC<ParQQuestionnaireProps> = ({
   };
 
   const goToNext = () => {
+    // Cancel any pending auto-advance — otherwise answering then tapping
+    // "Next Step" within the delay double-advances and skips a question.
+    if (autoAdvanceTimer.current !== null) clearTimeout(autoAdvanceTimer.current);
     if (isLastQuestion) {
       if (!isRemoteMode) updateFormData({ parqQuestionnaire: 'completed' });
       onComplete?.();
